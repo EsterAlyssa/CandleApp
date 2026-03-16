@@ -118,6 +118,39 @@ body.with-bars {
     font-size: 18px;
 }
 
+/* Landing slider for "Scorri per iniziare" */
+.landing-slider {
+    width: 100%;
+    max-width: 260px;
+    margin-top: 16px;
+    appearance: none;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--md-sys-color-surface-container);
+    outline: none;
+    transition: background 0.2s;
+}
+
+.landing-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    border: 2px solid var(--md-sys-color-surface);
+}
+
+.landing-slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary);
+    cursor: pointer;
+    border: 2px solid var(--md-sys-color-surface);
+}
+
 .landing-login-btn {
     background: none;
     color: var(--md-sys-color-primary);

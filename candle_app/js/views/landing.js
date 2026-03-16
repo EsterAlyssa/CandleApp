@@ -53,17 +53,35 @@ export async function renderLanding(container) {
     subtitle.innerHTML = "L'app per gestire le tue<br>candele!";
     wrapper.appendChild(subtitle);
 
-    // Bottone start (component)
+    // Bottone start + slider "scorri"
     const startDiv = document.createElement('div');
     startDiv.className = 'landing-start-div';
+
     const startBtn = createStartButton('Scorri per iniziare');
-    startBtn.onclick = async () => {
+    startBtn.onclick = triggerStart;
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '100';
+    slider.value = '0';
+    slider.className = 'landing-slider';
+    slider.oninput = () => {
+        if (slider.value === slider.max) {
+            triggerStart();
+            setTimeout(() => { slider.value = '0'; }, 300);
+        }
+    };
+
+    startDiv.appendChild(startBtn);
+    startDiv.appendChild(slider);
+    wrapper.appendChild(startDiv);
+
+    async function triggerStart() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
         else window.dispatchEvent(new CustomEvent('navigate', { detail: 'login' }));
-    };
-    startDiv.appendChild(startBtn);
-    wrapper.appendChild(startDiv);
+    }
 
     container.appendChild(wrapper);
 }
