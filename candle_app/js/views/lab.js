@@ -128,7 +128,7 @@ export async function renderLab(container) {
             card.innerHTML = `<div class="lab-card-name">${e.name}</div><div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}</div>`;
             card.onclick = () => {
                 if (isSel) selectedEssences = selectedEssences.filter(se => se.id !== e.id);
-                else selectedEssences.push({ id: e.id, name: e.name, family_name: famName });
+                else selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: e.family_id });
                 renderStep();
             };
             essGrid.appendChild(card);
@@ -245,14 +245,64 @@ export async function renderLab(container) {
             const { data: userData } = await supabase.auth.getUser();
             const userId = userData?.user?.id;
             if (!userId) { alert('Devi essere loggato!'); return; }
+
+            // Determine next batch number for this user (must be integer)
+            let batchNumber = 1;
+            try {
+                const { data: lastBatch, error: batchError } = await supabase
+                    .from('candle_log')
+                    .select('batch_number')
+                    .eq('user_id', userId)
+                    .order('batch_number', { ascending: false })
+                    .limit(1);
+                if (!batchError && lastBatch && lastBatch.length > 0) {
+                    batchNumber = (lastBatch[0].batch_number || 0) + 1;
+                }
+            } catch (e) {
+                console.warn('[LAB] Unable to compute next batch number, defaulting to 1', e);
+            }
+
+            // Create (or update) a blend record matching the selected essences
+            const blendName = (candleName || '').trim() || `Candela ${batchNumber}`;
+            const headScentId = selectedEssences[0]?.id || null;
+            const heartScentId = selectedEssences[1]?.id || null;
+            const baseScentId = selectedEssences[2]?.id || null;
+
+            const familyCounts = {};
+            selectedEssences.forEach(e => {
+                if (e.family_id) familyCounts[e.family_id] = (familyCounts[e.family_id] || 0) + 1;
+            });
+            const resultingFamilyId = Object.entries(familyCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([fam]) => fam)[0] || null;
+
+            const { data: blendData, error: blendError } = await supabase.from('blends').insert([{
+                user_id: userId,
+                name: blendName,
+                head_scent_id: headScentId,
+                heart_scent_id: heartScentId,
+                base_scent_id: baseScentId,
+                resulting_family_id: resultingFamilyId
+            }]).select('id').single();
+
+            if (blendError) {
+                alert('Errore nella creazione del blend: ' + blendError.message);
+                return;
+            }
+
+            const blendId = blendData?.id;
+
             const { error } = await supabase.from('candle_log').insert([{
                 user_id: userId,
                 mold_id: selectedMold?.id,
                 wax_id: selectedWax?.id,
+                blend_id: blendId,
                 total_wax_used: cap,
+                fragrance_load_percent: fragrancePct,
                 notes: `Fragranza: ${fragranceName || selectedEssences.map(e => e.name).join(', ')}. ${fragranceNote}`.trim(),
                 rating: 0,
-                batch_number: candleName || 'Candela'
+                batch_number: batchNumber,
+                is_favorite: false
             }]);
             if (error) alert('Errore: ' + error.message);
             else {
