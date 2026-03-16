@@ -35,8 +35,8 @@ export async function renderProfile(container) {
     if (userId) {
         const [candleRes, lowRes, emptyRes] = await Promise.all([
             supabase.from('candle_log').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-            supabase.from('inventory').select('id').eq('category', 'Essenze').lt('quantity_g', 100).gt('quantity_g', 0),
-            supabase.from('inventory').select('id').eq('category', 'Essenze').lte('quantity_g', 0)
+            supabase.from('inventory').select('id').eq('category', 'scent').lt('quantity_g', 100).gt('quantity_g', 0),
+            supabase.from('inventory').select('id').eq('category', 'scent').lte('quantity_g', 0)
         ]);
         candleCount = candleRes.count || 0;
         lowEssences = lowRes.data?.length || 0;

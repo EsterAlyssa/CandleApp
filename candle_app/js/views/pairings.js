@@ -78,7 +78,7 @@ export async function renderPairings(container, familyId) {
         // Fetch essences for each target family
         const { data: targetEssences } = await supabase.from('inventory')
             .select('name, family_id')
-            .eq('category', 'Essenze')
+            .eq('category', 'scent')
             .in('family_id', targetIds);
         const essByFam = {};
         (targetEssences || []).forEach(e => {

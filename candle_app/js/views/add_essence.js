@@ -12,9 +12,10 @@ export async function renderAddEssence(container, categoryParam) {
         const wrapper = document.createElement('div');
         wrapper.className = 'register-wrapper';
 
-        const category = categoryParam || 'Essenze';
-        const isEssence = category === 'Essenze';
-        const dbCategory = (category === 'Cere' ? 'wax' : category === 'Stampi' ? 'mold' : 'scent');
+        const category = (categoryParam || 'Essenze').trim();
+        const catLower = category.toLowerCase();
+        const isEssence = catLower === 'essenze';
+        const dbCategory = catLower === 'cere' ? 'wax' : catLower === 'stampi' ? 'mold' : 'scent';
 
         const titleText = isEssence ? "Aggiungi un'essenza" : `Aggiungi ${category === 'Stampi' ? 'uno stampo' : 'una cera'}`;
         const title = createTitle(titleText, 2);
@@ -84,6 +85,13 @@ export async function renderAddEssence(container, categoryParam) {
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
 
+            if (!['wax','mold','scent'].includes(dbCategory)) {
+                console.error('[ADD_ESSENCE] Invalid category for inventory:', dbCategory, { category, categoryParam });
+                alert('Categoria non valida: ' + dbCategory);
+                return;
+            }
+
+            console.log('[ADD_ESSENCE] inserting inventory record', record);
             const { error } = await supabase.from('inventory').insert([record]);
             if (error) alert('Errore: ' + error.message);
             else window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
