@@ -30,19 +30,25 @@ export async function renderInventoryDetail(container, id) {
         `;
         wrapper.appendChild(createCard('Dettagli', html));
 
-        // Buttons: stock, edit, back
+        // Buttons: stock, abbinamenti (solo essenze), edit, back
         const btnStock = createButton('Stock', 'inventory', 'btn-primary btn-compact');
         btnStock.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `stock:${id}` }));
+
         const btnPairings = createButton('Abbinamenti', 'link', 'btn-primary btn-compact');
         btnPairings.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `pairings:${item.family_id || ''}` }));
+
+        // Determine UI category label for edit routing
+        const uiCategory = item.category === 'mold' ? 'Stampi' : item.category === 'wax' ? 'Cere' : 'Essenze';
         const btnEdit = createButton('Modifica', 'edit', 'btn-card-edit');
-        btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab` }));
+        btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${uiCategory}&id=${id}` }));
 
         const actions = document.createElement('div');
         actions.style.display = 'flex';
         actions.style.gap = '8px';
         actions.appendChild(btnStock);
-        actions.appendChild(btnPairings);
+        if (item.category === 'scent') {
+            actions.appendChild(btnPairings);
+        }
         actions.appendChild(btnEdit);
         wrapper.appendChild(actions);
 

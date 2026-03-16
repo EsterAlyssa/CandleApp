@@ -43,6 +43,27 @@ export async function renderInfo(container) {
     const listContainer = document.createElement('div');
     listContainer.className = 'family-list';
 
+    // Fetch all essences once (avoid per-family query)
+    const { data: allEssences } = await supabase.from('inventory')
+        .select('id, name, family_id')
+        .eq('category', 'scent');
+    const essencesByFamily = {};
+    (allEssences || []).forEach(e => {
+        if (!e.family_id) return;
+        if (!essencesByFamily[e.family_id]) essencesByFamily[e.family_id] = [];
+        essencesByFamily[e.family_id].push(e.name);
+    });
+
+    // Fetch all pairings once
+    const { data: allPairings } = await supabase.from('family_pairings')
+        .select('source_family_id, target_family_id, type');
+    const pairingsBySource = {};
+    (allPairings || []).forEach(p => {
+        if (!p.source_family_id) return;
+        if (!pairingsBySource[p.source_family_id]) pairingsBySource[p.source_family_id] = [];
+        pairingsBySource[p.source_family_id].push(p);
+    });
+
     for (const f of families) {
         const card = document.createElement('div');
         card.className = 'family-card';
@@ -67,35 +88,30 @@ export async function renderInfo(container) {
             body.appendChild(desc);
         }
 
-        // Fetch essences in this family
-        const { data: famEssences } = await supabase.from('inventory')
-            .select('id, name')
-            .eq('category', 'scent')
-            .eq('family_id', f.id);
-
-        if (famEssences && famEssences.length > 0) {
+        // Essences
+        const essences = essencesByFamily[f.id] || [];
+        if (essences.length > 0) {
             const essTitle = document.createElement('p');
-            essTitle.innerHTML = `<strong>Essenze:</strong> ${famEssences.map(e => e.name).join(', ')}`;
+            essTitle.innerHTML = `<strong>Essenze:</strong> ${essences.join(', ')}`;
             body.appendChild(essTitle);
         }
 
-        // Fetch pairings
-        const { data: pairings } = await supabase.from('family_pairings')
-            .select('target_family_id, type')
-            .eq('source_family_id', f.id);
-
-        if (pairings && pairings.length > 0) {
+        // Pairings
+        const pairings = pairingsBySource[f.id] || [];
+        if (pairings.length > 0) {
             const harmony = pairings.filter(p => p.type === 'armonia');
             const contrast = pairings.filter(p => p.type === 'contrasto');
 
+            const findName = (id) => (families.find(fam => fam.id === id)?.name_it || id);
+
             if (harmony.length > 0) {
-                const hNames = harmony.map(p => families.find(fam => fam.id === p.target_family_id)?.name_it || p.target_family_id).join(', ');
+                const hNames = harmony.map(p => findName(p.target_family_id)).join(', ');
                 const hP = document.createElement('p');
                 hP.innerHTML = `<strong>Abbinamenti per armonia:</strong> ${hNames}`;
                 body.appendChild(hP);
             }
             if (contrast.length > 0) {
-                const cNames = contrast.map(p => families.find(fam => fam.id === p.target_family_id)?.name_it || p.target_family_id).join(', ');
+                const cNames = contrast.map(p => findName(p.target_family_id)).join(', ');
                 const cP = document.createElement('p');
                 cP.innerHTML = `<strong>Abbinamenti per contrasto:</strong> ${cNames}`;
                 body.appendChild(cP);
@@ -103,10 +119,7 @@ export async function renderInfo(container) {
 
             // If no known types were found, show raw pairings for debugging
             if (harmony.length === 0 && contrast.length === 0) {
-                const rawList = pairings.map(p => {
-                    const targetName = families.find(fam => fam.id === p.target_family_id)?.name_it || p.target_family_id;
-                    return `${p.type || 'unknown'} → ${targetName}`;
-                }).join(', ');
+                const rawList = pairings.map(p => `${p.type || 'unknown'} → ${findName(p.target_family_id)}`).join(', ');
                 const rawP = document.createElement('p');
                 rawP.innerHTML = `<strong>Abbinamenti:</strong> ${rawList}`;
                 body.appendChild(rawP);

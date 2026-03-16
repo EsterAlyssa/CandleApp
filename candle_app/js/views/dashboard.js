@@ -101,27 +101,31 @@ export async function renderDashboard(container) {
         return;
     }
 
-    // Helper fetchers
-    async function fetchBlend(id) {
-        if (!id) return null;
-        const { data } = await supabase.from('blends').select('id, name, resulting_family_id').eq('id', id).maybeSingle();
-        return data || null;
-    }
-    async function fetchInventoryItem(id) {
-        if (!id) return null;
-        const { data } = await supabase.from('inventory').select('id, name, category, image_url').eq('id', id).maybeSingle();
-        return data || null;
-    }
-    async function fetchFamily(id) {
-        if (!id) return null;
-        const { data } = await supabase.from('families').select('id, name_it').eq('id', id).maybeSingle();
-        return data || null;
-    }
+    // Pre-fetch related entities to avoid N+1 query problem
+    const blendIds = Array.from(new Set(logs.map(l => l.blend_id).filter(Boolean)));
+    const moldIds = Array.from(new Set(logs.map(l => l.mold_id).filter(Boolean)));
 
-    // Render each log as card (parallel fetches)
+    const [blendResp, moldResp] = await Promise.all([
+        blendIds.length > 0 ? supabase.from('blends').select('id, name, resulting_family_id').in('id', blendIds) : { data: [], error: null },
+        moldIds.length > 0 ? supabase.from('inventory').select('id, name, category, image_url').in('id', moldIds) : { data: [], error: null }
+    ]);
+
+    const blendMap = {};
+    (blendResp.data || []).forEach(b => { blendMap[b.id] = b; });
+
+    const moldMap = {};
+    (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
+
+    const familyIds = Array.from(new Set((blendResp.data || []).map(b => b.resulting_family_id).filter(Boolean)));
+    const familyResp = familyIds.length > 0 ? await supabase.from('families').select('id, name_it').in('id', familyIds) : { data: [], error: null };
+    const familyMap = {};
+    (familyResp.data || []).forEach(f => { familyMap[f.id] = f; });
+
+    // Render each log as card
     const cardPromises = logs.map(async (log) => {
-        const [blend, mold] = await Promise.all([fetchBlend(log.blend_id), fetchInventoryItem(log.mold_id)]);
-        const family = blend?.resulting_family_id ? await fetchFamily(blend.resulting_family_id) : null;
+        const blend = blendMap[log.blend_id] || null;
+        const mold = moldMap[log.mold_id] || null;
+        const family = blend?.resulting_family_id ? familyMap[blend.resulting_family_id] : null;
 
         const titleText = blend?.name || `Candela ${log.batch_number || ''}`;
 

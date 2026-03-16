@@ -6,18 +6,35 @@ import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
 
 export async function renderAddEssence(container, categoryParam) {
-    console.log('[VIEW] Rendering Add Essence, category:', categoryParam);
+    console.log('[VIEW] Rendering Add Essence, categoryParam:', categoryParam);
     try {
         container.innerHTML = '';
         const wrapper = document.createElement('div');
         wrapper.className = 'register-wrapper';
 
-        const category = (categoryParam || 'Essenze').trim();
+        // Parse category + optional edit id (e.g. "Essenze&id=<uuid>")
+        let rawCategory = categoryParam || 'Essenze';
+        let editId = null;
+        if (rawCategory.includes('&')) {
+            const parts = rawCategory.split('&');
+            rawCategory = parts[0] || 'Essenze';
+            parts.slice(1).forEach(p => {
+                const [k, v] = p.split('=');
+                if (k === 'id' && v) editId = v;
+            });
+        }
+
+        const category = rawCategory.trim();
         const catLower = category.toLowerCase();
         const isEssence = catLower === 'essenze';
         const dbCategory = catLower === 'cere' ? 'wax' : catLower === 'stampi' ? 'mold' : 'scent';
 
-        const titleText = isEssence ? "Aggiungi un'essenza" : `Aggiungi ${category === 'Stampi' ? 'uno stampo' : 'una cera'}`;
+        const isEdit = Boolean(editId);
+        const titleText = isEdit
+            ? `Modifica ${isEssence ? "essenza" : (category === 'Stampi' ? 'stampo' : 'cera')}`
+            : isEssence
+                ? "Aggiungi un'essenza"
+                : `Aggiungi ${category === 'Stampi' ? 'uno stampo' : 'una cera'}`;
         const title = createTitle(titleText, 2);
         title.classList.add('register-title');
         wrapper.appendChild(title);
@@ -69,6 +86,24 @@ export async function renderAddEssence(container, categoryParam) {
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
         wrapper.appendChild(supplierInput);
 
+        // Load existing item when in edit mode
+        if (isEdit) {
+            const { data: existing, error: existingError } = await supabase.from('inventory').select('*').eq('id', editId).maybeSingle();
+            if (!existingError && existing) {
+                // Only prefill if category matches expected
+                if (existing.category === dbCategory) {
+                    nameInput.querySelector('.input-field').value = existing.name || '';
+                    qtyInput.querySelector('.input-field').value = existing.quantity_g != null ? existing.quantity_g : '';
+                    supplierInput.querySelector('.input-field').value = existing.supplier || '';
+                    if (familySelect && existing.family_id) {
+                        familySelect.value = existing.family_id;
+                    }
+                } else {
+                    console.warn('[ADD_ESSENCE] editId category mismatch', { expected: dbCategory, actual: existing.category });
+                }
+            }
+        }
+
         // Save
         const btn = createButton('Salva', 'save', 'btn-primary');
         btn.onclick = async () => {
@@ -92,7 +127,15 @@ export async function renderAddEssence(container, categoryParam) {
             }
 
             console.log('[ADD_ESSENCE] inserting inventory record', record);
-            const { error } = await supabase.from('inventory').insert([record]);
+            let error;
+            if (isEdit && editId) {
+                const res = await supabase.from('inventory').update(record).eq('id', editId);
+                error = res.error;
+            } else {
+                const res = await supabase.from('inventory').insert([record]);
+                error = res.error;
+            }
+
             if (error) alert('Errore: ' + error.message);
             else window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
         };

@@ -183,7 +183,7 @@ export async function renderInventory(container) {
                 if (noteType) {
                     const noteEl = document.createElement('div');
                     noteEl.className = 'essence-meta';
-                    noteEl.textContent = `Note: ${noteType}`;
+                    noteEl.textContent = `Nota: ${noteType}`;
                     card.appendChild(noteEl);
                 }
 
