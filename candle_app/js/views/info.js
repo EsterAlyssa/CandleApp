@@ -94,6 +94,10 @@ export async function renderInfo(container) {
             const essTitle = document.createElement('p');
             essTitle.innerHTML = `<strong>Essenze:</strong> ${essences.join(', ')}`;
             body.appendChild(essTitle);
+        } else {
+            const essEmpty = document.createElement('p');
+            essEmpty.textContent = 'Non ci sono essenze presenti in magazzino per questa famiglia.';
+            body.appendChild(essEmpty);
         }
 
         // Pairings

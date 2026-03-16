@@ -82,6 +82,42 @@ export async function renderAddEssence(container, categoryParam) {
         const qtyInput = createInput('Quantità (g)', 'number', 'add-qty', category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi');
         wrapper.appendChild(qtyInput);
 
+        // for stamps: allow adding/uploading a photo
+        let imageUrl = null;
+        if (catLower === 'stampi') {
+            const imgGroup = document.createElement('div');
+            imgGroup.className = 'input-group';
+            const imgLabel = document.createElement('label');
+            imgLabel.className = 'input-label';
+            imgLabel.textContent = 'Foto stampo (opzionale)';
+            imgGroup.appendChild(imgLabel);
+
+            const imgInput = document.createElement('input');
+            imgInput.type = 'file';
+            imgInput.accept = 'image/*';
+            imgInput.capture = 'environment';
+            imgInput.className = 'input-field';
+            imgGroup.appendChild(imgInput);
+
+            const imgPreview = document.createElement('img');
+            imgPreview.style = 'max-width: 160px; max-height: 160px; margin-top: 10px; border-radius: 12px; display: none;';
+            imgGroup.appendChild(imgPreview);
+
+            imgInput.onchange = async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    imageUrl = reader.result;
+                    imgPreview.src = imageUrl;
+                    imgPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            };
+
+            wrapper.appendChild(imgGroup);
+        }
+
         // Supplier
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
         wrapper.appendChild(supplierInput);
@@ -119,6 +155,7 @@ export async function renderAddEssence(container, categoryParam) {
 
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
+            if (imageUrl) record.image_url = imageUrl;
 
             if (!['wax','mold','scent'].includes(dbCategory)) {
                 console.error('[ADD_ESSENCE] Invalid category for inventory:', dbCategory, { category, categoryParam });

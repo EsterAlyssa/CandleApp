@@ -47,17 +47,19 @@ export async function renderLab(container, param) {
         return q;
     };
 
-    const [moldsRes, waxesRes, essencesRes, familiesRes] = await Promise.all([
+    const [moldsRes, waxesRes, essencesRes, familiesRes, pairingsRes] = await Promise.all([
         buildInventoryQuery('mold').order('name'),
         buildInventoryQuery('wax').order('name'),
         buildInventoryQuery('scent').order('name'),
-        supabase.from('families').select('*')
+        supabase.from('families').select('*'),
+        supabase.from('family_pairings').select('source_family_id, target_family_id, type')
     ]);
     const molds = moldsRes.data || [];
     const waxes = waxesRes.data || [];
     const essences = essencesRes.data || [];
     const familiesMap = {};
     (familiesRes.data || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
+    const pairings = pairingsRes.data || [];
 
     // Pre-select items from navigation params (e.g. lab:wax=<id>, lab:ess=<id>)
     if (navParams.mold) selectedMold = molds.find(m => m.id === navParams.mold) || null;
@@ -68,7 +70,13 @@ export async function renderLab(container, param) {
             .map(id => {
                 const e = essences.find(x => x.id === id);
                 if (!e) return null;
-                return { id: e.id, name: e.name, family_name: familiesMap[e.family_id] || '', family_id: e.family_id };
+                return {
+                    id: e.id,
+                    name: e.name,
+                    family_name: familiesMap[e.family_id] || '',
+                    family_id: e.family_id,
+                    note_type: e.tech_data?.note_type || ''
+                };
             })
             .filter(Boolean);
     }
@@ -152,22 +160,94 @@ export async function renderLab(container, param) {
         fragH.textContent = 'Scegli la fragranza';
         step.appendChild(fragH);
 
+        // Filter controls
+        const filterBar = document.createElement('div');
+        filterBar.className = 'lab-filter-bar';
+
+        const familyFilter = document.createElement('select');
+        familyFilter.className = 'lab-filter-select';
+        const famOpt0 = document.createElement('option');
+        famOpt0.value = '';
+        famOpt0.textContent = 'Tutte le famiglie';
+        familyFilter.appendChild(famOpt0);
+        const allFamilyIds = Array.from(new Set(essences.map(e => e.family_id).filter(Boolean)));
+        allFamilyIds.forEach(fid => {
+            const opt = document.createElement('option');
+            opt.value = fid;
+            opt.textContent = familiesMap[fid] || fid;
+            familyFilter.appendChild(opt);
+        });
+
+        const noteFilter = document.createElement('select');
+        noteFilter.className = 'lab-filter-select';
+        const noteOpt0 = document.createElement('option');
+        noteOpt0.value = '';
+        noteOpt0.textContent = 'Tutte le note';
+        noteFilter.appendChild(noteOpt0);
+        const noteTypes = Array.from(new Set(essences.map(e => e.tech_data?.note_type).filter(Boolean)));
+        noteTypes.forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n;
+            opt.textContent = n;
+            noteFilter.appendChild(opt);
+        });
+
+        filterBar.appendChild(familyFilter);
+        filterBar.appendChild(noteFilter);
+        step.appendChild(filterBar);
+
+        // Compute allowed family IDs based on current selection
+        const selectedFamilyIds = selectedEssences.map(e => e.family_id).filter(Boolean);
+        const allowedFamilyIds = new Set(selectedFamilyIds);
+        if (selectedFamilyIds.length > 0) {
+            pairings.forEach(p => {
+                if (selectedFamilyIds.includes(p.source_family_id)) allowedFamilyIds.add(p.target_family_id);
+                if (selectedFamilyIds.includes(p.target_family_id)) allowedFamilyIds.add(p.source_family_id);
+            });
+        }
+
+        // Determine which note types are already used
+        const usedNotes = new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
+
         const essGrid = document.createElement('div');
         essGrid.className = 'lab-grid';
-        essences.forEach(e => {
-            const isSel = selectedEssences.some(se => se.id === e.id);
-            const famName = e.family_id ? (familiesMap[e.family_id] || '') : '';
-            const card = document.createElement('div');
-            card.className = 'lab-select-card' + (isSel ? ' selected' : '');
-            card.innerHTML = `<div class="lab-card-name">${e.name}</div><div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}</div>`;
-            card.onclick = () => {
-                if (isSel) selectedEssences = selectedEssences.filter(se => se.id !== e.id);
-                else selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: e.family_id });
-                renderStep();
-            };
-            essGrid.appendChild(card);
-        });
+
+        function buildEssenceCards() {
+            essGrid.innerHTML = '';
+            const familyVal = familyFilter.value;
+            const noteVal = noteFilter.value;
+
+            essences.forEach(e => {
+                const noteType = e.tech_data?.note_type || '';
+                const famId = e.family_id || '';
+                const famName = famId ? (familiesMap[famId] || '') : '';
+
+                if (familyVal && famId !== familyVal) return;
+                if (noteVal && noteType !== noteVal) return;
+
+                const isSel = selectedEssences.some(se => se.id === e.id);
+                const isDisabledByNote = noteType && usedNotes.has(noteType) && !isSel;
+                const isDisabledByFamily = selectedFamilyIds.length > 0 && famId && !allowedFamilyIds.has(famId);
+                const isDisabled = isDisabledByNote || isDisabledByFamily;
+
+                const card = document.createElement('div');
+                card.className = 'lab-select-card' + (isSel ? ' selected' : '') + (isDisabled ? ' disabled' : '');
+                card.innerHTML = `<div class="lab-card-name">${e.name}</div><div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}${noteType ? ' • ' + noteType : ''}</div>`;
+                card.onclick = () => {
+                    if (isDisabled) return;
+                    if (isSel) selectedEssences = selectedEssences.filter(se => se.id !== e.id);
+                    else selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: famId, note_type: noteType });
+                    renderStep();
+                };
+                essGrid.appendChild(card);
+            });
+        }
+
+        familyFilter.onchange = () => buildEssenceCards();
+        noteFilter.onchange = () => buildEssenceCards();
+
         step.appendChild(essGrid);
+        buildEssenceCards();
 
         // Fragrance percentage
         const pctH = document.createElement('h3');
