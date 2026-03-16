@@ -49,7 +49,7 @@ export async function renderProfile(container) {
     const statItems = [
         { icon: 'local_fire_department', text: `Hai creato ${candleCount} candel${candleCount === 1 ? 'a' : 'e'}!` },
         { icon: 'warning', text: `Ci sono ${lowEssences} essenz${lowEssences === 1 ? 'a' : 'e'} quasi finit${lowEssences === 1 ? 'a' : 'e'}!` },
-        { icon: 'error', text: `C'${emptyEssences === 1 ? 'è' : 'sono'} ${emptyEssences} essenz${emptyEssences === 1 ? 'a' : 'e'} finit${emptyEssences === 1 ? 'a' : 'e'}!` }
+        { icon: 'error', text: `${emptyEssences === 1 ? 'C\'è' : 'Ci sono'} ${emptyEssences} essenz${emptyEssences === 1 ? 'a' : 'e'} finit${emptyEssences === 1 ? 'a' : 'e'}!` }
     ];
 
     statItems.forEach(s => {
