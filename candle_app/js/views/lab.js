@@ -5,12 +5,22 @@
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 
-export async function renderLab(container) {
-    console.log('[VIEW] Rendering Lab...');
+export async function renderLab(container, param) {
+    console.log('[VIEW] Rendering Lab...', param);
     container.innerHTML = '';
 
     const wrapper = document.createElement('div');
     wrapper.className = 'lab-wrapper';
+
+    // Parse optional navigation parameters (e.g., "wax=<id>", "ess=<id>")
+    const navParams = {};
+    if (param) {
+        param.split(/[&;]/g).forEach(pair => {
+            const [k, v] = pair.split('=');
+            if (!k) return;
+            navParams[k] = v || '';
+        });
+    }
 
     const title = createTitle('Crea una candela', 2);
     title.classList.add('page-title');
@@ -38,6 +48,20 @@ export async function renderLab(container) {
     const essences = essencesRes.data || [];
     const familiesMap = {};
     (familiesRes.data || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
+
+    // Pre-select items from navigation params (e.g. lab:wax=<id>, lab:ess=<id>)
+    if (navParams.mold) selectedMold = molds.find(m => m.id === navParams.mold) || null;
+    if (navParams.wax) selectedWax = waxes.find(w => w.id === navParams.wax) || null;
+    if (navParams.ess) {
+        const ids = String(navParams.ess).split(',').map(s => s.trim()).filter(Boolean);
+        selectedEssences = ids
+            .map(id => {
+                const e = essences.find(x => x.id === id);
+                if (!e) return null;
+                return { id: e.id, name: e.name, family_name: familiesMap[e.family_id] || '', family_id: e.family_id };
+            })
+            .filter(Boolean);
+    }
 
     const stepContent = document.createElement('div');
     stepContent.className = 'lab-content';
@@ -255,8 +279,15 @@ export async function renderLab(container) {
                     .eq('user_id', userId)
                     .order('batch_number', { ascending: false })
                     .limit(1);
+
                 if (!batchError && lastBatch && lastBatch.length > 0) {
-                    batchNumber = (lastBatch[0].batch_number || 0) + 1;
+                    const raw = lastBatch[0].batch_number;
+                    const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+                    if (!Number.isNaN(parsed)) {
+                        batchNumber = parsed + 1;
+                    } else if (typeof raw === 'number') {
+                        batchNumber = raw + 1;
+                    }
                 }
             } catch (e) {
                 console.warn('[LAB] Unable to compute next batch number, defaulting to 1', e);
@@ -292,6 +323,12 @@ export async function renderLab(container) {
 
             const blendId = blendData?.id;
 
+            const notesParts = [];
+            const fragLabel = fragranceName || selectedEssences.map(e => e.name).join(', ');
+            if (fragLabel) notesParts.push(`Fragranza: ${fragLabel}`);
+            if (fragranceNote) notesParts.push(fragranceNote);
+            const notes = notesParts.join(' - ');
+
             const { error } = await supabase.from('candle_log').insert([{
                 user_id: userId,
                 mold_id: selectedMold?.id,
@@ -299,13 +336,24 @@ export async function renderLab(container) {
                 blend_id: blendId,
                 total_wax_used: cap,
                 fragrance_load_percent: fragrancePct,
-                notes: `Fragranza: ${fragranceName || selectedEssences.map(e => e.name).join(', ')}. ${fragranceNote}`.trim(),
+                notes,
                 rating: 0,
                 batch_number: batchNumber,
                 is_favorite: false
             }]);
-            if (error) alert('Errore: ' + error.message);
-            else {
+            if (error) {
+                alert('Errore: ' + error.message);
+            } else {
+                // Decrement wax stock in inventory
+                try {
+                    const usedWax = waxAmt;
+                    const currentQty = parseFloat(selectedWax?.quantity_g) || 0;
+                    const newQty = Math.max(0, currentQty - usedWax);
+                    await supabase.from('inventory').update({ quantity_g: newQty }).eq('id', selectedWax?.id);
+                } catch (e) {
+                    console.warn('[LAB] Could not update wax stock', e);
+                }
+
                 alert('Candela salvata!');
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
             }

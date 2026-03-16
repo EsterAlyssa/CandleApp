@@ -104,9 +104,15 @@ export async function renderInventory(container) {
                 const qty = document.createElement('span');
                 qty.className = 'wax-qty';
                 qty.textContent = formatQty(item.quantity_g);
+                const useBtn = createButton('Usa', 'add_circle', 'btn-secondary btn-mini');
+                useBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:wax=${item.id}` }));
+                };
                 row.appendChild(bullet);
                 row.appendChild(name);
                 row.appendChild(qty);
+                row.appendChild(useBtn);
                 row.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
                 listContainer.appendChild(row);
             });
@@ -173,6 +179,9 @@ export async function renderInventory(container) {
                 // Action buttons
                 const actions = document.createElement('div');
                 actions.className = 'essence-actions';
+
+                const btnUse = createButton('Usa', 'add_circle', 'btn-primary btn-mini');
+                btnUse.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:ess=${item.id}` })); };
 
                 const btnAbb = document.createElement('button');
                 btnAbb.className = 'btn btn-card-edit';

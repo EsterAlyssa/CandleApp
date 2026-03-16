@@ -139,7 +139,7 @@ async function navigateTo(rawInput) {
             case 'add-essence': await renderAddEssence(container, param); break;
             case 'pairings': await renderPairings(container, param); break;
             case 'stock': await renderStock(container, param); break;
-            case 'lab': await renderLab(container); break;
+            case 'lab': await renderLab(container, param); break;
             case 'info': await renderInfo(container); break;
             case 'profile': await renderProfile(container); break;
             default:

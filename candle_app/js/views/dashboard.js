@@ -38,8 +38,11 @@ export async function renderDashboard(container) {
                 .limit(5);
             if (error) throw error;
             if (lowItems && lowItems.length > 0) {
-                const itemsText = lowItems.map(i => `${i.name} (${i.quantity_g || '—'}g)`).join(', ');
-                return { text: `Attenzione: scorte basse per ${itemsText}`, variant: 'warning' };
+                const itemsText = lowItems.map(i => {
+                const qty = (i.quantity_g !== null && i.quantity_g !== undefined) ? `${i.quantity_g}g` : '—';
+                return `${i.name} (${qty})`;
+            }).join(', ');
+            return { text: `Attenzione: scorte basse per ${itemsText}`, variant: 'warning' };
             }
 
             // Generic info - no alerts
