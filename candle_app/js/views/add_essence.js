@@ -14,6 +14,7 @@ export async function renderAddEssence(container, categoryParam) {
 
         const category = categoryParam || 'Essenze';
         const isEssence = category === 'Essenze';
+        const dbCategory = (category === 'Cere' ? 'wax' : category === 'Stampi' ? 'mold' : 'scent');
 
         const titleText = isEssence ? "Aggiungi un'essenza" : `Aggiungi ${category === 'Stampi' ? 'uno stampo' : 'una cera'}`;
         const title = createTitle(titleText, 2);
@@ -70,13 +71,17 @@ export async function renderAddEssence(container, categoryParam) {
         // Save
         const btn = createButton('Salva', 'save', 'btn-primary');
         btn.onclick = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            const userId = user?.id;
+            if (!userId) { alert('Devi essere loggato!'); return; }
+
             const name = nameInput.querySelector('.input-field')?.value?.trim();
             if (!name) { alert('Inserisci un nome!'); return; }
             const quantity_g = parseFloat(qtyInput.querySelector('.input-field')?.value) || null;
             const supplier = supplierInput.querySelector('.input-field')?.value?.trim() || null;
             const family_id = familySelect?.value || null;
 
-            const record = { name, category, quantity_g, supplier };
+            const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
 
             const { error } = await supabase.from('inventory').insert([record]);

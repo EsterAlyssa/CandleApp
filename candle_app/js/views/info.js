@@ -70,7 +70,7 @@ export async function renderInfo(container) {
         // Fetch essences in this family
         const { data: famEssences } = await supabase.from('inventory')
             .select('id, name')
-            .eq('category', 'Essenze')
+            .eq('category', 'scent')
             .eq('family_id', f.id);
 
         if (famEssences && famEssences.length > 0) {
@@ -99,6 +99,17 @@ export async function renderInfo(container) {
                 const cP = document.createElement('p');
                 cP.innerHTML = `<strong>Abbinamenti per contrasto:</strong> ${cNames}`;
                 body.appendChild(cP);
+            }
+
+            // If no known types were found, show raw pairings for debugging
+            if (harmony.length === 0 && contrast.length === 0) {
+                const rawList = pairings.map(p => {
+                    const targetName = families.find(fam => fam.id === p.target_family_id)?.name_it || p.target_family_id;
+                    return `${p.type || 'unknown'} → ${targetName}`;
+                }).join(', ');
+                const rawP = document.createElement('p');
+                rawP.innerHTML = `<strong>Abbinamenti:</strong> ${rawList}`;
+                body.appendChild(rawP);
             }
         }
 

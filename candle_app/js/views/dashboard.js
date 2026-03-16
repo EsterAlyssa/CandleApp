@@ -109,7 +109,7 @@ export async function renderDashboard(container) {
     }
     async function fetchInventoryItem(id) {
         if (!id) return null;
-        const { data } = await supabase.from('inventory').select('id, name, category, image_url').eq('id', id).single().maybeSingle();
+        const { data } = await supabase.from('inventory').select('id, name, category, image_url').eq('id', id).maybeSingle();
         return data || null;
     }
     async function fetchFamily(id) {
@@ -150,7 +150,7 @@ export async function renderDashboard(container) {
                     <div class="card-meta">${created} • Batch ${log.batch_number || '—'}</div>
                     <p class="card-desc"><strong>Famiglia:</strong> ${family?.name_it || (blend?.resulting_family_id || '—')}</p>
                     <p class="card-desc"><strong>Stampo:</strong> ${mold?.name || '—'}</p>
-                    <p class="card-drops"><strong>Gocce totali:</strong> ${log.total_wax_used || '—'} g</p>
+                    <p class="card-drops"><strong>Gocce totali:</strong> ${log.total_wax_used != null ? log.total_wax_used : '—'} g</p>
                     <p class="dashboard-notes">${log.notes ? escapeHtml(log.notes) : ''}</p>
                 </div>
             </div>

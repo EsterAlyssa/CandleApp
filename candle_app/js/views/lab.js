@@ -26,6 +26,10 @@ export async function renderLab(container, param) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
+    // --- Current user ---
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+
     // --- State ---
     let currentStep = 0;
     let selectedMold = null;
@@ -37,10 +41,16 @@ export async function renderLab(container, param) {
     let fragranceNote = '';
 
     // --- Fetch data ---
+    const buildInventoryQuery = (category) => {
+        const q = supabase.from('inventory').select('*').eq('category', category);
+        if (userId) q.eq('user_id', userId);
+        return q;
+    };
+
     const [moldsRes, waxesRes, essencesRes, familiesRes] = await Promise.all([
-        supabase.from('inventory').select('*').eq('category', 'Stampi').order('name'),
-        supabase.from('inventory').select('*').eq('category', 'Cere').order('name'),
-        supabase.from('inventory').select('*').eq('category', 'Essenze').order('name'),
+        buildInventoryQuery('mold').order('name'),
+        buildInventoryQuery('wax').order('name'),
+        buildInventoryQuery('scent').order('name'),
         supabase.from('families').select('*')
     ]);
     const molds = moldsRes.data || [];
@@ -334,7 +344,7 @@ export async function renderLab(container, param) {
                 mold_id: selectedMold?.id,
                 wax_id: selectedWax?.id,
                 blend_id: blendId,
-                total_wax_used: cap,
+                total_wax_used: waxAmt,
                 fragrance_load_percent: fragrancePct,
                 notes,
                 rating: 0,

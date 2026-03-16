@@ -111,6 +111,22 @@ export async function renderPairings(container, familyId) {
 
         if (harmony.length > 0) wrapper.appendChild(renderSection('Per armonia:', harmony));
         if (contrast.length > 0) wrapper.appendChild(renderSection('Per contrasto:', contrast));
+
+        if (harmony.length === 0 && contrast.length === 0 && pairings.length > 0) {
+            const debugSection = document.createElement('div');
+            debugSection.className = 'pairing-section';
+            const h4 = document.createElement('h4');
+            h4.textContent = 'Altri abbinamenti (tipo non riconosciuto):';
+            debugSection.appendChild(h4);
+            pairings.forEach(p => {
+                const famN = famMap[p.target_family_id] || p.target_family_id;
+                const row = document.createElement('div');
+                row.className = 'pairing-row';
+                row.innerHTML = `<strong>${p.type || '??'}:</strong> ${famN}`;
+                debugSection.appendChild(row);
+            });
+            wrapper.appendChild(debugSection);
+        }
     }
 
     // Back button

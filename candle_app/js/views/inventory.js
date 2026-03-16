@@ -26,6 +26,13 @@ export async function renderInventory(container) {
             { id: 'Essenze', label: 'Essenze' }
         ];
 
+        // Map UI categories to DB categories
+        const categoryMap = {
+            'Cere': 'wax',
+            'Stampi': 'mold',
+            'Essenze': 'scent'
+        };
+
         let activeTab = 'Cere';
 
         tabs.forEach(tab => {
@@ -52,6 +59,10 @@ export async function renderInventory(container) {
         listContainer.className = 'items-container';
         wrapper.appendChild(listContainer);
 
+        // Determine current user (to scope inventory)
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id;
+
         // Families cache for essences
         let familiesMap = {};
         const { data: famData } = await supabase.from('families').select('id, name_it');
@@ -66,10 +77,10 @@ export async function renderInventory(container) {
                 listContainer.className = 'items-container items-list';
             }
 
-            const { data, error } = await supabase.from('inventory')
-                .select('*')
-                .eq('category', category)
-                .order('name');
+            const dbCategory = categoryMap[category] || category;
+            let query = supabase.from('inventory').select('*').eq('category', dbCategory);
+            if (userId) query = query.eq('user_id', userId);
+            const { data, error } = await query.order('name');
 
             if (error) {
                 listContainer.innerHTML = `<p class="error-text">Errore: ${error.message}</p>`;
@@ -136,6 +147,13 @@ export async function renderInventory(container) {
                 const meta = document.createElement('p');
                 meta.textContent = `Capacità: ${item.quantity_g || '—'}g`;
                 card.appendChild(meta);
+
+                const btnUse = createButton('Usa', 'add_circle', 'btn-secondary btn-mini');
+                btnUse.onclick = (e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:mold=${item.id}` }));
+                };
+                card.appendChild(btnUse);
 
                 card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
                 listContainer.appendChild(card);
