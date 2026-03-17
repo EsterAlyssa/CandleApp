@@ -638,7 +638,7 @@ input[type="password"]:focus {
     padding: 10px 14px;
     border-radius: 14px;
     border: 1px solid var(--md-sys-color-outline);
-    background: transparent;
+    background: var(--md-sys-color-surface-container);
     color: var(--md-sys-color-on-surface);
     min-width: 180px;
 }
@@ -696,6 +696,66 @@ input[type="password"]:focus {
 .essence-card {
     width: clamp(280px, 46%, 420px);
     max-width: 420px;
+}
+
+.essence-card {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.14);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.essence-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+}
+
+.essence-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--md-sys-color-on-primary-container);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.essence-meta {
+    font-size: 14px;
+    color: var(--md-sys-color-on-primary-container);
+    opacity: 0.9;
+}
+
+.essence-stars {
+    font-size: 14px;
+    color: var(--md-sys-color-primary);
+}
+
+.essence-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.essence-card .btn-card-edit {
+    background: rgba(0,0,0,0.08);
+    border: 1px solid var(--md-sys-color-on-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+.essence-card .btn-card-edit:hover {
+    background: rgba(0,0,0,0.12);
+}
+
+.essence-card .btn-card-delete {
+    background: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
 }
 
 .essence-new-badge {
@@ -949,8 +1009,9 @@ header .right-slot button { font-family: inherit; }
     width: 44px;
     height: 44px;
     padding: 0;
-    border-radius: 10px;
-    background: transparent;
+    border-radius: 50%;
+    background: none !important;
+    box-shadow: none;
     
     transition: width 160ms ease, height 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
@@ -2320,10 +2381,30 @@ select.input-field {
     border-radius: 12px;
     font-size: 15px;
     margin-bottom: 12px;
-    background-color: var(--md-sys-color-surface);
+    background-color: var(--md-sys-color-surface-container);
     color: var(--md-sys-color-on-surface);
     -webkit-appearance: none;
     appearance: none;
+}
+
+select {
+    background-color: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+    border-radius: 12px;
+}
+
+select option {
+    background-color: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+}
+
+select:focus {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+}
+
+select::-ms-expand {
+    display: none;
 }
 
 /* ============================================
@@ -2339,15 +2420,10 @@ select.input-field {
 /* FrameView Pattern Styles */
 .view-frame { width: 100%; min-height: 100%; box-sizing: border-box; }
 .fade-in { animation: fadeIn 0.15s ease-out forwards; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.fade-in { animation: fadeIn 0.15s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.fade-out { animation: fadeOut 0.15s ease-out forwards; }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 #top-bar.loading::after { content: ''; position: absolute; bottom: 0; left: 0; height: 3px; background: var(--md-sys-color-primary); animation: loadingBar 1.5s infinite ease-in-out; }
 @keyframes loadingBar { 0% { transform: translateX(-100%); width: 50%; } 100% { transform: translateX(250%); width: 50%; } }
 
 .slide-thumb, .slide-track { touch-action: none; }
-
-select { background-color: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); }
-
-
-select { background-color: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); }

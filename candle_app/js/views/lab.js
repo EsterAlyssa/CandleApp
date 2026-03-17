@@ -40,6 +40,58 @@ export async function renderLab(container, param) {
     let fragranceName = '';
     let fragranceNote = '';
 
+    let defaultCandleName = 'Candela 1';
+    let nextBatchNumber = 1;
+
+    const formatNoteType = (noteType) => {
+        if (!noteType) return '';
+        if (noteType === 'base') return 'di fondo';
+        if (noteType === 'heart') return 'di cuore';
+        if (noteType === 'head') return 'di testa';
+        return noteType;
+    };
+
+    const computeFragranceNote = () => {
+        const notes = selectedEssences
+            .map(e => e.note_type)
+            .filter(Boolean);
+        if (notes.length === 0) return '';
+        // Prefer head > heart > base
+        if (notes.includes('head')) return 'di testa';
+        if (notes.includes('heart')) return 'di cuore';
+        if (notes.includes('base')) return 'di fondo';
+        return formatNoteType(notes[0]);
+    };
+
+    const computeDefaultCandleName = async () => {
+        try {
+            const { data: lastBatch, error: batchError } = await supabase
+                .from('candle_log')
+                .select('batch_number')
+                .eq('user_id', userId)
+                .order('batch_number', { ascending: false })
+                .limit(1);
+
+            if (!batchError && lastBatch && lastBatch.length > 0) {
+                const raw = lastBatch[0].batch_number;
+                const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+                if (!Number.isNaN(parsed)) {
+                    nextBatchNumber = parsed + 1;
+                } else if (typeof raw === 'number') {
+                    nextBatchNumber = raw + 1;
+                }
+            }
+        } catch (e) {
+            console.warn('[LAB] Unable to compute next batch number, defaulting to 1', e);
+        }
+
+        defaultCandleName = `Candela ${nextBatchNumber}`;
+        if (!candleName || candleName.startsWith('Candela')) candleName = defaultCandleName;
+    };
+
+    // Start loading default name ASAP (does not block UI)
+    computeDefaultCandleName();
+
     // --- Fetch data ---
     const buildInventoryQuery = (category) => {
         const q = supabase.from('inventory').select('*').eq('category', category);
@@ -322,7 +374,7 @@ export async function renderLab(container, param) {
         const recipe = document.createElement('div');
         recipe.className = 'recipe-card';
         recipe.innerHTML = `
-            <h3>${candleName || 'Candela'}</h3>
+            <h3>${candleName || defaultCandleName || 'Candela'}</h3>
             <div class="recipe-section"><h4>Stampo</h4><p>${selectedMold?.name || '—'}</p></div>
             <div class="recipe-section"><h4>Capacità stampo</h4><p class="recipe-amount">${cap}g</p></div>
             <div class="recipe-section"><h4>Cera da sciogliere</h4><p>${selectedWax?.name || '—'}: <strong>${waxAmt}g</strong></p></div>
@@ -336,24 +388,28 @@ export async function renderLab(container, param) {
         const nameGrp = document.createElement('div');
         nameGrp.className = 'input-group';
         nameGrp.innerHTML = `<label class="input-label">Nome candela</label><input class="input-field" type="text" placeholder="Candela 1">`;
-        nameGrp.querySelector('input').value = candleName;
-        nameGrp.querySelector('input').oninput = (e) => { candleName = e.target.value; };
+        const nameInput = nameGrp.querySelector('input');
+        nameInput.value = candleName || defaultCandleName;
+        nameInput.oninput = (e) => { candleName = e.target.value; };
         step.appendChild(nameGrp);
 
-        // Fragrance name
+        // Fragrance name (editable)
         const fragGrp = document.createElement('div');
         fragGrp.className = 'input-group';
         fragGrp.innerHTML = `<label class="input-label">Nome fragranza</label><input class="input-field" type="text" placeholder="Nome della fragranza">`;
-        fragGrp.querySelector('input').value = fragranceName;
-        fragGrp.querySelector('input').oninput = (e) => { fragranceName = e.target.value; };
+        const fragInput = fragGrp.querySelector('input');
+        fragInput.value = fragranceName || selectedEssences.map(e => e.name).join(', ');
+        fragInput.oninput = (e) => { fragranceName = e.target.value; };
         step.appendChild(fragGrp);
 
-        // Fragrance note
+        // Fragrance note (auto-derived, read-only)
         const noteGrp = document.createElement('div');
         noteGrp.className = 'input-group';
-        noteGrp.innerHTML = `<label class="input-label">Nota della fragranza</label><input class="input-field" type="text" placeholder="Nota olfattiva (es. fiorita)">`;
-        noteGrp.querySelector('input').value = fragranceNote;
-        noteGrp.querySelector('input').oninput = (e) => { fragranceNote = e.target.value; };
+        noteGrp.innerHTML = `<label class="input-label">Nota della fragranza</label><input class="input-field" type="text" readonly>`;
+        const noteInput = noteGrp.querySelector('input');
+        const autoNote = computeFragranceNote();
+        fragranceNote = autoNote;
+        noteInput.value = autoNote;
         step.appendChild(noteGrp);
 
         // Buttons

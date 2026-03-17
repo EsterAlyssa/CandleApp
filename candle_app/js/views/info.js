@@ -100,34 +100,34 @@ export async function renderInfo(container) {
             body.appendChild(essEmpty);
         }
 
-        // Pairings
+        // Pairings (always visible, even if there are no essences in stock)
         const pairings = pairingsBySource[f.id] || [];
-        if (pairings.length > 0) {
-            const harmony = pairings.filter(p => p.type === 'armonia');
-            const contrast = pairings.filter(p => p.type === 'contrasto');
+        const findName = (id) => (families.find(fam => fam.id === id)?.name_it || id);
 
-            const findName = (id) => (families.find(fam => fam.id === id)?.name_it || id);
+        const harmony = pairings.filter(p => p.type === 'armonia');
+        const contrast = pairings.filter(p => p.type === 'contrasto');
 
-            if (harmony.length > 0) {
-                const hNames = harmony.map(p => findName(p.target_family_id)).join(', ');
-                const hP = document.createElement('p');
-                hP.innerHTML = `<strong>Abbinamenti per armonia:</strong> ${hNames}`;
-                body.appendChild(hP);
-            }
-            if (contrast.length > 0) {
-                const cNames = contrast.map(p => findName(p.target_family_id)).join(', ');
-                const cP = document.createElement('p');
-                cP.innerHTML = `<strong>Abbinamenti per contrasto:</strong> ${cNames}`;
-                body.appendChild(cP);
-            }
+        const pairingTitle = document.createElement('p');
+        pairingTitle.innerHTML = `<strong>Abbinamenti:</strong>`;
+        body.appendChild(pairingTitle);
 
-            // If no known types were found, show raw pairings for debugging
-            if (harmony.length === 0 && contrast.length === 0) {
-                const rawList = pairings.map(p => `${p.type || 'unknown'} → ${findName(p.target_family_id)}`).join(', ');
-                const rawP = document.createElement('p');
-                rawP.innerHTML = `<strong>Abbinamenti:</strong> ${rawList}`;
-                body.appendChild(rawP);
-            }
+        if (harmony.length > 0) {
+            const hNames = harmony.map(p => findName(p.target_family_id)).join(', ');
+            const hP = document.createElement('p');
+            hP.innerHTML = `<strong>Per armonia:</strong> ${hNames}`;
+            body.appendChild(hP);
+        }
+        if (contrast.length > 0) {
+            const cNames = contrast.map(p => findName(p.target_family_id)).join(', ');
+            const cP = document.createElement('p');
+            cP.innerHTML = `<strong>Per contrasto:</strong> ${cNames}`;
+            body.appendChild(cP);
+        }
+
+        if (harmony.length === 0 && contrast.length === 0) {
+            const noP = document.createElement('p');
+            noP.textContent = 'Nessun abbinamento definito per questa famiglia.';
+            body.appendChild(noP);
         }
 
         header.onclick = () => {
