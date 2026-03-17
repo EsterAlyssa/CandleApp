@@ -39,6 +39,31 @@ export async function renderCandleDetail(container, logId) {
     const scentMap = {};
     (scentsResp.data || []).forEach(s => { scentMap[s.id] = s.name; });
 
+    const renderRatingStars = (value) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'essence-stars';
+
+        for (let i = 1; i <= 5; i += 1) {
+            const star = document.createElement('span');
+            star.className = 'essence-star' + (i <= value ? ' filled' : '');
+            star.textContent = '★';
+            star.title = `${i} / 5`;
+            star.style.cursor = 'pointer';
+            star.onclick = async () => {
+                const newRating = i;
+                const { error } = await supabase.from('candle_log').update({ rating: newRating }).eq('id', log.id);
+                if (error) {
+                    alert('Errore nel salvataggio del rating: ' + error.message);
+                    return;
+                }
+                wrapper.replaceWith(renderRatingStars(newRating));
+            };
+            wrapper.appendChild(star);
+        }
+
+        return wrapper;
+    };
+
     const cardHtml = `
         <p><strong>Batch:</strong> ${log.batch_number || '—'}</p>
         <p><strong>Data:</strong> ${new Date(log.created_at).toLocaleString('it-IT')}</p>
@@ -47,18 +72,23 @@ export async function renderCandleDetail(container, logId) {
         <p><strong>Carico fragranza:</strong> ${log.fragrance_load_percent ?? '—'}%</p>
         <p><strong>Fragranza:</strong> ${blend?.name || '—'}</p>
         <p><strong>Note:</strong> ${log.notes || '—'}</p>
-        <p><strong>Rating:</strong> ${'★'.repeat(log.rating || 0)}${'☆'.repeat(5 - (log.rating || 0))}</p>
+        <div id="rating-stars"></div>
         ${blend ? `
             <p><strong>Note selezionate:</strong></p>
             <ul>
-                ${blend.head_scent_id ? `\t<li>Testa: ${scentMap[blend.head_scent_id] || blend.head_scent_id}</li>` : ''}
-                ${blend.heart_scent_id ? `\t<li>Cuore: ${scentMap[blend.heart_scent_id] || blend.heart_scent_id}</li>` : ''}
-                ${blend.base_scent_id ? `\t<li>Fondo: ${scentMap[blend.base_scent_id] || blend.base_scent_id}</li>` : ''}
+                ${blend.head_scent_id ? `   <li>Testa: ${scentMap[blend.head_scent_id] || blend.head_scent_id}</li>` : ''}
+                ${blend.heart_scent_id ? `   <li>Cuore: ${scentMap[blend.heart_scent_id] || blend.heart_scent_id}</li>` : ''}
+                ${blend.base_scent_id ? `   <li>Fondo: ${scentMap[blend.base_scent_id] || blend.base_scent_id}</li>` : ''}
             </ul>
         ` : ''}
     `;
 
-    wrapper.appendChild(createCard('Dettagli candela', cardHtml));
+    const detailsCard = createCard('Dettagli candela', cardHtml);
+    const ratingContainer = detailsCard.querySelector('#rating-stars');
+    if (ratingContainer) {
+        ratingContainer.replaceWith(renderRatingStars(log.rating || 0));
+    }
+    wrapper.appendChild(detailsCard);
 
     const btns = document.createElement('div');
     btns.className = 'btn-container';

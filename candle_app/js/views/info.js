@@ -59,13 +59,15 @@ export async function renderInfo(container) {
         .select('source_family_id, target_family_id, type');
     const pairingsByFamily = {};
     (allPairings || []).forEach(p => {
-        if (p.source_family_id) {
-            if (!pairingsByFamily[p.source_family_id]) pairingsByFamily[p.source_family_id] = [];
-            pairingsByFamily[p.source_family_id].push({ type: p.type, other_family_id: p.target_family_id });
+        const src = p.source_family_id ? String(p.source_family_id) : null;
+        const tgt = p.target_family_id ? String(p.target_family_id) : null;
+        if (src) {
+            if (!pairingsByFamily[src]) pairingsByFamily[src] = [];
+            pairingsByFamily[src].push({ type: p.type, other_family_id: tgt });
         }
-        if (p.target_family_id) {
-            if (!pairingsByFamily[p.target_family_id]) pairingsByFamily[p.target_family_id] = [];
-            pairingsByFamily[p.target_family_id].push({ type: p.type, other_family_id: p.source_family_id });
+        if (tgt) {
+            if (!pairingsByFamily[tgt]) pairingsByFamily[tgt] = [];
+            pairingsByFamily[tgt].push({ type: p.type, other_family_id: src });
         }
     });
 
@@ -106,8 +108,8 @@ export async function renderInfo(container) {
         }
 
         // Pairings (always visible, even if there are no essences in stock)
-        const pairings = pairingsByFamily[f.id] || [];
-        const findName = (id) => (families.find(fam => fam.id === id)?.name_it || id);
+        const pairings = pairingsByFamily[String(f.id)] || [];
+        const findName = (id) => (families.find(fam => String(fam.id) === String(id))?.name_it || id);
 
         const harmony = pairings.filter(p => p.type === 'armonia');
         const contrast = pairings.filter(p => p.type === 'contrasto');
@@ -117,13 +119,13 @@ export async function renderInfo(container) {
         body.appendChild(pairingTitle);
 
         if (harmony.length > 0) {
-            const hNames = harmony.map(p => findName(p.target_family_id)).join(', ');
+            const hNames = harmony.map(p => findName(p.other_family_id)).join(', ');
             const hP = document.createElement('p');
             hP.innerHTML = `<strong>Per armonia:</strong> ${hNames}`;
             body.appendChild(hP);
         }
         if (contrast.length > 0) {
-            const cNames = contrast.map(p => findName(p.target_family_id)).join(', ');
+            const cNames = contrast.map(p => findName(p.other_family_id)).join(', ');
             const cP = document.createElement('p');
             cP.innerHTML = `<strong>Per contrasto:</strong> ${cNames}`;
             body.appendChild(cP);

@@ -308,6 +308,7 @@ export async function renderInventory(container) {
                     };
 
                     actions.appendChild(btnAbb);
+                    actions.appendChild(btnCandles);
                     actions.appendChild(btnStock);
                     actions.appendChild(btnEdit);
                     actions.appendChild(btnDelete);
