@@ -89,7 +89,7 @@ export async function renderLanding(container) {
         sliderThumb.setPointerCapture(e.pointerId);
     });
 
-    sliderThumb.addEventListener('pointermove', (e) => {
+    const onPointerMove = (e) => {
         if (!dragging) return;
         const delta = e.clientX - startX;
         const trackWidth = sliderTrack.clientWidth - sliderThumb.offsetWidth;
@@ -101,14 +101,19 @@ export async function renderLanding(container) {
                 sliderThumb.style.left = '0px';
             }, 250);
         }
-    });
+    };
 
     const stopDrag = () => {
         dragging = false;
         sliderThumb.style.left = '0px';
     };
+
+    sliderThumb.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointermove', onPointerMove);
     sliderThumb.addEventListener('pointerup', stopDrag);
+    document.addEventListener('pointerup', stopDrag);
     sliderThumb.addEventListener('pointercancel', stopDrag);
+    document.addEventListener('pointercancel', stopDrag);
 
     async function triggerStart() {
         const { data: { session } } = await supabase.auth.getSession();

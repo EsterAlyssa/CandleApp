@@ -31,6 +31,18 @@ function escapeHtml(unsafe) {
         .replace(/'/g, '&#039;');
 }
 
+// ===== THEME MANAGEMENT =====
+function applySystemTheme() {
+    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+}
+
+if (window.matchMedia) {
+    applySystemTheme();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applySystemTheme);
+}
+
 // ===== ROUTER =====
 async function navigateTo(rawInput) {
     const _parts = String(rawInput).split(':');
