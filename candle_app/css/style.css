@@ -1791,7 +1791,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .theme-option.active {
-    color: var(--md-sys-color-on-primary);
+    color: var(--md-sys-color-on-surface);
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 
 .theme-selector::before {
@@ -1802,7 +1804,8 @@ input[type="range"]::-moz-range-thumb {
     left: var(--highlight-left, 4px);
     width: var(--highlight-width, 0);
     border-radius: 999px;
-    background: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
     transition: left 0.28s ease, width 0.28s ease;
 }
 
@@ -2080,7 +2083,7 @@ input:checked + .toggle-slider:before {
     flex-direction: column;
     gap: 16px;
     max-width: 400px;
-    margin: 0 auto;
+    margin: 0 auto 24px;
 }
 
 .profile-stat-item {
