@@ -53,3 +53,17 @@
   --title: var(--md-sys-color-primary);
   --subtitle: var(--md-sys-color-on-surface-variant);
 }
+
+
+
+
+
+.dark .nav-item .navbar-icon {
+  filter: invert(1) brightness(0.8) opacity(0.8);
+}
+.dark .nav-item.active .navbar-icon {
+  filter: invert(1) brightness(1);
+}
+.dark .nav-item:hover .navbar-icon {
+  filter: invert(1) brightness(0.9);
+}

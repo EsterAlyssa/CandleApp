@@ -2313,3 +2313,12 @@ select.input-field {
     color: var(--md-sys-color-on-surface-variant);
     font-size: 15px;
 }
+
+/* FrameView Pattern Styles */
+.view-frame { width: 100%; min-height: 100%; }
+.fade-in { animation: fadeIn 0.15s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+#top-bar.loading::after { content: ''; position: absolute; bottom: 0; left: 0; height: 3px; background: var(--md-sys-color-primary); animation: loadingBar 1.5s infinite ease-in-out; }
+@keyframes loadingBar { 0% { transform: translateX(-100%); width: 50%; } 100% { transform: translateX(250%); width: 50%; } }
+
+.slide-thumb, .slide-track { touch-action: none; }

@@ -66,11 +66,14 @@ function applyTheme(theme) {
     document.body.classList.toggle('dark', isDark);
     document.body.classList.toggle('light', !isDark);
 
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) {
-        const background = getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-background').trim();
-        if (background) themeMeta.setAttribute('content', background);
-    }
+    // Update PWA theme color
+    requestAnimationFrame(() => {
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) {
+            const background = getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-background').trim();
+            if (background) themeMeta.setAttribute('content', background);
+        }
+    });
 }
 
 function applySystemTheme() {
@@ -89,17 +92,7 @@ function ensureToastContainer() {
 }
 
 function showToast(message, duration = 3200) {
-    const container = ensureToastContainer();
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = message;
-    container.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('toast-show'));
-
-    setTimeout(() => {
-        toast.classList.remove('toast-show');
-        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-    }, duration);
+    // Toast rimosso su richiesta
 }
 
 // Expose helpers so other views (e.g. profile) can let users toggle theme.
@@ -160,7 +153,7 @@ async function navigateTo(rawInput) {
             if (!session && pageId === 'landing') { topBarEl.innerHTML = ''; return; }
 
             // Get user display name when logged in
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = session?.user;
             const rawName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'CandleApp';
             const userName = String(rawName).split(' ').map(p => p ? (p[0].toUpperCase() + p.slice(1)) : '').join(' ');
 
@@ -226,29 +219,42 @@ async function navigateTo(rawInput) {
 
     // Routing delle viste
     try {
-        container.innerHTML = '';
+        // Mostra loading nella UI (ad es. sulla top bar)
+        topBar.classList.add('loading');
+
+        // Crea un contenitore temporaneo per non svuotare subito la pagina attuale
+        const frame = document.createElement('div');
+        frame.className = 'view-frame fade-in';
+        
         switch (pageId) {
-            case 'landing': await renderLanding(container); break;
-            case 'login': await renderLogin(container); break;
-            case 'register': await renderRegister(container); break;
-            case 'dashboard': await renderDashboard(container); break;
-            case 'inventory': await renderInventory(container); break;
-            case 'inventory-detail': await renderInventoryDetail(container, param); break;
-            case 'add-essence': await renderAddEssence(container, param); break;
-            case 'pairings': await renderPairings(container, param); break;
-            case 'stock': await renderStock(container, param); break;
-            case 'lab': await renderLab(container, param); break;
-            case 'info': await renderInfo(container); break;
-            case 'profile': await renderProfile(container); break;
+            case 'landing': await renderLanding(frame); break;
+            case 'login': await renderLogin(frame); break;
+            case 'register': await renderRegister(frame); break;
+            case 'dashboard': await renderDashboard(frame); break;
+            case 'inventory': await renderInventory(frame); break;
+            case 'inventory-detail': await renderInventoryDetail(frame, param); break;
+            case 'add-essence': await renderAddEssence(frame, param); break;
+            case 'pairings': await renderPairings(frame, param); break;
+            case 'stock': await renderStock(frame, param); break;
+            case 'lab': await renderLab(frame, param); break;
+            case 'info': await renderInfo(frame); break;
+            case 'profile': await renderProfile(frame); break;
             default:
-                container.innerHTML = '<h1>Pagina non trovata</h1>';
+                frame.innerHTML = '<h1>Pagina non trovata</h1>';
         }
+        
+        // Sostituisce il contenuto solo quando il rendering (e le chiamate di rete) è finito
+        container.innerHTML = '';
+        container.appendChild(frame);
+        
         updateActiveIcon(pageId);
     } catch (error) {
         console.error(`[ROUTER] Error rendering ${pageId}:`, error);
         container.innerHTML = `<h1>Errore nel caricamento</h1>
             <div class="error-details">${escapeHtml(error.message || String(error))}</div>
             <pre class="error-stack">${escapeHtml(error.stack || '')}</pre>`;
+    } finally {
+        topBar.classList.remove('loading');
     }
 }
 

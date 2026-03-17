@@ -260,24 +260,32 @@ export async function renderLab(container, param) {
         pctVal.textContent = `${fragrancePct}%`;
         step.appendChild(pctVal);
 
+        // Info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'lab-calc-info';
+        
+        const updateInfo = () => {
+            if (selectedMold) {
+                const cap = selectedMold.quantity_g || 100;
+                const waxAmt = Math.round(cap * (1 - fragrancePct / 100));
+                const fragAmt = Math.round(cap * fragrancePct / 100);
+                infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong></p><p>Fragranza da usare: <strong>${fragAmt}g</strong> (${fragrancePct}%)</p>`;
+            }
+        };
+        updateInfo();
+        step.appendChild(infoDiv);
+
         const slider = document.createElement('input');
         slider.type = 'range';
         slider.min = '0';
         slider.max = '15';
         slider.value = String(fragrancePct);
-        slider.oninput = (ev) => { fragrancePct = parseInt(ev.target.value); pctVal.textContent = `${fragrancePct}%`; };
-        step.appendChild(slider);
-
-        // Info
-        if (selectedMold) {
-            const cap = selectedMold.quantity_g || 100;
-            const waxAmt = Math.round(cap * (1 - fragrancePct / 100));
-            const fragAmt = Math.round(cap * fragrancePct / 100);
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'lab-calc-info';
-            infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong></p><p>Fragranza da usare: <strong>${fragAmt}g</strong> (${fragrancePct}%)</p>`;
-            step.appendChild(infoDiv);
-        }
+        slider.oninput = (ev) => { 
+            fragrancePct = parseInt(ev.target.value); 
+            pctVal.textContent = `${fragrancePct}%`; 
+            updateInfo();
+        };
+        step.insertBefore(slider, infoDiv);
 
         // Nav buttons
         const btns = document.createElement('div');
