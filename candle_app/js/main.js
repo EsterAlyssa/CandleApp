@@ -244,8 +244,31 @@ async function navigateTo(rawInput) {
         }
         
         // Sostituisce il contenuto solo quando il rendering (e le chiamate di rete) è finito
-        container.innerHTML = '';
+                // Smooth cross-fade transition
+        const oldFrames = Array.from(container.children);
+        
+        if (oldFrames.length > 0) {
+            frame.style.position = 'absolute';
+            frame.style.top = '0';
+            frame.style.left = '0';
+            frame.style.width = '100%';
+            frame.style.zIndex = '10';
+            container.style.position = 'relative';
+        }
+        
         container.appendChild(frame);
+
+        if (oldFrames.length > 0) {
+            setTimeout(() => {
+                oldFrames.forEach(f => f.remove());
+                frame.style.position = '';
+                frame.style.top = '';
+                frame.style.left = '';
+                frame.style.width = '';
+                frame.style.zIndex = '';
+                container.style.position = '';
+            }, 200); // Wait for fadeIn (150ms) to complete
+        }
         
         updateActiveIcon(pageId);
     } catch (error) {

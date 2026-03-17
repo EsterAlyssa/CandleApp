@@ -178,11 +178,15 @@ export async function renderInventory(container) {
             noteOpt0.value = '';
             noteOpt0.textContent = 'Tutte le note';
             noteFilter.appendChild(noteOpt0);
-            const noteTypes = Array.from(new Set(items.map(i => i.tech_data?.note_type).filter(Boolean)));
+                        const noteTypes = Array.from(new Set(items.map(i => i.tech_data?.note_type).filter(Boolean)));
             noteTypes.forEach(nt => {
                 const opt = document.createElement('option');
                 opt.value = nt;
-                opt.textContent = nt;
+                let displayNt = nt;
+                if(nt === 'base') displayNt = 'di fondo';
+                if(nt === 'heart') displayNt = 'di cuore';
+                if(nt === 'head') displayNt = 'di testa';
+                opt.textContent = displayNt;
                 noteFilter.appendChild(opt);
             });
 
@@ -200,6 +204,11 @@ export async function renderInventory(container) {
                     const noteType = item.tech_data?.note_type || '';
                     if (familyVal && item.family_id !== familyVal) return;
                     if (noteVal && noteType !== noteVal) return;
+
+                    let displayNoteType = noteType;
+                    if(noteType === 'base') displayNoteType = 'di fondo';
+                    if(noteType === 'heart') displayNoteType = 'di cuore';
+                    if(noteType === 'head') displayNoteType = 'di testa';
 
                     const card = document.createElement('div');
                     card.className = 'essence-card';
@@ -226,7 +235,7 @@ export async function renderInventory(container) {
                     if (noteType) {
                         const noteEl = document.createElement('div');
                         noteEl.className = 'essence-meta';
-                        noteEl.textContent = `Nota: ${noteType}`;
+                        noteEl.textContent = `Nota: ${displayNoteType}`;
                         card.appendChild(noteEl);
                     }
 

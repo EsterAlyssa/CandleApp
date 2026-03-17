@@ -26,7 +26,15 @@ export async function renderInventoryDetail(container, id) {
             <p><strong>Categoria:</strong> ${item.category}</p>
             <p><strong>Quantità (g):</strong> ${item.quantity_g || '—'}</p>
             <p><strong>Fornitore:</strong> ${item.supplier || '—'}</p>
-            ${item.tech_data && typeof item.tech_data === 'object' ? Object.entries(item.tech_data).map(([k,v]) => `<p><strong>${k}:</strong> ${v}</p>`).join('') : ''}
+            ${item.tech_data && typeof item.tech_data === 'object' ? Object.entries(item.tech_data).map(([k,v]) => {
+                let val = v;
+                if(k==='note_type') {
+                    if(v==='base') val = 'di fondo';
+                    else if(v==='heart') val = 'di cuore';
+                    else if(v==='head') val = 'di testa';
+                }
+                return `<p><strong>${k}:</strong> ${val}</p>`;
+            }).join('') : ''}
         `;
         wrapper.appendChild(createCard('Dettagli', html));
 

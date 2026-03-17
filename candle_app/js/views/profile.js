@@ -156,8 +156,11 @@ export async function renderProfile(container) {
     };
     mediaQuery.addEventListener?.('change', onSystemChange);
 
-    updateThemeUI();
-
     wrapper.appendChild(settingsCard);
+
+    // requestAnimationFrame ensures it's in the DOM before calculating width
+    requestAnimationFrame(() => {
+        requestAnimationFrame(updateThemeUI);
+    });
     container.appendChild(wrapper);
 }

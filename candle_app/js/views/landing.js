@@ -95,17 +95,19 @@ export async function renderLanding(container) {
         const trackWidth = sliderTrack.clientWidth - sliderThumb.offsetWidth;
         let next = Math.min(Math.max(0, startLeft + delta), trackWidth);
         sliderThumb.style.left = `${next}px`;
-        if (next >= trackWidth) {
+        if (next >= trackWidth && !unlocked) {
             triggerStart();
-            setTimeout(() => {
-                sliderThumb.style.left = '0px';
-            }, 250);
+            unlocked = true;
+            sliderThumb.style.left = trackWidth + 'px';
         }
     };
 
+    let unlocked = false;
     const stopDrag = () => {
         dragging = false;
-        sliderThumb.style.left = '0px';
+        if (!unlocked) {
+            sliderThumb.style.left = '0px';
+        }
     };
 
     sliderThumb.addEventListener('pointermove', onPointerMove);
