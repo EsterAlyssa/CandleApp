@@ -74,12 +74,12 @@ export async function renderInfo(container) {
         hName.textContent = f.name_it || f.name || '—';
         const hIcon = document.createElement('span');
         hIcon.className = 'material-symbols-outlined';
-        hIcon.textContent = 'expand_more';
+        hIcon.textContent = 'expand_less';
         header.appendChild(hName);
         header.appendChild(hIcon);
 
         const body = document.createElement('div');
-        body.className = 'family-card-body hidden';
+        body.className = 'family-card-body';
 
         // Description
         if (f.description) {

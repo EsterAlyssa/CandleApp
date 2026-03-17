@@ -39,6 +39,7 @@ export async function renderLab(container, param) {
     let candleName = '';
     let fragranceName = '';
     let fragranceNote = '';
+    let fragranceFamily = '';
 
     let defaultCandleName = 'Candela 1';
     let nextBatchNumber = 1;
@@ -61,6 +62,17 @@ export async function renderLab(container, param) {
         if (notes.includes('heart')) return 'di cuore';
         if (notes.includes('base')) return 'di fondo';
         return formatNoteType(notes[0]);
+    };
+
+    const computeFragranceFamily = () => {
+        const familyCounts = {};
+        selectedEssences.forEach(e => {
+            if (e.family_id) familyCounts[e.family_id] = (familyCounts[e.family_id] || 0) + 1;
+        });
+        const topFamilyId = Object.entries(familyCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([fam]) => fam)[0];
+        return topFamilyId ? (familiesMap[topFamilyId] || '') : '';
     };
 
     const computeDefaultCandleName = async () => {
@@ -402,14 +414,14 @@ export async function renderLab(container, param) {
         fragInput.oninput = (e) => { fragranceName = e.target.value; };
         step.appendChild(fragGrp);
 
-        // Fragrance note (auto-derived, read-only)
+        // Fragrance family (auto-derived, read-only)
         const noteGrp = document.createElement('div');
         noteGrp.className = 'input-group';
-        noteGrp.innerHTML = `<label class="input-label">Nota della fragranza</label><input class="input-field" type="text" readonly>`;
+        noteGrp.innerHTML = `<label class="input-label">Famiglia della fragranza</label><input class="input-field" type="text" readonly>`;
         const noteInput = noteGrp.querySelector('input');
-        const autoNote = computeFragranceNote();
-        fragranceNote = autoNote;
-        noteInput.value = autoNote;
+        const autoFamily = computeFragranceFamily();
+        fragranceFamily = autoFamily;
+        noteInput.value = autoFamily;
         step.appendChild(noteGrp);
 
         // Buttons
@@ -480,7 +492,7 @@ export async function renderLab(container, param) {
             const notesParts = [];
             const fragLabel = fragranceName || selectedEssences.map(e => e.name).join(', ');
             if (fragLabel) notesParts.push(`Fragranza: ${fragLabel}`);
-            if (fragranceNote) notesParts.push(fragranceNote);
+            if (fragranceFamily) notesParts.push(`Famiglia: ${fragranceFamily}`);
             const notes = notesParts.join(' - ');
 
             const { error } = await supabase.from('candle_log').insert([{
