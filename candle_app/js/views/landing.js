@@ -2,7 +2,7 @@
 // LANDING.JS - Pagina iniziale (Home 1)
 // ===================================================
 
-import { createLogo, createStartButton } from '../components.js?v=3';
+import { createLogo } from '../components.js?v=3';
 import { supabase } from '../supabase.js';
 
 export async function renderLanding(container) {
@@ -53,29 +53,62 @@ export async function renderLanding(container) {
     subtitle.innerHTML = "L'app per gestire le tue<br>candele!";
     wrapper.appendChild(subtitle);
 
-    // Bottone start + slider "scorri"
+    // Slider “Scorri per iniziare” (stile iOS)
     const startDiv = document.createElement('div');
     startDiv.className = 'landing-start-div';
 
-    const startBtn = createStartButton('Scorri per iniziare');
-    startBtn.onclick = triggerStart;
+    const sliderContainer = document.createElement('div');
+    sliderContainer.className = 'slide-start';
 
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '100';
-    slider.value = '0';
-    slider.className = 'landing-slider';
-    slider.oninput = () => {
-        if (slider.value === slider.max) {
-            triggerStart();
-            setTimeout(() => { slider.value = '0'; }, 300);
-        }
-    };
+    const sliderLabel = document.createElement('span');
+    sliderLabel.className = 'slide-label';
+    sliderLabel.textContent = 'Scorri per iniziare';
+    sliderContainer.appendChild(sliderLabel);
 
-    startDiv.appendChild(startBtn);
-    startDiv.appendChild(slider);
+    const sliderTrack = document.createElement('div');
+    sliderTrack.className = 'slide-track';
+
+    const sliderThumb = document.createElement('div');
+    sliderThumb.className = 'slide-thumb';
+    sliderThumb.textContent = '»';
+    sliderTrack.appendChild(sliderThumb);
+
+    sliderContainer.appendChild(sliderTrack);
+    startDiv.appendChild(sliderContainer);
     wrapper.appendChild(startDiv);
+
+    // Drag behavior
+    let dragging = false;
+    let startX = 0;
+    let startLeft = 0;
+
+    sliderThumb.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        startX = e.clientX;
+        startLeft = sliderThumb.offsetLeft;
+        sliderThumb.setPointerCapture(e.pointerId);
+    });
+
+    sliderThumb.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const delta = e.clientX - startX;
+        const trackWidth = sliderTrack.clientWidth - sliderThumb.offsetWidth;
+        let next = Math.min(Math.max(0, startLeft + delta), trackWidth);
+        sliderThumb.style.left = `${next}px`;
+        if (next >= trackWidth) {
+            triggerStart();
+            setTimeout(() => {
+                sliderThumb.style.left = '0px';
+            }, 250);
+        }
+    });
+
+    const stopDrag = () => {
+        dragging = false;
+        sliderThumb.style.left = '0px';
+    };
+    sliderThumb.addEventListener('pointerup', stopDrag);
+    sliderThumb.addEventListener('pointercancel', stopDrag);
 
     async function triggerStart() {
         const { data: { session } } = await supabase.auth.getSession();
