@@ -239,11 +239,37 @@ export async function renderInventory(container) {
                         card.appendChild(noteEl);
                     }
 
-                    // Star rating
+                    // Star rating (click to set)
                     const rating = item.tech_data?.rating || 0;
                     const starsEl = document.createElement('div');
                     starsEl.className = 'essence-stars';
-                    starsEl.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+
+                    const renderStars = (value) => {
+                        starsEl.innerHTML = '';
+                        for (let i = 1; i <= 5; i += 1) {
+                            const star = document.createElement('span');
+                            star.className = 'essence-star' + (i <= value ? ' filled' : '');
+                            star.textContent = '★';
+                            star.style.cursor = 'pointer';
+                            star.title = `${i} / 5`;
+                            star.onclick = async (e) => {
+                                e.stopPropagation();
+                                const newRating = i;
+                                // Persist to supabase
+                                const newTechData = { ...item.tech_data, rating: newRating };
+                                const { error } = await supabase.from('inventory').update({ tech_data: newTechData }).eq('id', item.id);
+                                if (error) {
+                                    alert('Errore nel salvataggio del rating: ' + error.message);
+                                } else {
+                                    item.tech_data = newTechData;
+                                    renderStars(newRating);
+                                }
+                            };
+                            starsEl.appendChild(star);
+                        }
+                    };
+
+                    renderStars(rating);
                     card.appendChild(starsEl);
 
                     // Action buttons

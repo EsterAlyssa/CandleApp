@@ -51,9 +51,9 @@ export async function renderCandleDetail(container, logId) {
         ${blend ? `
             <p><strong>Note selezionate:</strong></p>
             <ul>
-                ${blend.head_scent_id ? `<li>Testa: ${scentMap[blend.head_scent_id] || blend.head_scent_id}</li>` : ''}
-                ${blend.heart_scent_id ? `<li>Cuore: ${scentMap[blend.heart_scent_id] || blend.heart_scent_id}</li>` : ''}
-                ${blend.base_scent_id ? `<li>Fondo: ${scentMap[blend.base_scent_id] || blend.base_scent_id}</li>` : ''}
+                ${blend.head_scent_id ? `\t<li>Testa: ${scentMap[blend.head_scent_id] || blend.head_scent_id}</li>` : ''}
+                ${blend.heart_scent_id ? `\t<li>Cuore: ${scentMap[blend.heart_scent_id] || blend.heart_scent_id}</li>` : ''}
+                ${blend.base_scent_id ? `\t<li>Fondo: ${scentMap[blend.base_scent_id] || blend.base_scent_id}</li>` : ''}
             </ul>
         ` : ''}
     `;

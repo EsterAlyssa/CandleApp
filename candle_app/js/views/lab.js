@@ -22,6 +22,8 @@ export async function renderLab(container, param) {
         });
     }
 
+    let editingLogId = null;
+    let editingLog = null;
     editingLogId = navParams.logId || null;
 
     const title = createTitle('Crea una candela', 2);
@@ -33,7 +35,7 @@ export async function renderLab(container, param) {
     const userId = user?.id;
 
     // --- State ---
-    let currentStep = 0;
+    let currentStep = editingLogId ? 2 : 0;
     let selectedMold = null;
     let selectedWax = null;
     let selectedEssences = [];
@@ -42,9 +44,6 @@ export async function renderLab(container, param) {
     let fragranceName = '';
     let fragranceNote = '';
     let fragranceFamily = '';
-
-    let editingLogId = null;
-    let editingLog = null;
 
     let defaultCandleName = 'Candela 1';
     let nextBatchNumber = 1;
@@ -544,7 +543,7 @@ export async function renderLab(container, param) {
                 }
             }
 
-            // Create (or update) a blend record matching the selected essences
+            // Create or update a blend record matching the selected essences
             const blendName = (candleName || '').trim() || `Candela ${batchNumber}`;
             const headScentId = selectedEssences[0]?.id || null;
             const heartScentId = selectedEssences[1]?.id || null;
@@ -558,21 +557,37 @@ export async function renderLab(container, param) {
                 .sort((a, b) => b[1] - a[1])
                 .map(([fam]) => fam)[0] || null;
 
-            const { data: blendData, error: blendError } = await supabase.from('blends').insert([{
-                user_id: userId,
-                name: blendName,
-                head_scent_id: headScentId,
-                heart_scent_id: heartScentId,
-                base_scent_id: baseScentId,
-                resulting_family_id: resultingFamilyId
-            }]).select('id').single();
+            let blendId = editingLog?.blend_id || null;
+            if (blendId) {
+                const { error: blendError } = await supabase.from('blends').update({
+                    user_id: userId,
+                    name: blendName,
+                    head_scent_id: headScentId,
+                    heart_scent_id: heartScentId,
+                    base_scent_id: baseScentId,
+                    resulting_family_id: resultingFamilyId
+                }).eq('id', blendId);
+                if (blendError) {
+                    alert(`Errore nell${editingLog ? ' aggiornamento' : ' creazione'} del blend: ${blendError.message}`);
+                    return;
+                }
+            } else {
+                const { data: blendData, error: blendError } = await supabase.from('blends').insert([{
+                    user_id: userId,
+                    name: blendName,
+                    head_scent_id: headScentId,
+                    heart_scent_id: heartScentId,
+                    base_scent_id: baseScentId,
+                    resulting_family_id: resultingFamilyId
+                }]).select('id').single();
 
-            if (blendError) {
-                alert('Errore nella creazione del blend: ' + blendError.message);
-                return;
+                if (blendError) {
+                    alert('Errore nella creazione del blend: ' + blendError.message);
+                    return;
+                }
+
+                blendId = blendData?.id;
             }
-
-            const blendId = blendData?.id;
 
             const notesParts = [];
             const fragLabel = fragranceName || selectedEssences.map(e => e.name).join(', ');

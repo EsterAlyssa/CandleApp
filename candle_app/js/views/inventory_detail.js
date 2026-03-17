@@ -19,6 +19,12 @@ export async function renderInventoryDetail(container, id) {
             return;
         }
 
+        if (item.category === 'scent') {
+            // Skip intermediate detail view for essences (navigate straight to edit)
+            window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${id}` }));
+            return;
+        }
+
         const title = createTitle(item.name, 2);
         wrapper.appendChild(title);
 

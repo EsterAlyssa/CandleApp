@@ -734,6 +734,22 @@ input[type="password"]:focus {
 .essence-stars {
     font-size: 14px;
     color: var(--md-sys-color-primary);
+    display: inline-flex;
+    gap: 2px;
+}
+
+.essence-star {
+    cursor: pointer;
+    transition: transform 0.1s ease;
+    color: rgba(0, 0, 0, 0.35);
+}
+
+.essence-star:hover {
+    transform: scale(1.1);
+}
+
+.essence-star.filled {
+    color: var(--md-sys-color-primary);
 }
 
 .essence-actions {
