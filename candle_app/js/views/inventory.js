@@ -255,6 +255,11 @@ export async function renderInventory(container) {
                     btnAbb.innerHTML = '<span class="material-symbols-outlined btn-icon">link</span><span class="btn-label">Abbinamenti</span>';
                     btnAbb.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `pairings:${item.family_id || item.id}` })); };
 
+                    const btnCandles = document.createElement('button');
+                    btnCandles.className = 'btn btn-card-edit';
+                    btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon">local_fire_department</span><span class="btn-label">In candele</span>';
+                    btnCandles.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `candles-by-essence:${item.id}` })); };
+
                     const btnStock = document.createElement('button');
                     btnStock.className = 'btn btn-card-edit';
                     btnStock.innerHTML = '<span class="material-symbols-outlined btn-icon">inventory</span><span class="btn-label">Stock</span>';
@@ -263,7 +268,7 @@ export async function renderInventory(container) {
                     const btnEdit = document.createElement('button');
                     btnEdit.className = 'btn btn-card-edit';
                     btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon">edit</span><span class="btn-label">Modifica</span>';
-                    btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` })); };
+                    btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${item.id}` })); };
 
                     const btnDelete = document.createElement('button');
                     btnDelete.className = 'btn btn-card-delete';
@@ -282,7 +287,7 @@ export async function renderInventory(container) {
                     actions.appendChild(btnDelete);
                     card.appendChild(actions);
 
-                    card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
+                    card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${item.id}` }));
                     listContainer.appendChild(card);
                 });
             };

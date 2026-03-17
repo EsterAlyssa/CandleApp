@@ -161,9 +161,9 @@ export async function renderDashboard(container) {
             <div class="dashboard-rating">${'★'.repeat(log.rating || 0)}${'☆'.repeat(5 - (log.rating || 0))}</div>
         `;
         const btnInfo = createButton('Info', 'info', 'btn-card-edit');
-        btnInfo.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'info' }));
+        btnInfo.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `candle-detail:${log.id}` }));
         const btnEdit = createButton('Modifica', 'edit', 'btn-card-edit');
-        btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
+        btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
         const btnDelete = createButton('Elimina', 'delete', 'btn-card-delete');
         btnDelete.onclick = async () => {
             if (!confirm('Eliminare questa registrazione?')) return;

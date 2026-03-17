@@ -57,11 +57,16 @@ export async function renderInfo(container) {
     // Fetch all pairings once
     const { data: allPairings } = await supabase.from('family_pairings')
         .select('source_family_id, target_family_id, type');
-    const pairingsBySource = {};
+    const pairingsByFamily = {};
     (allPairings || []).forEach(p => {
-        if (!p.source_family_id) return;
-        if (!pairingsBySource[p.source_family_id]) pairingsBySource[p.source_family_id] = [];
-        pairingsBySource[p.source_family_id].push(p);
+        if (p.source_family_id) {
+            if (!pairingsByFamily[p.source_family_id]) pairingsByFamily[p.source_family_id] = [];
+            pairingsByFamily[p.source_family_id].push({ type: p.type, other_family_id: p.target_family_id });
+        }
+        if (p.target_family_id) {
+            if (!pairingsByFamily[p.target_family_id]) pairingsByFamily[p.target_family_id] = [];
+            pairingsByFamily[p.target_family_id].push({ type: p.type, other_family_id: p.source_family_id });
+        }
     });
 
     for (const f of families) {
@@ -101,7 +106,7 @@ export async function renderInfo(container) {
         }
 
         // Pairings (always visible, even if there are no essences in stock)
-        const pairings = pairingsBySource[f.id] || [];
+        const pairings = pairingsByFamily[f.id] || [];
         const findName = (id) => (families.find(fam => fam.id === id)?.name_it || id);
 
         const harmony = pairings.filter(p => p.type === 'armonia');

@@ -22,6 +22,8 @@ export async function renderLab(container, param) {
         });
     }
 
+    editingLogId = navParams.logId || null;
+
     const title = createTitle('Crea una candela', 2);
     title.classList.add('page-title');
     wrapper.appendChild(title);
@@ -40,6 +42,9 @@ export async function renderLab(container, param) {
     let fragranceName = '';
     let fragranceNote = '';
     let fragranceFamily = '';
+
+    let editingLogId = null;
+    let editingLog = null;
 
     let defaultCandleName = 'Candela 1';
     let nextBatchNumber = 1;
@@ -143,6 +148,53 @@ export async function renderLab(container, param) {
                 };
             })
             .filter(Boolean);
+    }
+
+    // If we were opened to edit an existing candle, prefill the form
+    if (editingLogId) {
+        try {
+            const { data: log, error: logError } = await supabase.from('candle_log').select('*').eq('id', editingLogId).maybeSingle();
+            if (!logError && log) {
+                editingLog = log;
+
+                if (log.batch_number) {
+                    defaultCandleName = `Candela ${log.batch_number}`;
+                    candleName = defaultCandleName;
+                }
+
+                if (log.mold_id) selectedMold = molds.find(m => m.id === log.mold_id) || selectedMold;
+                if (log.wax_id) selectedWax = waxes.find(w => w.id === log.wax_id) || selectedWax;
+                if (typeof log.fragrance_load_percent === 'number') fragrancePct = log.fragrance_load_percent;
+
+                // Ensure the candle name defaults to the blend name (if present)
+                if (log.blend_id) {
+                    const { data: blend } = await supabase.from('blends').select('*').eq('id', log.blend_id).maybeSingle();
+                    if (blend) {
+                        fragranceName = blend.name || fragranceName;
+                        candleName = blend.name || candleName;
+
+                        const addNoteScent = (scentId, noteType) => {
+                            if (!scentId) return;
+                            const e = essences.find(x => x.id === scentId);
+                            if (!e) return;
+                            selectedEssences.push({
+                                id: e.id,
+                                name: e.name,
+                                family_name: familiesMap[e.family_id] || '',
+                                family_id: e.family_id,
+                                note_type: noteType
+                            });
+                        };
+
+                        addNoteScent(blend.head_scent_id, 'head');
+                        addNoteScent(blend.heart_scent_id, 'heart');
+                        addNoteScent(blend.base_scent_id, 'base');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[LAB] Unable to load candle for editing', e);
+        }
     }
 
     const stepContent = document.createElement('div');
@@ -381,7 +433,37 @@ export async function renderLab(container, param) {
         const cap = selectedMold?.quantity_g || 100;
         const waxAmt = Math.round(cap * (1 - fragrancePct / 100));
         const fragAmt = Math.round(cap * fragrancePct / 100);
-        const perEss = selectedEssences.length > 0 ? Math.round(fragAmt / selectedEssences.length * 10) / 10 : 0;
+
+        // Distribute fragrance grams by note type (head/heart/base) using approx ratios 25/50/25
+        const noteRatios = { head: 0.25, heart: 0.5, base: 0.25 };
+        const selectedByNote = {
+            head: selectedEssences.filter(e => e.note_type === 'head'),
+            heart: selectedEssences.filter(e => e.note_type === 'heart'),
+            base: selectedEssences.filter(e => e.note_type === 'base')
+        };
+
+        // If some note types are missing, renormalize the ratios so they sum to 1 for the available types.
+        const availableTypes = Object.entries(selectedByNote)
+            .filter(([, arr]) => arr.length > 0)
+            .map(([type]) => type);
+        let normalizedRatios = { ...noteRatios };
+        if (availableTypes.length > 0 && availableTypes.length < 3) {
+            const total = availableTypes.reduce((sum, type) => sum + noteRatios[type], 0);
+            normalizedRatios = availableTypes.reduce((acc, type) => {
+                acc[type] = noteRatios[type] / total;
+                return acc;
+            }, {});
+        }
+
+        const ingredientsLines = [];
+        availableTypes.forEach(type => {
+            const essInType = selectedByNote[type];
+            const typeTotal = Math.round(fragAmt * (normalizedRatios[type] || 0));
+            const perEssType = essInType.length > 0 ? Math.round((typeTotal / essInType.length) * 10) / 10 : 0;
+            essInType.forEach(e => {
+                ingredientsLines.push(`${e.name} ${perEssType}g`);
+            });
+        });
 
         const recipe = document.createElement('div');
         recipe.className = 'recipe-card';
@@ -391,7 +473,7 @@ export async function renderLab(container, param) {
             <div class="recipe-section"><h4>Capacità stampo</h4><p class="recipe-amount">${cap}g</p></div>
             <div class="recipe-section"><h4>Cera da sciogliere</h4><p>${selectedWax?.name || '—'}: <strong>${waxAmt}g</strong></p></div>
             <div class="recipe-section"><h4>Fragranza da usare</h4><p><strong>${fragAmt}g</strong> (${fragrancePct}%)</p></div>
-            <div class="recipe-section"><h4>Ingredienti</h4><p>${selectedEssences.map(e => `${e.name} ${perEss}g`).join(', ') || '—'}</p></div>
+            <div class="recipe-section"><h4>Ingredienti</h4><p>${ingredientsLines.join(', ') || '—'}</p></div>
             <div class="recipe-section"><h4>Famiglia</h4><p>${selectedEssences.map(e => e.family_name).filter(Boolean).join(', ') || '—'}</p></div>
         `;
         step.appendChild(recipe);
@@ -436,27 +518,30 @@ export async function renderLab(container, param) {
             const userId = userData?.user?.id;
             if (!userId) { alert('Devi essere loggato!'); return; }
 
-            // Determine next batch number for this user (must be integer)
-            let batchNumber = 1;
-            try {
-                const { data: lastBatch, error: batchError } = await supabase
-                    .from('candle_log')
-                    .select('batch_number')
-                    .eq('user_id', userId)
-                    .order('batch_number', { ascending: false })
-                    .limit(1);
+            // Determine batch number.
+            // When editing, keep the original batch number; otherwise compute a new one.
+            let batchNumber = editingLog?.batch_number || 1;
+            if (!editingLog) {
+                try {
+                    const { data: lastBatch, error: batchError } = await supabase
+                        .from('candle_log')
+                        .select('batch_number')
+                        .eq('user_id', userId)
+                        .order('batch_number', { ascending: false })
+                        .limit(1);
 
-                if (!batchError && lastBatch && lastBatch.length > 0) {
-                    const raw = lastBatch[0].batch_number;
-                    const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
-                    if (!Number.isNaN(parsed)) {
-                        batchNumber = parsed + 1;
-                    } else if (typeof raw === 'number') {
-                        batchNumber = raw + 1;
+                    if (!batchError && lastBatch && lastBatch.length > 0) {
+                        const raw = lastBatch[0].batch_number;
+                        const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+                        if (!Number.isNaN(parsed)) {
+                            batchNumber = parsed + 1;
+                        } else if (typeof raw === 'number') {
+                            batchNumber = raw + 1;
+                        }
                     }
+                } catch (e) {
+                    console.warn('[LAB] Unable to compute next batch number, defaulting to 1', e);
                 }
-            } catch (e) {
-                console.warn('[LAB] Unable to compute next batch number, defaulting to 1', e);
             }
 
             // Create (or update) a blend record matching the selected essences
@@ -495,7 +580,7 @@ export async function renderLab(container, param) {
             if (fragranceFamily) notesParts.push(`Famiglia: ${fragranceFamily}`);
             const notes = notesParts.join(' - ');
 
-            const { error } = await supabase.from('candle_log').insert([{
+            const logPayload = {
                 user_id: userId,
                 mold_id: selectedMold?.id,
                 wax_id: selectedWax?.id,
@@ -503,21 +588,33 @@ export async function renderLab(container, param) {
                 total_wax_used: waxAmt,
                 fragrance_load_percent: fragrancePct,
                 notes,
-                rating: 0,
-                batch_number: batchNumber,
-                is_favorite: false
-            }]);
+                batch_number: batchNumber
+            };
+
+            let error;
+            if (editingLog && editingLog.id) {
+                // Update existing log
+                const res = await supabase.from('candle_log').update(logPayload).eq('id', editingLog.id);
+                error = res.error;
+            } else {
+                // Create new log
+                const res = await supabase.from('candle_log').insert([logPayload]);
+                error = res.error;
+            }
+
             if (error) {
                 alert('Errore: ' + error.message);
             } else {
-                // Decrement wax stock in inventory
-                try {
-                    const usedWax = waxAmt;
-                    const currentQty = parseFloat(selectedWax?.quantity_g) || 0;
-                    const newQty = Math.max(0, currentQty - usedWax);
-                    await supabase.from('inventory').update({ quantity_g: newQty }).eq('id', selectedWax?.id);
-                } catch (e) {
-                    console.warn('[LAB] Could not update wax stock', e);
+                // Only decrement wax stock on new creations, not on edits
+                if (!editingLog) {
+                    try {
+                        const usedWax = waxAmt;
+                        const currentQty = parseFloat(selectedWax?.quantity_g) || 0;
+                        const newQty = Math.max(0, currentQty - usedWax);
+                        await supabase.from('inventory').update({ quantity_g: newQty }).eq('id', selectedWax?.id);
+                    } catch (e) {
+                        console.warn('[LAB] Could not update wax stock', e);
+                    }
                 }
 
                 alert('Candela salvata!');

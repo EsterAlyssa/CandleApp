@@ -15,6 +15,8 @@ import { renderLab } from './views/lab.js';
 import { renderInfo } from './views/info.js';
 import { renderProfile } from './views/profile.js';
 import { renderStock } from './views/stock.js';
+import { renderCandleDetail } from './views/candle_detail.js';
+import { renderCandlesByEssence } from './views/candles_by_essence.js';
 
 // Riferimenti UI
 const container = document.getElementById('app-container');
@@ -238,6 +240,8 @@ async function navigateTo(rawInput) {
             case 'stock': await renderStock(frame, param); break;
             case 'lab': await renderLab(frame, param); break;
             case 'info': await renderInfo(frame); break;
+            case 'candle-detail': await renderCandleDetail(frame, param); break;
+            case 'candles-by-essence': await renderCandlesByEssence(frame, param); break;
             case 'profile': await renderProfile(frame); break;
             default:
                 frame.innerHTML = '<h1>Pagina non trovata</h1>';
