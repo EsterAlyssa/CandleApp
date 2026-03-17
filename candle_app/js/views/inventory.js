@@ -33,14 +33,14 @@ export async function renderInventory(container) {
             'Essenze': 'scent'
         };
 
-        let activeTab = 'Cere';
+        let activeTab = sessionStorage.getItem('inventoryActiveTab') || 'Cere';
 
         tabs.forEach(tab => {
             const btn = document.createElement('button');
             btn.className = 'tab-btn' + (tab.id === activeTab ? ' active' : '');
             btn.textContent = tab.label;
             btn.onclick = async () => {
-                activeTab = tab.id;
+                activeTab = tab.id; sessionStorage.setItem('inventoryActiveTab', tab.id);
                 tabsContainer.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 await loadList(tab.id);
@@ -106,24 +106,19 @@ export async function renderInventory(container) {
             items.forEach(item => {
                 const row = document.createElement('div');
                 row.className = 'wax-row';
-                const bullet = document.createElement('span');
-                bullet.className = 'wax-bullet';
-                bullet.textContent = '•';
+                
+                
+                
                 const name = document.createElement('span');
                 name.className = 'wax-name';
                 name.textContent = item.name;
                 const qty = document.createElement('span');
                 qty.className = 'wax-qty';
                 qty.textContent = formatQty(item.quantity_g);
-                const useBtn = createButton('Usa', 'add_circle', 'btn-secondary btn-mini');
-                useBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:wax=${item.id}` }));
-                };
-                row.appendChild(bullet);
+                
                 row.appendChild(name);
                 row.appendChild(qty);
-                row.appendChild(useBtn);
+                
                 row.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
                 listContainer.appendChild(row);
             });
@@ -147,13 +142,6 @@ export async function renderInventory(container) {
                 const meta = document.createElement('p');
                 meta.textContent = `Capacità: ${item.quantity_g || '—'}g`;
                 card.appendChild(meta);
-
-                const btnUse = createButton('Usa', 'add_circle', 'btn-secondary btn-mini');
-                btnUse.onclick = (e) => {
-                    e.stopPropagation();
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:mold=${item.id}` }));
-                };
-                card.appendChild(btnUse);
 
                 card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
                 listContainer.appendChild(card);
@@ -253,9 +241,6 @@ export async function renderInventory(container) {
                     const actions = document.createElement('div');
                     actions.className = 'essence-actions';
 
-                    const btnUse = createButton('Usa', 'add_circle', 'btn-primary btn-mini');
-                    btnUse.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:ess=${item.id}` })); };
-
                     const btnAbb = document.createElement('button');
                     btnAbb.className = 'btn btn-card-edit';
                     btnAbb.innerHTML = '<span class="material-symbols-outlined btn-icon">link</span><span class="btn-label">Abbinamenti</span>';
@@ -282,7 +267,6 @@ export async function renderInventory(container) {
                         else loadList(activeTab);
                     };
 
-                    actions.appendChild(btnUse);
                     actions.appendChild(btnAbb);
                     actions.appendChild(btnStock);
                     actions.appendChild(btnEdit);

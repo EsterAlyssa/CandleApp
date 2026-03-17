@@ -30,10 +30,8 @@ body.with-bars {
     }
 }
 
-.hidden {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    visibility: hidden !important;
+.hidden { 
+    display: none !important; 
 }
 
 /* ============================================
@@ -128,7 +126,7 @@ body.with-bars {
     appearance: none;
     height: 10px;
     border-radius: 999px;
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     outline: none;
     transition: background 0.2s;
 }
@@ -166,7 +164,7 @@ body.with-bars {
 }
 
 .landing-login-btn:hover {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     transform: translateY(-1px);
 }
 
@@ -272,12 +270,12 @@ body.with-bars {
     background: transparent; /* keep clean like mockup */
 }
 
-/* Small icon used for home / back actions (no square border) */
+/* Small bordered square icon used for home / back actions across the app */
 .icon-btn.square {
     background: transparent;
-    border: none;
-    padding: 0;
-    border-radius: 999px;
+    border: 2px solid var(--md-sys-color-on-surface-variant);
+    padding: 6px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -287,7 +285,7 @@ body.with-bars {
     color: var(--md-sys-color-on-surface-variant);
 }
 .icon-btn.square:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--md-sys-color-surface-container-low);
 }
 
 .register-back-icon {
@@ -306,7 +304,7 @@ body.with-bars {
 
 /* Input improvements: rounded, subtle container background using theme variables */
 input[type="text"],
-input[type="email"],
+input[type="email"], input[type="number"],
 input[type="password"] {
     width: 100%;
     padding: 14px 18px;
@@ -320,7 +318,7 @@ input[type="password"] {
 }
 
 input[type="text"]:focus,
-input[type="email"]:focus,
+input[type="email"]:focus, input[type="number"]:focus,
 input[type="password"]:focus {
     outline: none;
     border-color: var(--md-sys-color-primary);
@@ -442,7 +440,7 @@ input[type="password"]:focus {
 .slide-start {
     width: 100%;
     max-width: 360px;
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     opacity: 0.9;
     border: 1px solid var(--md-sys-color-outline);
     border-radius: 40px;
@@ -520,6 +518,7 @@ input[type="password"]:focus {
 
 /* Ensure add-button in Magazzino uses full width and primary styling */
 .inventory-wrapper .btn-primary {
+    margin-bottom: 24px;
     width: 100% !important;
     display: flex !important;
     align-items: center !important;
@@ -639,7 +638,7 @@ input[type="password"]:focus {
     padding: 10px 14px;
     border-radius: 14px;
     border: 1px solid var(--md-sys-color-outline);
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     color: var(--md-sys-color-on-surface);
     min-width: 180px;
 }
@@ -662,13 +661,21 @@ input[type="password"]:focus {
     align-items: center;
 }
 
+
 .wax-row {
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
     max-width: 720px;
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     border-radius: 14px;
     padding: 14px 18px;
     cursor: pointer;
@@ -887,7 +894,7 @@ header .right-slot button { font-family: inherit; }
 }
 
 .nav-item:hover {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     transform: translateY(-2px);
 }
 
@@ -908,7 +915,7 @@ header .right-slot button { font-family: inherit; }
     padding: 0;
     border-radius: 10px;
     background: var(--md-sys-color-secondary-container);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    
     transition: width 160ms ease, height 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
@@ -944,7 +951,7 @@ header .right-slot button { font-family: inherit; }
     padding: 0;
     border-radius: 10px;
     background: var(--md-sys-color-secondary-container);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    
     transition: width 160ms ease, height 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
@@ -1130,7 +1137,7 @@ header .right-slot button { font-family: inherit; }
 }
 
 input[type="text"],
-input[type="email"],
+input[type="email"], input[type="number"],
 input[type="password"] {
     width: 100%;
     padding: 14px 16px;
@@ -1144,7 +1151,7 @@ input[type="password"] {
 }
 
 input[type="text"]:focus,
-input[type="email"]:focus,
+input[type="email"]:focus, input[type="number"]:focus,
 input[type="password"]:focus {
     outline: none;
     border-color: var(--md-sys-color-primary);
@@ -1202,11 +1209,11 @@ input[type="password"]:focus {
 }
 
 .tab-btn:hover {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
 }
 
 .tab-btn.active {
-    background: var(--md-sys-color-surface-container); /* soft container background */
+    /* background var removed */ /* soft container background */
     color: var(--md-sys-color-primary);
     border: 1px solid var(--md-sys-color-primary);
     box-shadow: 0 4px 12px rgba(0,0,0,0.06);
@@ -1237,7 +1244,7 @@ input[type="password"]:focus {
 }
 
 .item-card {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     color: var(--md-sys-color-on-surface);
     padding: 12px;
     border-radius: 12px;
@@ -1405,7 +1412,7 @@ input[type="password"]:focus {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     color: var(--md-sys-color-on-surface-variant);
     display: flex;
     align-items: center;
@@ -1502,7 +1509,7 @@ input[type="range"]::-moz-range-thumb {
 .btn-secondary {
     flex: 1;
     padding: 14px;
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     color: var(--md-sys-color-on-surface);
     border: 1px solid var(--md-sys-color-outline);
     border-radius: 50px;
@@ -1749,7 +1756,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .settings-card {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     padding: 20px;
     border-radius: 16px;
     margin-bottom: 24px;
@@ -1793,13 +1800,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .theme-option.active {
-    color: var(--md-sys-color-on-primary);
-    background: rgba(0,0,0,0.08);
+    color: var(--md-sys-color-on-surface);
     font-weight: 700;
     text-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 
 .theme-selector::before {
+    z-index: 1;
     content: '';
     position: absolute;
     top: 3px;
@@ -1807,8 +1814,8 @@ input[type="range"]::-moz-range-thumb {
     left: var(--highlight-left, 4px);
     width: var(--highlight-width, 0);
     border-radius: 999px;
-    background: var(--md-sys-color-primary);
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+    background: var(--md-sys-color-primary-container);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
     transition: left 0.28s ease, width 0.28s ease;
 }
 
@@ -1949,7 +1956,7 @@ input:checked + .toggle-slider:before {
 }
 
 .lab-select-card {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     border: 2px solid var(--md-sys-color-outline-variant);
     border-radius: 16px;
     padding: 14px;
@@ -2007,7 +2014,7 @@ input:checked + .toggle-slider:before {
 }
 
 .lab-calc-info {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     padding: 14px;
     border-radius: 12px;
     margin-top: 16px;
@@ -2129,12 +2136,20 @@ input:checked + .toggle-slider:before {
 }
 
 /* Wax rows */
+
 .wax-row {
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 12px 16px;
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     border-radius: 12px;
     cursor: pointer;
     transition: background 0.15s;
@@ -2271,7 +2286,7 @@ input:checked + .toggle-slider:before {
 }
 
 .pairing-row {
-    background: var(--md-sys-color-surface-container);
+    /* background var removed */
     padding: 12px 16px;
     border-radius: 12px;
     margin-bottom: 8px;
@@ -2321,11 +2336,11 @@ select.input-field {
 }
 
 /* FrameView Pattern Styles */
-.view-frame { width: 100%; min-height: 100%; }
+.view-frame { width: 100%; min-height: 100%; box-sizing: border-box; }
 .fade-in { animation: fadeIn 0.15s ease-out forwards; }
-.fade-out { animation: fadeOut 0.12s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fadeIn 0.15s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-5px); } }
 #top-bar.loading::after { content: ''; position: absolute; bottom: 0; left: 0; height: 3px; background: var(--md-sys-color-primary); animation: loadingBar 1.5s infinite ease-in-out; }
 @keyframes loadingBar { 0% { transform: translateX(-100%); width: 50%; } 100% { transform: translateX(250%); width: 50%; } }
 
