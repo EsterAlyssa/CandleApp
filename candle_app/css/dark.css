@@ -48,4 +48,8 @@
   --md-sys-color-surface-container: rgb(27 33 30);
   --md-sys-color-surface-container-high: rgb(37 43 41);
   --md-sys-color-surface-container-highest: rgb(48 54 51);
+
+  /* Convenience aliases used across the app */
+  --title: var(--md-sys-color-primary);
+  --subtitle: var(--md-sys-color-on-surface-variant);
 }

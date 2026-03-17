@@ -66,5 +66,98 @@ export async function renderProfile(container) {
     });
 
     wrapper.appendChild(statsDiv);
+
+    // Theme selector (system / light / dark)
+    const settingsCard = document.createElement('div');
+    settingsCard.className = 'settings-card';
+
+    const settingsTitle = document.createElement('h3');
+    settingsTitle.textContent = 'Impostazioni';
+    settingsCard.appendChild(settingsTitle);
+
+    const themeItem = document.createElement('div');
+    themeItem.className = 'setting-item';
+
+    const themeLabel = document.createElement('span');
+    themeLabel.textContent = 'Tema';
+
+    const themeSelector = document.createElement('div');
+    themeSelector.className = 'theme-selector';
+
+    const options = [
+        { value: null, label: 'Sistema' },
+        { value: 'light', label: 'Chiaro' },
+        { value: 'dark', label: 'Scuro' }
+    ];
+
+    const optionEls = options.map(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'theme-option';
+        btn.dataset.value = opt.value === null ? 'system' : opt.value;
+        btn.textContent = opt.label;
+        btn.addEventListener('click', () => {
+            setTheme(opt.value);
+        });
+        themeSelector.appendChild(btn);
+        return btn;
+    });
+
+    themeItem.appendChild(themeLabel);
+    themeItem.appendChild(themeSelector);
+    settingsCard.appendChild(themeItem);
+
+    const themeHint = document.createElement('div');
+    themeHint.className = 'setting-hint';
+    settingsCard.appendChild(themeHint);
+
+    const updateThemeUI = () => {
+        const stored = window.CandleApp?.getStoredTheme?.();
+        const effective = window.CandleApp?.getEffectiveTheme?.() || 'light';
+        const activeValue = stored === null ? 'system' : stored;
+
+        optionEls.forEach(el => {
+            const isActive = el.dataset.value === activeValue;
+            el.classList.toggle('active', isActive);
+        });
+
+        const activeBtn = optionEls.find(el => el.classList.contains('active'));
+        if (activeBtn) {
+            const rect = activeBtn.getBoundingClientRect();
+            const parentRect = themeSelector.getBoundingClientRect();
+            const left = rect.left - parentRect.left;
+            themeSelector.style.setProperty('--highlight-left', `${left}px`);
+            themeSelector.style.setProperty('--highlight-width', `${rect.width}px`);
+        }
+
+        themeHint.textContent = stored === null
+            ? 'Il tema segue le impostazioni del sistema.'
+            : `Tema impostato manualmente: ${stored}.`; 
+    };
+
+    const setTheme = (value) => {
+        if (!window.CandleApp) return;
+        if (value === null) {
+            window.CandleApp.resetToSystem();
+            window.CandleApp.showToast('Tema impostato sul tema di sistema');
+        } else {
+            window.CandleApp.setTheme(value);
+            window.CandleApp.showToast(`Tema impostato su ${value === 'dark' ? 'Scuro' : 'Chiaro'}`);
+        }
+        updateThemeUI();
+    };
+
+    // Sync when the system theme changes (only if no manual override)
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemChange = () => {
+        if (!window.CandleApp?.getStoredTheme?.()) {
+            updateThemeUI();
+        }
+    };
+    mediaQuery.addEventListener?.('change', onSystemChange);
+
+    updateThemeUI();
+
+    wrapper.appendChild(settingsCard);
     container.appendChild(wrapper);
 }

@@ -1,7 +1,7 @@
 // ===================================================
 // SERVICE WORKER - CandleApp PWA
 // ===================================================
-const CACHE_NAME = 'candle-app-v1';
+const CACHE_NAME = 'candle-app-v2';
 const ASSETS = [
     './',
     './index.html',
@@ -32,9 +32,24 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-    // Network-first for API calls, cache-first for assets
-    if (e.request.url.includes('supabase.co')) {
-        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    // Network-first for API calls and core app files (HTML/CSS/JS), otherwise cache-first for assets.
+    const url = new URL(e.request.url);
+    const isSameOrigin = url.origin === self.location.origin;
+    const isCoreFile = isSameOrigin && /\.(html|js|css)$/.test(url.pathname);
+
+    if (e.request.url.includes('supabase.co') || isCoreFile) {
+        e.respondWith(
+            fetch(e.request)
+                .then(res => {
+                    // Update cache with latest core files
+                    if (isSameOrigin && isCoreFile && res.ok) {
+                        const copy = res.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(e.request, copy));
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(e.request))
+        );
     } else {
         e.respondWith(
             caches.match(e.request).then(cached => cached || fetch(e.request))

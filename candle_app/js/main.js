@@ -32,15 +32,101 @@ function escapeHtml(unsafe) {
 }
 
 // ===== THEME MANAGEMENT =====
-function applySystemTheme() {
-    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+const THEME_STORAGE_KEY = 'candleapp_theme';
+
+function getStoredTheme() {
+    return localStorage.getItem(THEME_STORAGE_KEY);
+}
+
+function setStoredTheme(value) {
+    if (value === null) {
+        localStorage.removeItem(THEME_STORAGE_KEY);
+    } else {
+        localStorage.setItem(THEME_STORAGE_KEY, value);
+    }
+}
+
+function getSystemTheme() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getPreferredTheme() {
+    const stored = getStoredTheme();
+    return stored === 'light' || stored === 'dark' ? stored : null;
+}
+
+function getEffectiveTheme() {
+    return getPreferredTheme() || getSystemTheme();
+}
+
+function applyTheme(theme) {
+    const isDark = theme === 'dark';
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.classList.toggle('light', !isDark);
+    document.body.classList.toggle('dark', isDark);
+    document.body.classList.toggle('light', !isDark);
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) {
+        const background = getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-background').trim();
+        if (background) themeMeta.setAttribute('content', background);
+    }
 }
+
+function applySystemTheme() {
+    applyTheme(getEffectiveTheme());
+}
+
+// Toast helper (global) --------------------------------------------------
+function ensureToastContainer() {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
+function showToast(message, duration = 3200) {
+    const container = ensureToastContainer();
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('toast-show'));
+
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    }, duration);
+}
+
+// Expose helpers so other views (e.g. profile) can let users toggle theme.
+window.CandleApp = {
+    getStoredTheme,
+    getEffectiveTheme,
+    setTheme: (theme) => {
+        if (theme === 'light' || theme === 'dark') {
+            setStoredTheme(theme);
+        } else {
+            setStoredTheme(null);
+        }
+        applySystemTheme();
+    },
+    resetToSystem: () => {
+        setStoredTheme(null);
+        applySystemTheme();
+    },
+    showToast
+};
 
 if (window.matchMedia) {
     applySystemTheme();
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applySystemTheme);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        // Only update if the user is not overriding theme.
+        if (!getPreferredTheme()) applySystemTheme();
+    });
 }
 
 // ===== ROUTER =====
