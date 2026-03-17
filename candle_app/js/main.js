@@ -123,6 +123,18 @@ if (window.matchMedia) {
 }
 
 // ===== ROUTER =====
+function waitForAnimationEnd(el, timeout = 220) {
+    if (!el) return Promise.resolve();
+    return new Promise(resolve => {
+        const done = () => {
+            el.removeEventListener('animationend', done);
+            resolve();
+        };
+        el.addEventListener('animationend', done);
+        setTimeout(done, timeout);
+    });
+}
+
 async function navigateTo(rawInput) {
     const _parts = String(rawInput).split(':');
     const pageId = _parts[0];
@@ -222,6 +234,13 @@ async function navigateTo(rawInput) {
         // Mostra loading nella UI (ad es. sulla top bar)
         topBar.classList.add('loading');
 
+        // Se esiste una vista precedente, esegui il fade out mentre prepariamo la nuova
+        const prevFrame = container.querySelector('.view-frame');
+        if (prevFrame) {
+            prevFrame.classList.add('fade-out');
+            prevFrame.style.pointerEvents = 'none';
+        }
+
         // Crea un contenitore temporaneo per non svuotare subito la pagina attuale
         const frame = document.createElement('div');
         frame.className = 'view-frame fade-in';
@@ -242,7 +261,10 @@ async function navigateTo(rawInput) {
             default:
                 frame.innerHTML = '<h1>Pagina non trovata</h1>';
         }
-        
+
+        // Attendi che il fade out sia finito, per evitare sfarfallio di contenuti espulsi
+        if (prevFrame) await waitForAnimationEnd(prevFrame, 220);
+
         // Sostituisce il contenuto solo quando il rendering (e le chiamate di rete) è finito
         container.innerHTML = '';
         container.appendChild(frame);
