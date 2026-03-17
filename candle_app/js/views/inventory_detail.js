@@ -26,7 +26,7 @@ export async function renderInventoryDetail(container, id) {
             <p><strong>Categoria:</strong> ${item.category}</p>
             <p><strong>Quantità (g):</strong> ${item.quantity_g || '—'}</p>
             <p><strong>Fornitore:</strong> ${item.supplier || '—'}</p>
-            ${item.tech_data ? '<pre>' + JSON.stringify(item.tech_data, null, 2) + '</pre>' : ''}
+            ${item.tech_data && typeof item.tech_data === 'object' ? Object.entries(item.tech_data).map(([k,v]) => `<p><strong>${k}:</strong> ${v}</p>`).join('') : ''}
         `;
         wrapper.appendChild(createCard('Dettagli', html));
 
@@ -39,12 +39,15 @@ export async function renderInventoryDetail(container, id) {
 
         // Determine UI category label for edit routing
         const uiCategory = item.category === 'mold' ? 'Stampi' : item.category === 'wax' ? 'Cere' : 'Essenze';
-        const btnEdit = createButton('Modifica', 'edit', 'btn-card-edit');
+        const btnEdit = createButton('Modifica', 'edit', 'btn-secondary btn-compact');
         btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${uiCategory}&id=${id}` }));
 
         const actions = document.createElement('div');
         actions.style.display = 'flex';
         actions.style.gap = '8px';
+        btnStock.style.flex = '1';
+        if(btnEdit) btnEdit.style.flex = '1';
+        if(btnPairings) btnPairings.style.flex = '1';
         actions.appendChild(btnStock);
         if (item.category === 'scent') {
             actions.appendChild(btnPairings);

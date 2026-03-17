@@ -914,7 +914,7 @@ header .right-slot button { font-family: inherit; }
     height: 44px;
     padding: 0;
     border-radius: 10px;
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     
     transition: width 160ms ease, height 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
@@ -950,7 +950,7 @@ header .right-slot button { font-family: inherit; }
     height: 44px;
     padding: 0;
     border-radius: 10px;
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     
     transition: width 160ms ease, height 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
@@ -1309,7 +1309,7 @@ input[type="password"]:focus {
 }
 
 .item-card {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     padding: 16px;
     border-radius: 16px;
@@ -1360,7 +1360,7 @@ input[type="password"]:focus {
 }
 
 .badge-new {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
 }
 
@@ -1523,7 +1523,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .recipe-card {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     padding: 24px;
     border-radius: 20px;
@@ -1616,7 +1616,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .pairing-card {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     padding: 20px;
     border-radius: 16px;
@@ -1716,7 +1716,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .stats-card {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     padding: 24px;
     border-radius: 16px;
@@ -1787,6 +1787,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .theme-option {
+    z-index: 2;
     position: relative;
     padding: 10px 14px;
     font-size: 14px;
@@ -2035,7 +2036,7 @@ input:checked + .toggle-slider:before {
 }
 
 .family-card {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     border-radius: 16px;
     overflow: hidden;
@@ -2100,7 +2101,7 @@ input:checked + .toggle-slider:before {
     display: flex;
     align-items: center;
     gap: 12px;
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     padding: 16px 20px;
     border-radius: 14px;
@@ -2178,7 +2179,7 @@ input:checked + .toggle-slider:before {
 
 /* Essence cards */
 .essence-card {
-    background: var(--md-sys-color-secondary-container);
+    background: transparent;
     color: var(--md-sys-color-on-secondary-container);
     padding: 16px;
     border-radius: 16px;
@@ -2345,3 +2346,6 @@ select.input-field {
 @keyframes loadingBar { 0% { transform: translateX(-100%); width: 50%; } 100% { transform: translateX(250%); width: 50%; } }
 
 .slide-thumb, .slide-track { touch-action: none; }
+
+select { background-color: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); }
+

@@ -334,7 +334,7 @@ async function init() {
         console.log('[AUTH] state changed', event, session);
         // refresh current page header and nav
         const currentTarget = document.querySelector('.nav-item.active')?.getAttribute('data-target') || (document.body.classList.contains('with-bars') ? 'dashboard' : 'landing');
-        navigateTo(currentTarget).catch(err => console.error('[ROUTER] navigate failed on auth change', err));
+        if (event === 'SIGNED_OUT') { navigateTo('landing').catch(err => console.error(err)); } else if (event === 'SIGNED_IN' && currentTarget === 'landing') { navigateTo('dashboard').catch(err => console.error(err)); }
     });
 
     // Controlla autenticazione alla partenza
