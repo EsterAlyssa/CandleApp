@@ -158,7 +158,7 @@ export async function renderDashboard(container) {
                     <p class="dashboard-notes">${log.notes ? escapeHtml(log.notes) : ''}</p>
                 </div>
             </div>
-            <div class="dashboard-rating">${'★'.repeat(log.rating || 0)}${'☆'.repeat(5 - (log.rating || 0))}</div>
+            <div class="dashboard-rating interactive-rating" style="cursor: pointer;" data-log-id="${log.id}" data-rating="${log.rating || 0}"></div>
         `;
         const btnInfo = createButton('Info', 'info', 'btn-card-edit');
         btnInfo.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `candle-detail:${log.id}` }));
@@ -173,6 +173,29 @@ export async function renderDashboard(container) {
         };
         const cardEl = createCard(titleText, content, [btnInfo, btnEdit, btnDelete]);
         cardEl.classList.add('dashboard-candle-card');
+        
+        // Add interactive rating logic
+        const ratingContainer = cardEl.querySelector('.interactive-rating');
+        if (ratingContainer) {
+            const renderStars = (currentVal) => {
+                ratingContainer.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const star = document.createElement('span');
+                    star.textContent = i <= currentVal ? '★' : '☆';
+                    star.style.fontSize = '24px';
+                    star.style.color = 'var(--md-sys-color-primary)';
+                    star.onclick = async (e) => {
+                        e.stopPropagation();
+                        const { error } = await supabase.from('candle_log').update({ rating: i }).eq('id', log.id);
+                        if (error) alert('Errore nel salvataggio: ' + error.message);
+                        else renderStars(i);
+                    };
+                    ratingContainer.appendChild(star);
+                }
+            };
+            renderStars(log.rating || 0);
+        }
+
         return cardEl;
     });
 

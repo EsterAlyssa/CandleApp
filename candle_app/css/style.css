@@ -632,6 +632,7 @@ input[type="password"]:focus {
     flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 14px;
+    width: 100%;
 }
 
 .lab-filter-select {
@@ -694,8 +695,8 @@ input[type="password"]:focus {
 
 .item-card,
 .essence-card {
-    width: clamp(280px, 46%, 420px);
-    max-width: 420px;
+    flex: 1 1 300px;
+    max-width: 100%;
 }
 
 .essence-card {
@@ -2445,3 +2446,110 @@ select::-ms-expand {
 @keyframes loadingBar { 0% { transform: translateX(-100%); width: 50%; } 100% { transform: translateX(250%); width: 50%; } }
 
 .slide-thumb, .slide-track { touch-action: none; }
+
+/* ====== NUOVO LAYOUT ESSENCE CARD (MOCKUP 2) ====== */
+.fluid-essence-card {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+}
+.essence-top-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+.essence-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+.essence-side-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 100px;
+}
+.essence-side-actions button {
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+    border: 1px solid transparent;
+}
+.essence-side-actions .outline {
+    background: transparent;
+    border-color: var(--md-sys-color-primary, #00695c);
+    color: var(--md-sys-color-primary, #00695c);
+}
+.essence-side-actions .outline-red {
+    background: #ffcdd2;
+    border-color: #b71c1c;
+    color: #b71c1c;
+}
+.essence-bottom-links {
+    display: flex;
+    border: 1px solid var(--md-sys-color-outline, #555);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.essence-bottom-links button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--md-sys-color-outline, #555);
+    padding: 8px 0;
+    color: var(--md-sys-color-on-surface, #333);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+}
+.essence-bottom-links button:last-child {
+    border-right: none;
+}
+
+/* ====== FIX TABS MAGAZZINO - COLORE TERZIARIO ====== */
+.tabs-container {
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+.tab-btn {
+    white-space: nowrap;
+}
+.tab-btn.active {
+    background: var(--md-sys-color-tertiary, #006b5b) !important;
+    color: var(--md-sys-color-on-tertiary, #fff) !important;
+}
+
+/* ====== FIX CENTRAMENTO CARDS ====== */
+.item-card {
+    text-align: center;
+    justify-content: center;
+}
+.item-card .item-info {
+    align-items: center;
+}
+.dashboard-candle-card .card-body {
+    text-align: center;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+}
+.dashboard-candle-card .card-row {
+    flex-direction: column;
+    align-items: center;
+}
+.card-media {
+    margin-bottom: 12px;
+}
+.dashboard-rating {
+    text-align: center;
+    margin-top: 8px;
+}

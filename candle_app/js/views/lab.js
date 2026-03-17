@@ -275,6 +275,45 @@ export async function renderLab(container, param) {
         fragH.textContent = 'Scegli la fragranza';
         step.appendChild(fragH);
 
+        // --- MIX GIA USATI ---
+        const mixContainer = document.createElement('div');
+        mixContainer.className = 'input-group';
+        mixContainer.style.marginBottom = '16px';
+        mixContainer.innerHTML = '<label class="input-label">O scegli un mix esistente</label>';
+        const mixSelect = document.createElement('select');
+        mixSelect.className = 'input-field';
+        mixSelect.innerHTML = '<option value="">-- Seleziona un mix --</option>';
+        supabase.from('blends').select('*').eq('user_id', userId).order('name').then(({data}) => {
+            if (data) {
+                data.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.name;
+                    mixSelect.appendChild(opt);
+                });
+            }
+        });
+        mixSelect.onchange = async () => {
+            const bId = mixSelect.value;
+            if(!bId) {
+                selectedEssences = [];
+                fragranceName = '';
+                buildEssenceCards();
+                return;
+            }
+            const {data: blend} = await supabase.from('blends').select('*').eq('id', bId).maybeSingle();
+            if(!blend) return;
+            const ids = [blend.head_scent_id, blend.heart_scent_id, blend.base_scent_id].filter(Boolean);
+            if(ids.length > 0) {
+                selectedEssences = essences.filter(e => ids.includes(e.id));
+                fragranceName = blend.name;
+                buildEssenceCards();
+            }
+        };
+        mixContainer.appendChild(mixSelect);
+        step.appendChild(mixContainer);
+        // --- FINE MIX GIA USATI ---
+
         // Filter controls
         const filterBar = document.createElement('div');
         filterBar.className = 'lab-filter-bar';
@@ -505,6 +544,19 @@ export async function renderLab(container, param) {
         noteInput.value = autoFamily;
         step.appendChild(noteGrp);
 
+        const candleNotesGrp = document.createElement('div');
+        candleNotesGrp.className = 'input-group';
+        candleNotesGrp.innerHTML = `<label class="input-label">Note aggiuntive (opzionali)</label><textarea class="input-field" rows="3" placeholder="Es. colata a 60°..."></textarea>`;
+        const candleNotesInput = candleNotesGrp.querySelector('textarea');
+        // Let's clean up existing notes if editing log
+        let existingNotes = editingLog?.notes || '';
+        if (existingNotes) {
+            existingNotes = existingNotes.replace(/.*Famiglia: [^-]+ - Note: /g, '');
+            existingNotes = existingNotes.replace(/.*Fragranza: [^-]+ - Note: /g, '');
+        }
+        candleNotesInput.value = existingNotes.includes(' - ') ? existingNotes.split(' - ').slice(-1)[0].replace('Note: ', '') : existingNotes;
+        step.appendChild(candleNotesGrp);
+
         // Buttons
         const btns = document.createElement('div');
         btns.className = 'btn-container';
@@ -589,11 +641,7 @@ export async function renderLab(container, param) {
                 blendId = blendData?.id;
             }
 
-            const notesParts = [];
-            const fragLabel = fragranceName || selectedEssences.map(e => e.name).join(', ');
-            if (fragLabel) notesParts.push(`Fragranza: ${fragLabel}`);
-            if (fragranceFamily) notesParts.push(`Famiglia: ${fragranceFamily}`);
-            const notes = notesParts.join(' - ');
+            const notes = candleNotesInput ? candleNotesInput.value.trim() : '';
 
             const logPayload = {
                 user_id: userId,

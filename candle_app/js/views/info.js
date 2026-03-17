@@ -119,16 +119,40 @@ export async function renderInfo(container) {
         body.appendChild(pairingTitle);
 
         if (harmony.length > 0) {
-            const hNames = harmony.map(p => findName(p.other_family_id)).join(', ');
-            const hP = document.createElement('p');
-            hP.innerHTML = `<strong>Per armonia:</strong> ${hNames}`;
-            body.appendChild(hP);
+            const hDiv = document.createElement('div');
+            hDiv.className = 'badges-container';
+            hDiv.style.display = 'flex';
+            hDiv.style.flexWrap = 'wrap';
+            hDiv.style.gap = '8px';
+            hDiv.style.marginBottom = '12px';
+            hDiv.innerHTML = `<p style="width: 100%; margin-bottom: 4px;"><strong>Per armonia:</strong></p>`;
+            harmony.map(p => findName(p.other_family_id)).filter((v, i, a) => a.indexOf(v) === i).forEach(name => {
+                const badge = document.createElement('span');
+                badge.className = 'status-badge badge-opened'; // For green styling
+                badge.style.border = '1px solid currentColor';
+                badge.style.background = 'transparent';
+                badge.textContent = name;
+                hDiv.appendChild(badge);
+            });
+            body.appendChild(hDiv);
         }
         if (contrast.length > 0) {
-            const cNames = contrast.map(p => findName(p.other_family_id)).join(', ');
-            const cP = document.createElement('p');
-            cP.innerHTML = `<strong>Per contrasto:</strong> ${cNames}`;
-            body.appendChild(cP);
+            const cDiv = document.createElement('div');
+            cDiv.className = 'badges-container';
+            cDiv.style.display = 'flex';
+            cDiv.style.flexWrap = 'wrap';
+            cDiv.style.gap = '8px';
+            cDiv.style.marginBottom = '12px';
+            cDiv.innerHTML = `<p style="width: 100%; margin-bottom: 4px;"><strong>Per contrasto:</strong></p>`;
+            contrast.map(p => findName(p.other_family_id)).filter((v, i, a) => a.indexOf(v) === i).forEach(name => {
+                const badge = document.createElement('span');
+                badge.className = 'status-badge badge-opened'; // For green styling
+                badge.style.border = '1px solid currentColor';
+                badge.style.background = 'transparent';
+                badge.textContent = name;
+                cDiv.appendChild(badge);
+            });
+            body.appendChild(cDiv);
         }
 
         if (harmony.length === 0 && contrast.length === 0) {

@@ -39,6 +39,14 @@ export async function renderCandleDetail(container, logId) {
     const scentMap = {};
     (scentsResp.data || []).forEach(s => { scentMap[s.id] = s.name; });
 
+    let displayNotes = log.notes || '';
+    if (displayNotes.includes('Note: ')) {
+        displayNotes = displayNotes.split('Note: ').slice(-1)[0];
+    } else if (displayNotes.includes('Famiglia: ') && !displayNotes.includes('Note:')) {
+        // If it only had frag/family but no notes
+        displayNotes = '';
+    }
+
     const renderRatingStars = (value) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'essence-stars';
@@ -71,8 +79,11 @@ export async function renderCandleDetail(container, logId) {
         <p><strong>Cera:</strong> ${wax?.name || '—'}</p>
         <p><strong>Carico fragranza:</strong> ${log.fragrance_load_percent ?? '—'}%</p>
         <p><strong>Fragranza:</strong> ${blend?.name || '—'}</p>
-        <p><strong>Note:</strong> ${log.notes || '—'}</p>
-        <div id="rating-stars"></div>
+        <div id="notes-container" style="margin-top: 8px;">
+            <p style="margin-bottom: 4px;"><strong>Note:</strong></p>
+            <textarea id="candle-notes" class="input-field" rows="3" placeholder="Aggiungi una nota...">${displayNotes}</textarea>
+        </div>
+        <div id="rating-stars" style="margin-top: 12px;"></div>
         ${blend ? `
             <p><strong>Note selezionate:</strong></p>
             <ul>
@@ -84,6 +95,20 @@ export async function renderCandleDetail(container, logId) {
     `;
 
     const detailsCard = createCard('Dettagli candela', cardHtml);
+    
+    // Setup notes auto-save
+    const notesInput = detailsCard.querySelector('#candle-notes');
+    if (notesInput) {
+        let timeout;
+        notesInput.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                const { error } = await supabase.from('candle_log').update({ notes: notesInput.value }).eq('id', log.id);
+                if (error) console.error('Errore salvataggio note', error);
+            }, 1000);
+        });
+    }
+
     const ratingContainer = detailsCard.querySelector('#rating-stars');
     if (ratingContainer) {
         ratingContainer.replaceWith(renderRatingStars(log.rating || 0));
@@ -92,12 +117,18 @@ export async function renderCandleDetail(container, logId) {
 
     const btns = document.createElement('div');
     btns.className = 'btn-container';
+    btns.style.display = 'flex';
+    btns.style.gap = '8px';
 
-    const editBtn = createButton('Modifica', 'edit', 'btn-primary');
+    const editBtn = createButton('Modifica', 'edit', 'btn-secondary');
+    editBtn.style.flex = '1';
     editBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
     btns.appendChild(editBtn);
 
-    const deleteBtn = createButton('Elimina', 'delete', 'btn-secondary');
+    const deleteBtn = createButton('Elimina', 'delete', 'btn-primary');
+    deleteBtn.style.flex = '1';
+    deleteBtn.style.setProperty('--md-sys-color-primary', 'var(--md-sys-color-error, #b3261e)');
+    deleteBtn.style.setProperty('--md-sys-color-on-primary', 'var(--md-sys-color-on-error, #ffffff)');
     deleteBtn.onclick = async () => {
         if (!confirm('Eliminare questa candela?')) return;
         const { error } = await supabase.from('candle_log').delete().eq('id', log.id);

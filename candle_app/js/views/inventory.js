@@ -23,7 +23,9 @@ export async function renderInventory(container) {
         const tabs = [
             { id: 'Cere', label: 'Cere' },
             { id: 'Stampi', label: 'Stampi' },
-            { id: 'Essenze', label: 'Essenze' }
+            { id: 'Essenze', label: 'Essenze' },
+            { id: 'Fragranze', label: 'Mix usati' },
+            { id: 'Candele', label: 'Candele' }
         ];
 
         // Map UI categories to DB categories
@@ -77,10 +79,20 @@ export async function renderInventory(container) {
                 listContainer.className = 'items-container items-list';
             }
 
-            const dbCategory = categoryMap[category] || category;
-            let query = supabase.from('inventory').select('*').eq('category', dbCategory);
-            if (userId) query = query.eq('user_id', userId);
-            const { data, error } = await query.order('name');
+            let data, error;
+            if (category === 'Fragranze') {
+                const res = await supabase.from('blends').select('*').eq('user_id', userId).order('name');
+                data = res.data; error = res.error;
+            } else if (category === 'Candele') {
+                const res = await supabase.from('candle_log').select('*, blends(name, resulting_family_id), inventory(name, image_url)').eq('user_id', userId).order('created_at', { ascending: false });
+                data = res.data; error = res.error;
+            } else {
+                const dbCategory = categoryMap[category] || category;
+                let query = supabase.from('inventory').select('*').eq('category', dbCategory);
+                if (userId) query = query.eq('user_id', userId);
+                const res = await query.order('name');
+                data = res.data; error = res.error;
+            }
 
             if (error) {
                 listContainer.innerHTML = `<p class="error-text">Errore: ${error.message}</p>`;
@@ -94,6 +106,8 @@ export async function renderInventory(container) {
             if (category === 'Cere') renderWaxList(data);
             else if (category === 'Stampi') renderMoldGrid(data);
             else if (category === 'Essenze') renderEssenceList(data);
+            else if (category === 'Fragranze') renderFragranzeList(data);
+            else if (category === 'Candele') renderCandeleList(data);
         }
 
         // ===== CERE: simple list =====
@@ -211,7 +225,13 @@ export async function renderInventory(container) {
                     if(noteType === 'head') displayNoteType = 'di testa';
 
                     const card = document.createElement('div');
-                    card.className = 'essence-card';
+                    card.className = 'essence-card fluid-essence-card';
+
+                    const topSection = document.createElement('div');
+                    topSection.className = 'essence-top-section';
+
+                    const infoCol = document.createElement('div');
+                    infoCol.className = 'essence-info-col';
 
                     const nameEl = document.createElement('div');
                     nameEl.className = 'essence-name';
@@ -222,21 +242,21 @@ export async function renderInventory(container) {
                         badge.textContent = 'Nuovo';
                         nameEl.appendChild(badge);
                     }
-                    card.appendChild(nameEl);
+                    infoCol.appendChild(nameEl);
 
                     const famName = item.family_id ? (familiesMap[item.family_id] || '') : '';
                     if (famName) {
                         const famEl = document.createElement('div');
                         famEl.className = 'essence-meta';
                         famEl.textContent = `Famiglia: ${famName}`;
-                        card.appendChild(famEl);
+                        infoCol.appendChild(famEl);
                     }
 
                     if (noteType) {
                         const noteEl = document.createElement('div');
                         noteEl.className = 'essence-meta';
                         noteEl.textContent = `Nota: ${displayNoteType}`;
-                        card.appendChild(noteEl);
+                        infoCol.appendChild(noteEl);
                     }
 
                     // Star rating (click to set)
@@ -270,35 +290,49 @@ export async function renderInventory(container) {
                     };
 
                     renderStars(rating);
-                    card.appendChild(starsEl);
+                    infoCol.appendChild(starsEl);
+                    topSection.appendChild(infoCol);
 
-                    // Action buttons
-                    const actions = document.createElement('div');
-                    actions.className = 'essence-actions';
+                    // Action buttons (side)
+                    const sideActions = document.createElement('div');
+                    sideActions.className = 'essence-side-actions';
 
                     const btnAbb = document.createElement('button');
-                    btnAbb.className = 'btn btn-card-edit';
-                    btnAbb.innerHTML = '<span class="material-symbols-outlined btn-icon">link</span><span class="btn-label">Abbinamenti</span>';
+                    btnAbb.className = 'outline';
+                    btnAbb.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">link</span>Abbinamenti';
                     btnAbb.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `pairings:${item.family_id || item.id}` })); };
-
+                    
                     const btnCandles = document.createElement('button');
-                    btnCandles.className = 'btn btn-card-edit';
-                    btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon">local_fire_department</span><span class="btn-label">In candele</span>';
+                    btnCandles.className = 'outline';
+                    btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">local_fire_department</span>In candele';
                     btnCandles.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `candles-by-essence:${item.id}` })); };
 
+                    sideActions.appendChild(btnAbb);
+                    sideActions.appendChild(btnCandles);
+                    topSection.appendChild(sideActions);
+
+                    card.appendChild(topSection);
+
+                    const bottomActions = document.createElement('div');
+                    bottomActions.className = 'essence-side-actions';
+                    bottomActions.style.flexDirection = 'row';
+                    bottomActions.style.justifyContent = 'flex-start';
+
                     const btnStock = document.createElement('button');
-                    btnStock.className = 'btn btn-card-edit';
-                    btnStock.innerHTML = '<span class="material-symbols-outlined btn-icon">inventory</span><span class="btn-label">Stock</span>';
+                    btnStock.className = 'outline';
+                    btnStock.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">inventory</span>Stock';
                     btnStock.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `stock:${item.id}` })); };
-
+                    
                     const btnEdit = document.createElement('button');
-                    btnEdit.className = 'btn btn-card-edit';
-                    btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon">edit</span><span class="btn-label">Modifica</span>';
+                    btnEdit.className = 'outline';
+                    btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
                     btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${item.id}` })); };
-
+                    
                     const btnDelete = document.createElement('button');
-                    btnDelete.className = 'btn btn-card-delete';
-                    btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon">delete</span><span class="btn-label">Elimina</span>';
+                    btnDelete.className = 'outline';
+                    btnDelete.style.color = 'var(--md-sys-color-error, #b3261e)';
+                    btnDelete.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
+                    btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
                     btnDelete.onclick = async (e) => {
                         e.stopPropagation();
                         if (!confirm(`Eliminare "${item.name}"?`)) return;
@@ -307,13 +341,11 @@ export async function renderInventory(container) {
                         else loadList(activeTab);
                     };
 
-                    actions.appendChild(btnAbb);
-                    actions.appendChild(btnCandles);
-                    actions.appendChild(btnStock);
-                    actions.appendChild(btnEdit);
-                    actions.appendChild(btnDelete);
-                    card.appendChild(actions);
-
+                    bottomActions.appendChild(btnStock);
+                    bottomActions.appendChild(btnEdit);
+                    bottomActions.appendChild(btnDelete);
+                    
+                    card.appendChild(bottomActions);
                     card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${item.id}` }));
                     listContainer.appendChild(card);
                 });
@@ -323,6 +355,46 @@ export async function renderInventory(container) {
             noteFilter.onchange = renderFiltered;
 
             renderFiltered();
+        }
+
+        function renderFragranzeList(items) {
+            const heading = document.createElement('h3');
+            heading.className = 'inv-section-title';
+            heading.textContent = 'Mix usati';
+            listContainer.appendChild(heading);
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="item-info">
+                        <div class="name">${item.name}</div>
+                        <div class="meta">Mix personalizzato</div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        function renderCandeleList(items) {
+            const heading = document.createElement('h3');
+            heading.className = 'inv-section-title';
+            heading.textContent = 'Candele fatte';
+            listContainer.appendChild(heading);
+
+            items.forEach(log => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const created = new Date(log.created_at).toLocaleDateString('it-IT');
+                card.innerHTML = `
+                    <div class="item-info">
+                        <div class="name">${log.blends?.name || 'Candela'}</div>
+                        <div class="meta">Batch ${log.batch_number || '—'} • ${created}</div>
+                    </div>
+                `;
+                card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'candle-detail:' + log.id }));
+                listContainer.appendChild(card);
+            });
         }
 
         function formatQty(g) {

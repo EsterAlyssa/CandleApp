@@ -353,11 +353,8 @@ async function init() {
 
     // Controlla autenticazione alla partenza
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-        await navigateTo('dashboard');
-    } else {
-        await navigateTo('landing');
-    }
+    // Vai sempre alla home all'apertura della PWA
+    await navigateTo('landing');
 }
 
 init();

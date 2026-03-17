@@ -29,17 +29,37 @@ export async function renderInventoryDetail(container, id) {
         wrapper.appendChild(title);
 
         const html = `
-            <p><strong>Categoria:</strong> ${item.category}</p>
-            <p><strong>Quantità (g):</strong> ${item.quantity_g || '—'}</p>
+            <p><strong>Categoria:</strong> ${item.category === 'mold' ? 'Stampo' : item.category === 'wax' ? 'Cera' : item.category === 'scent' ? 'Essenza' : item.category}</p>
+            <p><strong>Quantità (g):</strong> ${item.quantity_g || '—'}</p>     
             <p><strong>Fornitore:</strong> ${item.supplier || '—'}</p>
             ${item.tech_data && typeof item.tech_data === 'object' ? Object.entries(item.tech_data).map(([k,v]) => {
                 let val = v;
+                let keyStr = k;
                 if(k==='note_type') {
+                    keyStr = 'Nota olfattiva';
                     if(v==='base') val = 'di fondo';
                     else if(v==='heart') val = 'di cuore';
                     else if(v==='head') val = 'di testa';
+                } else if(k==='melt_temp') {
+                    keyStr = 'Temperatura di fusione';
+                    val = v + ' °C';
+                } else if(k==='density') {
+                    keyStr = 'Densità';
+                    val = v + ' g/ml';
+                } else if(k==='pour_temp') {
+                    keyStr = 'Temperatura di versata';
+                    val = v + ' °C';
+                } else if(k==='max_fragrance') {
+                    keyStr = 'Carico max fragranza';
+                    val = v + ' %';
+                } else if(k==='wax_type') {
+                    keyStr = 'Tipo cera';
+                } else if(k==='volume_ml') {
+                    keyStr = 'Volume (ml)';
+                } else if(k==='material') {
+                    keyStr = 'Materiale';
                 }
-                return `<p><strong>${k}:</strong> ${val}</p>`;
+                return `<p><strong>${keyStr}:</strong> ${val}</p>`;
             }).join('') : ''}
         `;
         wrapper.appendChild(createCard('Dettagli', html));
