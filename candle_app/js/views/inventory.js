@@ -53,7 +53,13 @@ export async function renderInventory(container) {
 
         // Add button
         const addBtn = createButton('Aggiungi un elemento', 'add', 'btn-primary');
-        addBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${activeTab}` }));
+        addBtn.onclick = () => {
+            if (activeTab === 'Candele' || activeTab === 'Fragranze') {
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
+            } else {
+                window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${activeTab}` }));
+            }
+        };
         wrapper.appendChild(addBtn);
 
         // Content
@@ -143,11 +149,20 @@ export async function renderInventory(container) {
             items.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'item-card mold-card';
-                const img = document.createElement('img');
-                img.className = 'mold-image';
-                img.src = item.image_url || '/assets/placeholder.png';
-                img.alt = item.name;
-                card.appendChild(img);
+                
+                if (item.image_url) {
+                    const img = document.createElement('img');
+                    img.className = 'mold-image';
+                    img.src = item.image_url;
+                    img.alt = item.name;
+                    card.appendChild(img);
+                } else {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'lab-card-img placeholder';
+                    placeholder.style.margin = '0 auto';
+                    placeholder.innerHTML = '<span class="material-symbols-outlined">view_in_ar</span>';
+                    card.appendChild(placeholder);
+                }
 
                 const nameEl = document.createElement('h3');
                 nameEl.textContent = item.name;
@@ -394,7 +409,22 @@ export async function renderInventory(container) {
                 const btnInfo = document.createElement('button');
                 btnInfo.className = 'outline';
                 btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
-                btnInfo.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `info` })); };
+                btnInfo.onclick = async (e) => { 
+                    e.stopPropagation(); 
+                    let msg = `Mix: ${item.name}\n\n`;
+                    const idsToFetch = [item.head_scent_id, item.heart_scent_id, item.base_scent_id].filter(Boolean);
+                    if(idsToFetch.length > 0) {
+                        const { data: invScents } = await supabase.from('inventory').select('id, name').in('id', idsToFetch);
+                        const scentMap = {};
+                        (invScents || []).forEach(s => scentMap[s.id] = s.name);
+                        if(item.head_scent_id) msg += `Note di Testa: ${scentMap[item.head_scent_id] || 'Sconosciuta'}\n`;
+                        if(item.heart_scent_id) msg += `Note di Cuore: ${scentMap[item.heart_scent_id] || 'Sconosciuta'}\n`;
+                        if(item.base_scent_id) msg += `Note di Fondo: ${scentMap[item.base_scent_id] || 'Sconosciuta'}\n`;
+                    } else {
+                        msg += "Nessuna essenza specificata per questo mix.";
+                    }
+                    alert(msg);
+                };
                 
                 const btnCandles = document.createElement('button');
                 btnCandles.className = 'outline';
@@ -439,19 +469,69 @@ export async function renderInventory(container) {
             heading.textContent = 'Candele fatte';
             listContainer.appendChild(heading);
 
+            const grid = document.createElement('div');
+            grid.className = 'items-grid';
+
             items.forEach(log => {
                 const card = document.createElement('div');
-                card.className = 'item-card';
+                card.className = 'essence-card fluid-essence-card';
                 const created = new Date(log.created_at).toLocaleDateString('it-IT');
-                card.innerHTML = `
-                    <div class="item-info">
-                        <div class="name">${log.blends?.name || 'Candela'}</div>
-                        <div class="meta">Batch ${log.batch_number || '—'} • ${created}</div>
-                    </div>
-                `;
+
+                const topSection = document.createElement('div');
+                topSection.className = 'essence-top-section';
+                
+                const infoCol = document.createElement('div');
+                infoCol.className = 'essence-info-col';
+                
+                const nameEl = document.createElement('div');
+                nameEl.className = 'essence-name';
+                nameEl.textContent = log.blends?.name || 'Candela';
+                infoCol.appendChild(nameEl);
+                
+                const metaEl = document.createElement('div');
+                metaEl.className = 'essence-meta';
+                metaEl.textContent = `Batch ${log.batch_number || '—'} • ${created}`;
+                infoCol.appendChild(metaEl);
+                
+                topSection.appendChild(infoCol);
+                
+                const sideActions = document.createElement('div');
+                sideActions.className = 'essence-side-actions';
+                
+                const btnInfo = document.createElement('button');
+                btnInfo.className = 'outline';
+                btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
+                btnInfo.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'candle-detail:' + log.id })); };
+                
+                sideActions.appendChild(btnInfo);
+                topSection.appendChild(sideActions);
+                card.appendChild(topSection);
+
+                const bottomActions = document.createElement('div');
+                bottomActions.className = 'essence-side-actions';
+                bottomActions.style.flexDirection = 'row';
+                bottomActions.style.justifyContent = 'flex-start';
+                
+                const btnDelete = document.createElement('button');
+                btnDelete.className = 'outline';
+                btnDelete.style.color = 'var(--md-sys-color-error, #b3261e)';
+                btnDelete.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
+                btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
+                btnDelete.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Eliminare la candela "${log.blends?.name || 'Candela'}"?`)) return;
+                    const { error } = await supabase.from('candle_log').delete().eq('id', log.id);
+                    if (error) alert('Errore: ' + error.message);
+                    else loadList(activeTab);
+                };
+                
+                bottomActions.appendChild(btnDelete);
+                card.appendChild(bottomActions);
+                
                 card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'candle-detail:' + log.id }));
-                listContainer.appendChild(card);
+                grid.appendChild(card);
             });
+            listContainer.appendChild(grid);
         }
 
         function formatQty(g) {

@@ -145,7 +145,7 @@ export async function renderDashboard(container) {
         }
 
         const created = timeAgoOrDate(log.created_at);
-        const imageHtml = mold?.image_url ? `<img class="card-media" src="${mold.image_url}" alt="${mold.name}" />` : `<div class="card-media placeholder"></div>`;
+        const imageHtml = mold?.image_url ? `<img class="card-media" src="${mold.image_url}" alt="${mold.name}" />` : `<div class="card-media placeholder" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high, #e0e0e0);color:var(--md-sys-color-on-surface-variant);"><span class="material-symbols-outlined">view_in_ar</span></div>`;
 
         const content = `
             <div class="card-row">

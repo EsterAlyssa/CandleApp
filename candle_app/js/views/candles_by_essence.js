@@ -77,7 +77,7 @@ export async function renderCandlesByEssence(container, essenceId) {
         const titleText = `Batch ${log.batch_number || ''}`;
         const content = `
             <div class="card-row">
-                ${mold?.image_url ? `<img class="card-media" src="${mold.image_url}" alt="${mold.name}" />` : '<div class="card-media placeholder"></div>'}
+                ${mold?.image_url ? `<img class="card-media" src="${mold.image_url}" alt="${mold.name}" />` : '<div class="card-media placeholder" style="display: flex; align-items: center; justify-content: center; background-color: var(--surface-variant);"><span class="material-symbols-outlined" style="font-size: 2rem; color: var(--on-surface-variant);">view_in_ar</span></div>'}
                 <div class="card-body">
                     <div class="card-meta">${new Date(log.created_at).toLocaleDateString('it-IT')}</div>
                     <p class="card-desc"><strong>Stampo:</strong> ${mold?.name || '—'}</p>

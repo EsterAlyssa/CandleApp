@@ -111,8 +111,8 @@ export async function renderInfo(container) {
         const pairings = pairingsByFamily[String(f.id)] || [];
         const findName = (id) => (families.find(fam => String(fam.id) === String(id))?.name_it || id);
 
-        const harmony = pairings.filter(p => p.type === 'armonia');
-        const contrast = pairings.filter(p => p.type === 'contrasto');
+        const harmony = pairings.filter(p => (p.type || '').toLowerCase().includes('armonia') || (p.type || '').toLowerCase() === 'harmony');
+        const contrast = pairings.filter(p => (p.type || '').toLowerCase().includes('contrasto') || (p.type || '').toLowerCase() === 'contrast');
 
         const pairingTitle = document.createElement('p');
         pairingTitle.innerHTML = `<strong>Abbinamenti:</strong>`;
