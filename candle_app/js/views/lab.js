@@ -202,6 +202,14 @@ export async function renderLab(container, param) {
 
     function renderStep() {
         stepContent.innerHTML = '';
+        window.onTopBackClicked = () => {
+            if (currentStep > 0) {
+                currentStep--;
+                renderStep();
+            } else {
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+            }
+        };
         switch (currentStep) {
             case 0: renderStep1(); break;
             case 1: renderStep2(); break;
@@ -391,7 +399,10 @@ export async function renderLab(container, param) {
                     if (isDisabled) return;
                     if (isSel) selectedEssences = selectedEssences.filter(se => se.id !== e.id);
                     else selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: famId, note_type: noteType });
-                    renderStep();
+                      mixSelect.value = '';
+                      fragranceName = '';
+                      buildEssenceCards();
+
                 };
                 essGrid.appendChild(card);
             });

@@ -84,7 +84,7 @@ export async function renderInventory(container) {
                 const res = await supabase.from('blends').select('*').eq('user_id', userId).order('name');
                 data = res.data; error = res.error;
             } else if (category === 'Candele') {
-                const res = await supabase.from('candle_log').select('*, blends(name, resulting_family_id), inventory(name, image_url)').eq('user_id', userId).order('created_at', { ascending: false });
+                const res = await supabase.from('candle_log').select('*, blends(name, resulting_family_id)').eq('user_id', userId).order('created_at', { ascending: false });
                 data = res.data; error = res.error;
             } else {
                 const dbCategory = categoryMap[category] || category;
@@ -363,17 +363,74 @@ export async function renderInventory(container) {
             heading.textContent = 'Mix usati';
             listContainer.appendChild(heading);
 
+            const grid = document.createElement('div');
+            grid.className = 'items-grid';
+
             items.forEach(item => {
                 const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <div class="item-info">
-                        <div class="name">${item.name}</div>
-                        <div class="meta">Mix personalizzato</div>
-                    </div>
-                `;
-                listContainer.appendChild(card);
+                card.className = 'essence-card fluid-essence-card';
+                
+                const topSection = document.createElement('div');
+                topSection.className = 'essence-top-section';
+                
+                const infoCol = document.createElement('div');
+                infoCol.className = 'essence-info-col';
+                
+                const nameEl = document.createElement('div');
+                nameEl.className = 'essence-name';
+                nameEl.textContent = item.name;
+                infoCol.appendChild(nameEl);
+                
+                const metaEl = document.createElement('div');
+                metaEl.className = 'essence-meta';
+                metaEl.textContent = 'Mix personalizzato';
+                infoCol.appendChild(metaEl);
+                
+                topSection.appendChild(infoCol);
+                
+                const sideActions = document.createElement('div');
+                sideActions.className = 'essence-side-actions';
+                
+                const btnInfo = document.createElement('button');
+                btnInfo.className = 'outline';
+                btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
+                btnInfo.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `info` })); };
+                
+                const btnCandles = document.createElement('button');
+                btnCandles.className = 'outline';
+                btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">local_fire_department</span>In candele';
+                btnCandles.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `candles-by-essence:${item.id}` })); };
+                
+                sideActions.appendChild(btnInfo);
+                sideActions.appendChild(btnCandles);
+                topSection.appendChild(sideActions);
+                
+                card.appendChild(topSection);
+                
+                const bottomActions = document.createElement('div');
+                bottomActions.className = 'essence-side-actions';
+                bottomActions.style.flexDirection = 'row';
+                bottomActions.style.justifyContent = 'flex-start';
+                
+                const btnDelete = document.createElement('button');
+                btnDelete.className = 'outline';
+                btnDelete.style.color = 'var(--md-sys-color-error, #b3261e)';
+                btnDelete.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
+                btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
+                btnDelete.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Eliminare "${item.name}"?`)) return;
+                    const { error } = await supabase.from('blends').delete().eq('id', item.id);
+                    if (error) alert('Errore: ' + error.message);
+                    else loadList(activeTab);
+                };
+                
+                bottomActions.appendChild(btnDelete);
+                card.appendChild(bottomActions);
+                
+                grid.appendChild(card);
             });
+            listContainer.appendChild(grid);
         }
 
         function renderCandeleList(items) {

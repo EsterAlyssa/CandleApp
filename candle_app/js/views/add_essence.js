@@ -142,6 +142,7 @@ export async function renderAddEssence(container, categoryParam) {
 
         // Save
         const btn = createButton('Salva', 'save', 'btn-primary');
+        btn.style.flex = '1';
         btn.onclick = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             const userId = user?.id;
@@ -174,9 +175,27 @@ export async function renderAddEssence(container, categoryParam) {
             }
 
             if (error) alert('Errore: ' + error.message);
+            else {
+                if (isEdit && editId) window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory-detail:' + editId }));
+                else window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
+            }
+        };
+
+        const cancelBtn = createButton('Annulla', 'close', 'btn-secondary');
+        cancelBtn.style.flex = '1';
+        cancelBtn.onclick = () => {
+            if (isEdit && editId) window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory-detail:' + editId }));
             else window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
         };
-        wrapper.appendChild(btn);
+
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex';
+        btnContainer.style.gap = '8px';
+        btnContainer.style.marginTop = '16px';
+        btnContainer.appendChild(btn);
+        btnContainer.appendChild(cancelBtn);
+
+        wrapper.appendChild(btnContainer);
 
         container.appendChild(wrapper);
     } catch (e) {

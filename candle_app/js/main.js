@@ -126,6 +126,7 @@ if (window.matchMedia) {
 
 // ===== ROUTER =====
 async function navigateTo(rawInput) {
+    window.onTopBackClicked = null;
     const _parts = String(rawInput).split(':');
     const pageId = _parts[0];
     const param = _parts.slice(1).join(':') || null;
@@ -171,13 +172,22 @@ async function navigateTo(rawInput) {
             }
 
             if (['inventory','lab','info','profile'].includes(pageId)) {
-                // On these pages show a home icon that goes to dashboard
+                // On these pages show a reply icon that behaves contextually
                 topBarEl.innerHTML = `
-                    <div class="left-slot"><button id="top-home" class="icon-btn square"><span class="material-symbols-outlined">home</span></button></div>
+                    <div class="left-slot"><button id="top-home" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
                     <div class="top-title">${userName}</div>
                     <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
                 `;
-                const homeBtn = document.getElementById('top-home'); if (homeBtn) homeBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+                const homeBtn = document.getElementById('top-home'); 
+                if (homeBtn) {
+                    homeBtn.onclick = () => {
+                        if (typeof window.onTopBackClicked === 'function') {
+                            window.onTopBackClicked();
+                        } else {
+                            window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+                        }
+                    };
+                }
                 const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
                 return;
             }

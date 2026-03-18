@@ -53,7 +53,7 @@ export async function renderPairings(container, familyId) {
     // Fetch pairings
     const { data: pairings, error } = await supabase.from('family_pairings')
         .select('id, source_family_id, target_family_id, type')
-        .eq('source_family_id', resolvedFamilyId);
+        .or(`source_family_id.eq.${resolvedFamilyId},target_family_id.eq.${resolvedFamilyId}`);
 
     if (error) {
         wrapper.innerHTML += `<p>Errore: ${error.message}</p>`;
@@ -68,7 +68,7 @@ export async function renderPairings(container, familyId) {
         wrapper.appendChild(emptyP);
     } else {
         // Resolve family names
-        const targetIds = [...new Set(pairings.map(p => p.target_family_id))];
+        const targetIds = [...new Set(pairings.map(p => p.source_family_id === resolvedFamilyId ? p.target_family_id : p.source_family_id))];
         const { data: targetFams } = await supabase.from('families')
             .select('id, name_it')
             .in('id', targetIds);
@@ -98,8 +98,9 @@ export async function renderPairings(container, familyId) {
             section.appendChild(h4);
 
             items.forEach(p => {
-                const famN = famMap[p.target_family_id] || p.target_family_id;
-                const essNames = essByFam[p.target_family_id] || [];
+                const targetId = p.source_family_id === resolvedFamilyId ? p.target_family_id : p.source_family_id;
+                const famN = famMap[targetId] || targetId;
+                const essNames = essByFam[targetId] || [];
                 const row = document.createElement('div');
                 row.className = 'pairing-row';
                 row.innerHTML = `<strong>${famN}</strong>${essNames.length > 0 ? '<br><span class="pairing-essences">' + essNames.join(', ') + '</span>' : ''}`;
@@ -119,7 +120,8 @@ export async function renderPairings(container, familyId) {
             h4.textContent = 'Altri abbinamenti (tipo non riconosciuto):';
             debugSection.appendChild(h4);
             pairings.forEach(p => {
-                const famN = famMap[p.target_family_id] || p.target_family_id;
+                const targetId = p.source_family_id === resolvedFamilyId ? p.target_family_id : p.source_family_id;
+                const famN = famMap[targetId] || targetId;
                 const row = document.createElement('div');
                 row.className = 'pairing-row';
                 row.innerHTML = `<strong>${p.type || '??'}:</strong> ${famN}`;
