@@ -2,6 +2,7 @@
 // MAIN.JS - Router e Inizializzazione App
 // ===================================================
 
+import { loadEnv } from './env.js';
 import { supabase } from './supabase.js';
 import { renderLanding } from './views/landing.js';
 import { renderLogin } from './views/login.js';
@@ -17,6 +18,9 @@ import { renderProfile } from './views/profile.js';
 import { renderStock } from './views/stock.js';
 import { renderCandleDetail } from './views/candle_detail.js';
 import { renderCandlesByEssence } from './views/candles_by_essence.js';
+
+// Load environment variables (if .env is served) before rendering.
+await loadEnv();
 
 // Riferimenti UI
 const container = document.getElementById('app-container');

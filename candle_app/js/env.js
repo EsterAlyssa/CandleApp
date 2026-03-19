@@ -1,0 +1,85 @@
+// ===================================================
+// ENV.JS - Runtime environment variables loader
+// ===================================================
+
+// This module provides a lightweight way to read a .env file at runtime (if served)
+// and expose values via `getEnv()`.
+//
+// Usage:
+//   import { getEnv } from './env.js';
+//   const baseUrl = getEnv('NEXT_PUBLIC_CLOUDINARY_BASE_URL');
+
+let _envCache = null;
+
+function parseDotEnv(text) {
+  const env = {};
+  const lines = String(text).split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    env[key] = value;
+  }
+  return env;
+}
+
+export async function loadEnv() {
+  if (_envCache) return _envCache;
+  try {
+    const resp = await fetch('/.env');
+    if (!resp.ok) throw new Error('Failed to fetch .env');
+    const text = await resp.text();
+    _envCache = parseDotEnv(text);
+  } catch (e) {
+    // silent fallback: allow apps to function even if .env is missing
+    _envCache = {};
+  }
+
+  if (typeof window !== 'undefined') {
+    window.ENV = _envCache;
+  }
+  return _envCache;
+}
+
+export function getEnv(key, fallback = '') {
+  if (_envCache && key in _envCache) return _envCache[key];
+  if (window && window.ENV && key in window.ENV) return window.ENV[key];
+  return fallback;
+}
+
+export function getCloudinaryBaseUrl() {
+  // Expect the URL to be provided via the .env file. This avoids hardcoding the
+  // Cloudinary account URL in the codebase.
+  return getEnv('NEXT_PUBLIC_CLOUDINARY_BASE_URL', '');
+}
+
+export function getCloudinaryUploadPreset() {
+  // The upload preset must be configured as unsigned in the Cloudinary console.
+  return getEnv('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET', '');
+}
+
+export function getCloudinaryUploadConfig() {
+  const base = getCloudinaryBaseUrl();
+  if (!base) return null;
+
+  // Example base: https://res.cloudinary.com/<cloud_name>/image/upload/<folder>/
+  const match = base.match(/^https?:\/\/res\.cloudinary\.com\/([^/]+)\/image\/upload\/(.*)$/);
+  if (!match) return null;
+
+  const cloudName = match[1];
+  const folder = match[2].replace(/\/+$/, ''); // strip trailing slashes
+  const preset = getCloudinaryUploadPreset();
+
+  return {
+    cloudName,
+    folder,
+    uploadPreset: preset,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`
+  };
+}

@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
+import { getImageUrlFromRecord } from '../image.js';
 
 export async function renderLab(container, param) {
     console.log('[VIEW] Rendering Lab...', param);
@@ -235,8 +236,9 @@ export async function renderLab(container, param) {
         molds.forEach(m => {
             const card = document.createElement('div');
             card.className = 'lab-select-card' + (selectedMold?.id === m.id ? ' selected' : '');
-            const img = m.image_url
-                ? `<img src="${m.image_url}" class="lab-card-img" alt="${m.name}">`
+            const moldImageUrl = getImageUrlFromRecord(m);
+            const img = moldImageUrl
+                ? `<img src="${moldImageUrl}" class="lab-card-img" alt="${m.name}">`
                 : `<div class="lab-card-img placeholder"><span class="material-symbols-outlined">view_in_ar</span></div>`;
             card.innerHTML = `${img}<div class="lab-card-name">${m.name}</div><div class="lab-card-meta">Capacità: ${m.quantity_g || '—'}g</div>`;
             card.onclick = () => { selectedMold = m; renderStep(); };

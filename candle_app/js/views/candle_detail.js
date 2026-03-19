@@ -24,7 +24,7 @@ export async function renderCandleDetail(container, logId) {
     }
 
     const [moldResp, waxResp, blendResp] = await Promise.all([
-        log.mold_id ? supabase.from('inventory').select('id, name, image_url').eq('id', log.mold_id).maybeSingle() : { data: null, error: null },
+        log.mold_id ? supabase.from('inventory').select('id, name, image_ref').eq('id', log.mold_id).maybeSingle() : { data: null, error: null },
         log.wax_id ? supabase.from('inventory').select('id, name').eq('id', log.wax_id).maybeSingle() : { data: null, error: null },
         log.blend_id ? supabase.from('blends').select('id, name, head_scent_id, heart_scent_id, base_scent_id, resulting_family_id').eq('id', log.blend_id).maybeSingle() : { data: null, error: null }
     ]);

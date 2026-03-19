@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
+import { getImageUrlFromRecord } from '../image.js';
 
 export async function renderInventory(container) {
     console.log('[VIEW] Rendering Inventory...');
@@ -150,10 +151,11 @@ export async function renderInventory(container) {
                 const card = document.createElement('div');
                 card.className = 'item-card mold-card';
                 
-                if (item.image_url) {
+                const imageUrl = getImageUrlFromRecord(item);
+                if (imageUrl) {
                     const img = document.createElement('img');
                     img.className = 'mold-image';
-                    img.src = item.image_url;
+                    img.src = imageUrl;
                     img.alt = item.name;
                     card.appendChild(img);
                 } else {

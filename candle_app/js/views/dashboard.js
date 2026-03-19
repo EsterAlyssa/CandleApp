@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle, createAlert } from '../components.js?v=3';
+import { getImageUrlFromRecord } from '../image.js';
 
 export async function renderDashboard(container) {
     console.log('[VIEW] Rendering Dashboard...');
@@ -107,7 +108,7 @@ export async function renderDashboard(container) {
 
     const [blendResp, moldResp] = await Promise.all([
         blendIds.length > 0 ? supabase.from('blends').select('id, name, resulting_family_id').in('id', blendIds) : { data: [], error: null },
-        moldIds.length > 0 ? supabase.from('inventory').select('id, name, category, image_url').in('id', moldIds) : { data: [], error: null }
+        moldIds.length > 0 ? supabase.from('inventory').select('id, name, category, image_ref').in('id', moldIds) : { data: [], error: null }
     ]);
 
     const blendMap = {};
@@ -145,7 +146,8 @@ export async function renderDashboard(container) {
         }
 
         const created = timeAgoOrDate(log.created_at);
-        const imageHtml = mold?.image_url ? `<img class="card-media" src="${mold.image_url}" alt="${mold.name}" />` : `<div class="card-media placeholder" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high, #e0e0e0);color:var(--md-sys-color-on-surface-variant);"><span class="material-symbols-outlined">view_in_ar</span></div>`;
+        const moldImageUrl = getImageUrlFromRecord(mold);
+        const imageHtml = moldImageUrl ? `<img class="card-media" src="${moldImageUrl}" alt="${mold?.name || ''}" />` : `<div class="card-media placeholder" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high, #e0e0e0);color:var(--md-sys-color-on-surface-variant);"><span class="material-symbols-outlined">view_in_ar</span></div>`;
 
         const content = `
             <div class="card-row">

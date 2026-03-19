@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
+import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary } from '../image.js';
 
 export async function renderAddEssence(container, categoryParam) {
     console.log('[VIEW] Rendering Add Essence, categoryParam:', categoryParam);
@@ -83,7 +84,10 @@ export async function renderAddEssence(container, categoryParam) {
         wrapper.appendChild(qtyInput);
 
         // for stamps: allow adding/uploading a photo
-        let imageUrl = null;
+        let selectedImageFile = null;
+        let existingImageRef = null;
+        let imgPreview = null;
+
         if (catLower === 'stampi') {
             const imgGroup = document.createElement('div');
             imgGroup.className = 'input-group';
@@ -99,20 +103,31 @@ export async function renderAddEssence(container, categoryParam) {
             imgInput.className = 'input-field';
             imgGroup.appendChild(imgInput);
 
-            const imgPreview = document.createElement('img');
+            imgPreview = document.createElement('img');
             imgPreview.style = 'max-width: 160px; max-height: 160px; margin-top: 10px; border-radius: 12px; display: none;';
             imgGroup.appendChild(imgPreview);
 
             imgInput.onchange = async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                    imageUrl = reader.result;
-                    imgPreview.src = imageUrl;
-                    imgPreview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
+
+                selectedImageFile = file;
+                imgPreview.src = URL.createObjectURL(file);
+                imgPreview.style.display = 'block';
+
+                // Try uploading immediately (requires unsigned preset)
+                try {
+                    const { imageRef } = await uploadImageToCloudinary(file, dbCategory, nameInput.querySelector('.input-field')?.value || file.name);
+                    existingImageRef = imageRef;
+                    // Show the final URL once uploaded
+                    const uploadedUrl = buildImageUrl(imageRef);
+                    if (uploadedUrl) {
+                        imgPreview.src = uploadedUrl;
+                    }
+                } catch (uploadError) {
+                    console.warn('[ADD_ESSENCE] Cloudinary upload failed', uploadError);
+                    // Keep the local preview; upload will be attempted again on save.
+                }
             };
 
             wrapper.appendChild(imgGroup);
@@ -133,6 +148,16 @@ export async function renderAddEssence(container, categoryParam) {
                     supplierInput.querySelector('.input-field').value = existing.supplier || '';
                     if (familySelect && existing.family_id) {
                         familySelect.value = existing.family_id;
+                    }
+
+                    // Keep existing image ref so we do not lose it when editing
+                    if (catLower === 'stampi') {
+                        existingImageRef = existing.image_ref || existing.image_url || null;
+                        const existingUrl = getImageUrlFromRecord(existing);
+                        if (existingUrl && imgPreview) {
+                            imgPreview.src = existingUrl;
+                            imgPreview.style.display = 'block';
+                        }
                     }
                 } else {
                     console.warn('[ADD_ESSENCE] editId category mismatch', { expected: dbCategory, actual: existing.category });
@@ -156,7 +181,31 @@ export async function renderAddEssence(container, categoryParam) {
 
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
-            if (imageUrl) record.image_url = imageUrl;
+
+            // Image reference stored in Supabase (image_ref = category + '_' + dynamicPart)
+            // We also store a computed URL in image_url for backwards compatibility.
+            if (catLower === 'stampi') {
+                // If an image was selected but not yet uploaded or the existing reference is a full URL,
+                // attempt to upload using the configured unsigned preset.
+                const isExistingUrl = existingImageRef && /^(https?:)?\/\//.test(existingImageRef);
+                const needsUpload = selectedImageFile && (!existingImageRef || isExistingUrl);
+
+                if (needsUpload) {
+                    try {
+                        const { imageRef } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
+                        existingImageRef = imageRef;
+                    } catch (uploadError) {
+                        alert('Upload immagine fallito. Controlla il preset Cloudinary e riprova.');
+                        console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
+                        return;
+                    }
+                }
+
+                if (existingImageRef) {
+                    record.image_ref = existingImageRef;
+                    record.image_url = buildImageUrl(existingImageRef);
+                }
+            }
 
             if (!['wax','mold','scent'].includes(dbCategory)) {
                 console.error('[ADD_ESSENCE] Invalid category for inventory:', dbCategory, { category, categoryParam });
