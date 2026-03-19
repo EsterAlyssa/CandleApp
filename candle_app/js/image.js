@@ -63,8 +63,6 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', config.uploadPreset);
-  // Request a delete token so we can remove this image later without exposing API secrets.
-  form.append('return_delete_token', 'true');
   if (config.folder) {
     form.append('folder', config.folder);
   }
@@ -95,12 +93,12 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     console.warn('[Cloudinary] imageRef adjusted', { requested: imageRef, returned: publicId, stored: resolvedImageRef });
   }
 
-  const deleteToken = json.delete_token || json.deleteToken || null;
+  const publicId = json.public_id || json.publicId || null;
 
   return {
     imageRef: resolvedImageRef,
     secureUrl: json.secure_url || buildImageUrl(resolvedImageRef),
-    deleteToken
+    cloudinaryPublicId: publicId
   };
 }
 

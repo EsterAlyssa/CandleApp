@@ -355,14 +355,18 @@ export async function renderInventory(container) {
                         if (!confirm(`Eliminare "${item.name}"?`)) return;
 
                         const deleteToken = item?.tech_data?.cloudinary_delete_token;
+                        const publicId = item?.tech_data?.cloudinary_public_id;
                         let cloudError = null;
+
                         if (deleteToken) {
                             try {
                                 await deleteImageFromCloudinary(deleteToken);
                             } catch (err) {
-                                console.warn('[INVENTORY] Cloudinary delete failed', err);
+                                console.warn('[INVENTORY] Cloudinary delete failed by token', err);
                                 cloudError = err;
                             }
+                        } else if (publicId) {
+                            console.warn('[INVENTORY] Cloudinary delete token unavailable; image can only be deleted via backend API using Admin API key for public_id:', publicId);
                         }
 
                         const { error } = await supabase.from('inventory').delete().eq('id', item.id);

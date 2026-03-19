@@ -198,13 +198,13 @@ export async function renderAddEssence(container, categoryParam) {
 
                 if (needsUpload) {
                     try {
-                        const { imageRef, deleteToken } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
+                        const { imageRef, cloudinaryPublicId } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
                         existingImageRef = imageRef;
 
-                        // Store delete token (if provided) so we can safely delete the image later.
-                        if (deleteToken) {
+                        // Store Cloudinary ID for potential backend cleanup later.
+                        if (cloudinaryPublicId) {
                             existingTechData = existingTechData || {};
-                            existingTechData.cloudinary_delete_token = deleteToken;
+                            existingTechData.cloudinary_public_id = cloudinaryPublicId;
                         }
                     } catch (uploadError) {
                         console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
