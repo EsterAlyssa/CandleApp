@@ -183,8 +183,8 @@ export async function renderAddEssence(container, categoryParam) {
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
 
-            // Image reference stored in Supabase (image_ref = category + '_' + dynamicPart)
-            // We also store a computed URL in image_url for backwards compatibility.
+            // Store only the image reference in Supabase (image_ref = category + '_' + dynamicPart)
+            // The full URL is computed at runtime from the base Cloudinary URL.
             if (catLower === 'stampi') {
                 // If an image was selected but not yet uploaded or the existing reference is a full URL,
                 // attempt to upload using the configured unsigned preset.
@@ -204,7 +204,6 @@ export async function renderAddEssence(container, categoryParam) {
 
                 if (existingImageRef) {
                     record.image_ref = existingImageRef;
-                    record.image_url = buildImageUrl(existingImageRef);
                 }
             }
 
