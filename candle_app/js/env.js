@@ -32,12 +32,16 @@ function parseDotEnv(text) {
 export async function loadEnv() {
   if (_envCache) return _envCache;
   try {
-    const resp = await fetch('/.env');
-    if (!resp.ok) throw new Error('Failed to fetch .env');
+    // Use a relative path so .env is fetched from the same folder as index.html.
+    // This avoids issues when the app is served from a subpath (e.g. /candle_app/).
+    const resp = await fetch('./.env');
+    if (!resp.ok) throw new Error(`Failed to fetch .env (${resp.status} ${resp.statusText})`);
     const text = await resp.text();
     _envCache = parseDotEnv(text);
+    console.debug('[ENV] Loaded .env', _envCache);
   } catch (e) {
     // silent fallback: allow apps to function even if .env is missing
+    console.warn('[ENV] Unable to load .env, proceeding with defaults', e);
     _envCache = {};
   }
 

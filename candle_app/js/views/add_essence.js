@@ -126,6 +126,7 @@ export async function renderAddEssence(container, categoryParam) {
                     }
                 } catch (uploadError) {
                     console.warn('[ADD_ESSENCE] Cloudinary upload failed', uploadError);
+                    alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);
                     // Keep the local preview; upload will be attempted again on save.
                 }
             };
@@ -195,8 +196,8 @@ export async function renderAddEssence(container, categoryParam) {
                         const { imageRef } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
                         existingImageRef = imageRef;
                     } catch (uploadError) {
-                        alert('Upload immagine fallito. Controlla il preset Cloudinary e riprova.');
                         console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
+                        alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);
                         return;
                     }
                 }
