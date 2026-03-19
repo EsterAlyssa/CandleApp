@@ -86,6 +86,7 @@ export async function renderAddEssence(container, categoryParam) {
         // for stamps: allow adding/uploading a photo
         let selectedImageFile = null;
         let existingImageRef = null;
+        let existingTechData = null;
         let imgPreview = null;
 
         if (catLower === 'stampi') {
@@ -117,12 +118,14 @@ export async function renderAddEssence(container, categoryParam) {
 
                 // Try uploading immediately (requires unsigned preset)
                 try {
-                    const { imageRef } = await uploadImageToCloudinary(file, dbCategory, nameInput.querySelector('.input-field')?.value || file.name);
+                    const { imageRef, secureUrl } = await uploadImageToCloudinary(file, dbCategory, nameInput.querySelector('.input-field')?.value || file.name);
                     existingImageRef = imageRef;
-                    // Show the final URL once uploaded
-                    const uploadedUrl = buildImageUrl(imageRef);
-                    if (uploadedUrl) {
-                        imgPreview.src = uploadedUrl;
+                    // Show the final URL once uploaded (prefer Cloudinary's returned URL)
+                    if (secureUrl) {
+                        imgPreview.src = secureUrl;
+                    } else {
+                        const uploadedUrl = buildImageUrl(imageRef);
+                        if (uploadedUrl) imgPreview.src = uploadedUrl;
                     }
                 } catch (uploadError) {
                     console.warn('[ADD_ESSENCE] Cloudinary upload failed', uploadError);
@@ -154,6 +157,7 @@ export async function renderAddEssence(container, categoryParam) {
                     // Keep existing image ref so we do not lose it when editing
                     if (catLower === 'stampi') {
                         existingImageRef = existing.image_ref || existing.image_url || null;
+                        existingTechData = existing.tech_data || null;
                         const existingUrl = getImageUrlFromRecord(existing);
                         if (existingUrl && imgPreview) {
                             imgPreview.src = existingUrl;
@@ -182,6 +186,7 @@ export async function renderAddEssence(container, categoryParam) {
 
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
+            if (existingTechData) record.tech_data = existingTechData;
 
             // Store only the image reference in Supabase (image_ref = category + '_' + dynamicPart)
             // The full URL is computed at runtime from the base Cloudinary URL.
@@ -193,8 +198,14 @@ export async function renderAddEssence(container, categoryParam) {
 
                 if (needsUpload) {
                     try {
-                        const { imageRef } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
+                        const { imageRef, deleteToken } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
                         existingImageRef = imageRef;
+
+                        // Store delete token (if provided) so we can safely delete the image later.
+                        if (deleteToken) {
+                            existingTechData = existingTechData || {};
+                            existingTechData.cloudinary_delete_token = deleteToken;
+                        }
                     } catch (uploadError) {
                         console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
                         alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);

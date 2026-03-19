@@ -20,10 +20,22 @@ export function buildImageUrl(imageRef) {
   if (typeof imageRef === 'string' && /^(https?:)?\/\//.test(imageRef)) {
     return imageRef;
   }
+
   const base = getCloudinaryBaseUrl();
   if (!base) return null;
+
+  // Avoid doubling the Cloudinary folder when imageRef already includes it.
+  const config = getCloudinaryUploadConfig();
+  let resolvedRef = imageRef;
+  if (config?.folder) {
+    const folderPrefix = `${config.folder.replace(/\/+$/, '')}/`;
+    if (resolvedRef.startsWith(folderPrefix)) {
+      resolvedRef = resolvedRef.slice(folderPrefix.length);
+    }
+  }
+
   const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-  return `${normalizedBase}${imageRef}`;
+  return `${normalizedBase}${resolvedRef}`;
 }
 
 export async function uploadImageToCloudinary(file, category, nameHint) {
@@ -51,6 +63,8 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', config.uploadPreset);
+  // Request a delete token so we can remove this image later without exposing API secrets.
+  form.append('return_delete_token', 'true');
   if (config.folder) {
     form.append('folder', config.folder);
   }
@@ -66,11 +80,55 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     throw new Error(`Cloudinary upload failed: ${resp.status} ${resp.statusText} ${text}`);
   }
   const json = await resp.json();
+
+  // Cloudinary returns a `public_id`. When uploading with a `folder`, the
+  // returned value is typically "<folder>/<public_id>". We store only the
+  // part after the configured folder so that `baseUrl + imageRef` stays valid.
+  let publicId = json.public_id || imageRef;
+  const folderPrefix = config.folder ? `${config.folder.replace(/\/+$/, '')}/` : '';
+  if (folderPrefix && publicId.startsWith(folderPrefix)) {
+    publicId = publicId.slice(folderPrefix.length);
+  }
+
+  const resolvedImageRef = publicId || imageRef;
+  if (resolvedImageRef !== imageRef) {
+    console.warn('[Cloudinary] imageRef adjusted', { requested: imageRef, returned: publicId, stored: resolvedImageRef });
+  }
+
+  const deleteToken = json.delete_token || json.deleteToken || null;
+
   return {
-    imageRef,
-    secureUrl: json.secure_url || buildImageUrl(imageRef)
+    imageRef: resolvedImageRef,
+    secureUrl: json.secure_url || buildImageUrl(resolvedImageRef),
+    deleteToken
   };
 }
+
+export async function deleteImageFromCloudinary(deleteToken) {
+  if (!deleteToken) {
+    throw new Error('Missing Cloudinary delete token');
+  }
+
+  const config = getCloudinaryUploadConfig();
+  if (!config || !config.cloudName) {
+    throw new Error('Cloudinary configuration missing/invalid; unable to delete image');
+  }
+
+  const url = `https://api.cloudinary.com/v1_1/${config.cloudName}/delete_by_token`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: deleteToken })
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Cloudinary delete failed: ${resp.status} ${resp.statusText} ${text}`);
+  }
+
+  return resp.json();
+}
+
 
 export function buildImageRef(category, originalNameOrId) {
   const cat = (category || 'item').toString().trim().toLowerCase();

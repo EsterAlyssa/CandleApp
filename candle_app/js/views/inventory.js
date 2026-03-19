@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
-import { getImageUrlFromRecord } from '../image.js';
+import { getImageUrlFromRecord, deleteImageFromCloudinary } from '../image.js';
 
 export async function renderInventory(container) {
     console.log('[VIEW] Rendering Inventory...');
@@ -353,9 +353,27 @@ export async function renderInventory(container) {
                     btnDelete.onclick = async (e) => {
                         e.stopPropagation();
                         if (!confirm(`Eliminare "${item.name}"?`)) return;
+
+                        const deleteToken = item?.tech_data?.cloudinary_delete_token;
+                        let cloudError = null;
+                        if (deleteToken) {
+                            try {
+                                await deleteImageFromCloudinary(deleteToken);
+                            } catch (err) {
+                                console.warn('[INVENTORY] Cloudinary delete failed', err);
+                                cloudError = err;
+                            }
+                        }
+
                         const { error } = await supabase.from('inventory').delete().eq('id', item.id);
-                        if (error) alert('Errore: ' + error.message);
-                        else loadList(activeTab);
+                        if (error) {
+                            alert('Errore: ' + error.message);
+                        } else {
+                            if (cloudError) {
+                                alert('Elemento eliminato, ma non è stato possibile cancellare l\'immagine da Cloudinary. Controlla la console per i dettagli.');
+                            }
+                            loadList(activeTab);
+                        }
                     };
 
                     bottomActions.appendChild(btnStock);
