@@ -70,12 +70,14 @@ export function getEnv(key, fallback = '') {
 export function getCloudinaryBaseUrl() {
   // Expect the URL to be provided via the .env file. This avoids hardcoding the
   // Cloudinary account URL in the codebase.
-  return getEnv('NEXT_PUBLIC_CLOUDINARY_BASE_URL', '');
+  const value = getEnv('NEXT_PUBLIC_CLOUDINARY_BASE_URL', '');
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 export function getCloudinaryUploadPreset() {
   // The upload preset must be configured as unsigned in the Cloudinary console.
-  return getEnv('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET', '');
+  const value = getEnv('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET', '');
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 export function getCloudinaryUploadConfig() {
@@ -84,11 +86,15 @@ export function getCloudinaryUploadConfig() {
 
   // Example base: https://res.cloudinary.com/<cloud_name>/image/upload/<folder>/
   const match = base.match(/^https?:\/\/res\.cloudinary\.com\/([^/]+)\/image\/upload\/(.*)$/);
-  if (!match) return null;
+  if (!match) {
+    console.warn('[ENV] Cloudinary base URL did not match expected pattern', { base });
+    return null;
+  }
 
   const cloudName = match[1];
   const folder = match[2].replace(/\/+$/, ''); // strip trailing slashes
   const preset = getCloudinaryUploadPreset();
+  console.debug('[ENV] Cloudinary config parsed', { cloudName, folder, preset });
 
   return {
     cloudName,

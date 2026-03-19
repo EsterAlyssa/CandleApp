@@ -111,7 +111,7 @@ export async function renderLab(container, param) {
 
     // --- Fetch data ---
     const buildInventoryQuery = (category) => {
-        const q = supabase.from('inventory').select('*').eq('category', category);
+        const q = supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('category', category);
         if (userId) q.eq('user_id', userId);
         return q;
     };

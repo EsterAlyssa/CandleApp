@@ -17,7 +17,7 @@ export async function renderStock(container, itemId) {
         return;
     }
 
-    const { data: item, error } = await supabase.from('inventory').select('*').eq('id', itemId).maybeSingle();
+    const { data: item, error } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', itemId).maybeSingle();
     if (error || !item) {
         wrapper.innerHTML = '<p>Elemento non trovato.</p>';
         container.appendChild(wrapper);

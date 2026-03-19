@@ -33,11 +33,11 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   if (!config) {
     const base = getCloudinaryBaseUrl();
     console.error('[Cloudinary] invalid config. base:', base);
-    throw new Error('Cloudinary configuration missing or invalid (check NEXT_PUBLIC_CLOUDINARY_BASE_URL).');
+    throw new Error(`Cloudinary configuration missing/invalid (base="${base}"). Check NEXT_PUBLIC_CLOUDINARY_BASE_URL.`);
   }
   if (!config.uploadPreset) {
     console.error('[Cloudinary] missing unsigned preset. config:', config);
-    throw new Error('Cloudinary unsigned upload preset is not configured (NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET).');
+    throw new Error(`Cloudinary unsigned upload preset is not configured (NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET). current base="${getCloudinaryBaseUrl()}"`);
   }
 
   // Debug: log config values to help diagnose preset issues (no secret is logged).

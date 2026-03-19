@@ -140,7 +140,7 @@ export async function renderAddEssence(container, categoryParam) {
 
         // Load existing item when in edit mode
         if (isEdit) {
-            const { data: existing, error: existingError } = await supabase.from('inventory').select('*').eq('id', editId).maybeSingle();
+            const { data: existing, error: existingError } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', editId).maybeSingle();
             if (!existingError && existing) {
                 // Only prefill if category matches expected
                 if (existing.category === dbCategory) {

@@ -12,7 +12,7 @@ export async function renderInventoryDetail(container, id) {
         const wrapper = document.createElement('div');
         wrapper.className = 'inventory-wrapper';
 
-        const { data: item, error } = await supabase.from('inventory').select('*').eq('id', id).single();
+        const { data: item, error } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', id).single();
         if (error || !item) {
             wrapper.appendChild(createCard('Non trovato', `<p>Elemento non trovato</p>`));
             container.appendChild(wrapper);

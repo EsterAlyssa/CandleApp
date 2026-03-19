@@ -95,7 +95,7 @@ export async function renderInventory(container) {
                 data = res.data; error = res.error;
             } else {
                 const dbCategory = categoryMap[category] || category;
-                let query = supabase.from('inventory').select('*').eq('category', dbCategory);
+                let query = supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('category', dbCategory);
                 if (userId) query = query.eq('user_id', userId);
                 const res = await query.order('name');
                 data = res.data; error = res.error;
