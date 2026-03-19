@@ -39,9 +39,19 @@ export async function loadEnv() {
     const text = await resp.text();
     _envCache = parseDotEnv(text);
     console.debug('[ENV] Loaded .env', _envCache);
+    return _envCache;
   } catch (e) {
-    // silent fallback: allow apps to function even if .env is missing
-    console.warn('[ENV] Unable to load .env, proceeding with defaults', e);
+    // Many static servers block dotfiles (like .env). Fallback to env.json if present.
+    console.warn('[ENV] Unable to load .env, trying env.json', e);
+  }
+
+  try {
+    const resp = await fetch('./env.json');
+    if (!resp.ok) throw new Error(`Failed to fetch env.json (${resp.status} ${resp.statusText})`);
+    _envCache = await resp.json();
+    console.debug('[ENV] Loaded env.json', _envCache);
+  } catch (e) {
+    console.warn('[ENV] Unable to load env.json (fallback). Proceeding with defaults.', e);
     _envCache = {};
   }
 
