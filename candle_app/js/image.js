@@ -2,7 +2,7 @@
 // IMAGE.JS - Image reference helpers
 // ===================================================
 
-import { getCloudinaryBaseUrl } from './env.js';
+import { getCloudinaryBaseUrl, getCloudinaryUploadConfig } from './env.js';
 
 const sanitizeFileName = (value) => {
   if (!value) return '';
