@@ -78,9 +78,11 @@ export async function renderInventoryDetail(container, id) {
         `;
         wrapper.appendChild(createCard('Dettagli', html));
 
-        // Buttons: stock, abbinamenti (solo essenze), edit, back
-        const btnStock = createButton('Stock', 'inventory', 'btn-primary btn-compact');
-        btnStock.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `stock:${id}` }));
+        // Buttons: stock (non necessario per stampi), abbinamenti (solo essenze), edit, back
+        const btnStock = item.category !== 'mold' ? createButton('Stock', 'inventory', 'btn-primary btn-compact') : null;
+        if (btnStock) {
+            btnStock.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `stock:${id}` }));
+        }
 
         const btnPairings = createButton('Abbinamenti', 'link', 'btn-primary btn-compact');
         btnPairings.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `pairings:${item.family_id || ''}` }));
@@ -96,7 +98,9 @@ export async function renderInventoryDetail(container, id) {
         btnStock.style.flex = '1';
         if(btnEdit) btnEdit.style.flex = '1';
         if(btnPairings) btnPairings.style.flex = '1';
-        actions.appendChild(btnStock);
+        if (btnStock) {
+            actions.appendChild(btnStock);
+        }
         if (item.category === 'scent') {
             actions.appendChild(btnPairings);
         }

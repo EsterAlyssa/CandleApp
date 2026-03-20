@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
-import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary } from '../image.js';
+import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary } from '../image.js';
 
 export async function renderAddEssence(container, categoryParam) {
     console.log('[VIEW] Rendering Add Essence, categoryParam:', categoryParam);
@@ -196,14 +196,25 @@ export async function renderAddEssence(container, categoryParam) {
                 const isExistingUrl = existingImageRef && /^(https?:)?\/\//.test(existingImageRef);
                 const needsUpload = selectedImageFile && (!existingImageRef || isExistingUrl);
 
-                if (needsUpload) {
+                if (selectedImageFile) {
+                    // If a previous Cloudinary image exists, try to delete it before replacing.
+                    const existingDeleteToken = existingTechData?.cloudinary_delete_token;
+                    const existingPublicId = existingTechData?.cloudinary_public_id;
+                    if (existingDeleteToken) {
+                        try {
+                            await deleteImageFromCloudinary(existingDeleteToken);
+                        } catch (deleteErr) {
+                            console.warn('[ADD_ESSENCE] Failed to delete previous image via Cloudinary token', deleteErr);
+                        }
+                    } else if (existingPublicId) {
+                        console.warn('[ADD_ESSENCE] Existing image has Cloudinary public_id but no delete token; backend deletion may be required', { existingPublicId });
+                    }
+
                     try {
                         const { imageRef, cloudinaryPublicId } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
                         existingImageRef = imageRef;
-
-                        // Store Cloudinary ID for potential backend cleanup later.
+                        existingTechData = existingTechData || {};
                         if (cloudinaryPublicId) {
-                            existingTechData = existingTechData || {};
                             existingTechData.cloudinary_public_id = cloudinaryPublicId;
                         }
                     } catch (uploadError) {
@@ -215,6 +226,9 @@ export async function renderAddEssence(container, categoryParam) {
 
                 if (existingImageRef) {
                     record.image_ref = existingImageRef;
+                }
+                if (existingTechData) {
+                    record.tech_data = existingTechData;
                 }
             }
 

@@ -174,6 +174,59 @@ export async function renderInventory(container) {
                 meta.textContent = `Capacità: ${item.quantity_g || '—'}g`;
                 card.appendChild(meta);
 
+                const actions = document.createElement('div');
+                actions.className = 'card-actions';
+                actions.style.display = 'flex';
+                actions.style.gap = '8px';
+                actions.style.marginTop = '8px';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'outline';
+                editBtn.textContent = 'Modifica';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Stampi&id=${item.id}` }));
+                };
+                actions.appendChild(editBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'outline';
+                deleteBtn.style.color = 'var(--md-sys-color-error, #b3261e)';
+                deleteBtn.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
+                deleteBtn.textContent = 'Elimina';
+                deleteBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Eliminare "${item.name}"?`)) return;
+
+                    const deleteToken = item?.tech_data?.cloudinary_delete_token;
+                    const publicId = item?.tech_data?.cloudinary_public_id;
+                    let cloudError = null;
+
+                    if (deleteToken) {
+                        try {
+                            await deleteImageFromCloudinary(deleteToken);
+                        } catch (err) {
+                            console.warn('[INVENTORY] Cloudinary delete failed by token', err);
+                            cloudError = err;
+                        }
+                    } else if (publicId) {
+                        console.warn('[INVENTORY] No delete token; image remains in Cloudinary until backend cleanup', { publicId });
+                    }
+
+                    const { error } = await supabase.from('inventory').delete().eq('id', item.id);
+                    if (error) {
+                        alert('Errore: ' + error.message);
+                    } else {
+                        if (cloudError) {
+                            alert('Elemento eliminato, ma non è stato possibile cancellare l\'immagine da Cloudinary.');
+                        }
+                        loadList(activeTab);
+                    }
+                };
+                actions.appendChild(deleteBtn);
+
+                card.appendChild(actions);
+
                 card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
                 listContainer.appendChild(card);
             });
