@@ -742,18 +742,37 @@ input[type="password"]:focus {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.essence-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+.fragranze-card {
+    background: linear-gradient(135deg, var(--md-sys-color-secondary-container), var(--md-sys-color-surface-container));
+    color: var(--md-sys-color-on-secondary-container);
+    border: 1px solid var(--md-sys-color-outline);
 }
 
-.essence-name {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--md-sys-color-on-primary-container);
+.fragranze-row {
     display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: center;
-    gap: 8px;
+}
+
+.fragranze-row-top {
+    justify-content: space-between;
+}
+
+.fragranze-row-bottom {
+    justify-content: flex-start;
+}
+
+.fragranze-title {
+    font-weight: 800;
+    font-size: 20px;
+    flex: 1 1 100%;
+}
+
+.fragranze-meta {
+    font-size: 14px;
+    color: var(--md-sys-color-on-secondary-container);
+    margin-right: 14px;
 }
 
 .essence-meta {

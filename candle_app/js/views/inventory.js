@@ -483,81 +483,104 @@ export async function renderInventory(container) {
 
             items.forEach(item => {
                 const card = document.createElement('div');
-                card.className = 'essence-card fluid-essence-card';
-                
-                const topSection = document.createElement('div');
-                topSection.className = 'essence-top-section';
-                
-                const infoCol = document.createElement('div');
-                infoCol.className = 'essence-info-col';
-                
-                const nameEl = document.createElement('div');
-                nameEl.className = 'essence-name';
-                nameEl.textContent = item.name;
-                infoCol.appendChild(nameEl);
-                
-                const metaEl = document.createElement('div');
-                metaEl.className = 'essence-meta';
-                metaEl.textContent = 'Mix personalizzato';
-                infoCol.appendChild(metaEl);
-                
-                topSection.appendChild(infoCol);
-                
-                const sideActions = document.createElement('div');
-                sideActions.className = 'essence-side-actions';
-                
-                const btnInfo = document.createElement('button');
-                btnInfo.className = 'outline';
-                btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
-                btnInfo.onclick = async (e) => { 
-                    e.stopPropagation(); 
-                    let msg = `Mix: ${item.name}\n\n`;
-                    const idsToFetch = [item.head_scent_id, item.heart_scent_id, item.base_scent_id].filter(Boolean);
-                    if(idsToFetch.length > 0) {
-                        const { data: invScents } = await supabase.from('inventory').select('id, name').in('id', idsToFetch);
-                        const scentMap = {};
-                        (invScents || []).forEach(s => scentMap[s.id] = s.name);
-                        if(item.head_scent_id) msg += `Note di Testa: ${scentMap[item.head_scent_id] || 'Sconosciuta'}\n`;
-                        if(item.heart_scent_id) msg += `Note di Cuore: ${scentMap[item.heart_scent_id] || 'Sconosciuta'}\n`;
-                        if(item.base_scent_id) msg += `Note di Fondo: ${scentMap[item.base_scent_id] || 'Sconosciuta'}\n`;
-                    } else {
-                        msg += "Nessuna essenza specificata per questo mix.";
-                    }
-                    alert(msg);
-                };
-                
-                const btnCandles = document.createElement('button');
-                btnCandles.className = 'outline';
-                btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">local_fire_department</span>In candele';
-                btnCandles.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `candles-by-essence:${item.id}` })); };
-                
-                sideActions.appendChild(btnInfo);
-                sideActions.appendChild(btnCandles);
-                topSection.appendChild(sideActions);
-                
-                card.appendChild(topSection);
-                
-                const bottomActions = document.createElement('div');
-                bottomActions.className = 'essence-side-actions';
-                bottomActions.style.flexDirection = 'row';
-                bottomActions.style.justifyContent = 'flex-start';
-                
-                const btnDelete = document.createElement('button');
-                btnDelete.className = 'outline';
-                btnDelete.style.color = 'var(--md-sys-color-error, #b3261e)';
-                btnDelete.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
-                btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
-                btnDelete.onclick = async (e) => {
+                card.className = 'essence-card fluid-essence-card fragranze-card';
+
+                const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString('it-IT') : '—';
+                const familyName = item.resulting_family_id ? (familiesMap[item.resulting_family_id] || '—') : '—';
+
+                // Prima riga: titolo / data / famiglia
+                const rowTop = document.createElement('div');
+                rowTop.className = 'fragranze-row fragranze-row-top';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'fragranze-title';
+                titleEl.textContent = item.name;
+                rowTop.appendChild(titleEl);
+
+                const dateEl = document.createElement('div');
+                dateEl.className = 'fragranze-meta';
+                dateEl.innerHTML = `<strong>Creato il</strong> ${createdDate}`;
+                rowTop.appendChild(dateEl);
+
+                const familyEl = document.createElement('div');
+                familyEl.className = 'fragranze-meta';
+                familyEl.innerHTML = `<strong>Famiglia</strong>: ${familyName}`;
+                rowTop.appendChild(familyEl);
+
+                card.appendChild(rowTop);
+
+                // Seconda riga: bottoni
+                const rowBottom = document.createElement('div');
+                rowBottom.className = 'fragranze-row fragranze-row-bottom';
+
+                const btnInfo = createButton('Info', 'info', 'btn-card-edit');
+                btnInfo.onclick = async (e) => {
                     e.stopPropagation();
-                    if (!confirm(`Eliminare "${item.name}"?`)) return;
+
+                    let infoText = `Nome: ${item.name}\n`;
+
+                    const notes = [];
+                    const idsToFetch = [];
+                    if(item.head_scent_id) idsToFetch.push(item.head_scent_id);
+                    if(item.heart_scent_id) idsToFetch.push(item.heart_scent_id);
+                    if(item.base_scent_id) idsToFetch.push(item.base_scent_id);
+
+                    if(idsToFetch.length > 0) {
+                        const { data: scents } = await supabase.from('inventory').select('id, name').in('id', idsToFetch);
+                        const scentMap = {};
+                        (scents || []).forEach(s => scentMap[s.id] = s.name);
+
+                        if(item.head_scent_id) notes.push(`Testa: ${scentMap[item.head_scent_id] || 'Sconosciuta'}`);
+                        if(item.heart_scent_id) notes.push(`Cuore: ${scentMap[item.heart_scent_id] || 'Sconosciuta'}`);
+                        if(item.base_scent_id) notes.push(`Fondo: ${scentMap[item.base_scent_id] || 'Sconosciuta'}`);
+                    }
+
+                    if(notes.length > 0) {
+                        infoText += '\nNote olfattive:\n' + notes.join('\n');
+                    } else {
+                        infoText += '\nNote olfattive: Nessuna specificata';
+                    }
+
+                    const userId = (await supabase.auth.getUser()).data.user?.id;
+                    const { data: candles } = await supabase.from('candle_log')
+                        .select('id, batch_number, created_at')
+                        .eq('blend_id', item.id)
+                        .eq('user_id', userId)
+                        .order('created_at', { ascending: false });
+
+                    if (candles && candles.length > 0) {
+                        const candleNames = candles.map((c, idx) => {
+                            const label = c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`;
+                            return label;
+                        });
+                        infoText += `\n\nCandele presenti:\n${candleNames.join('\n')}`;
+                    } else {
+                        infoText += '\n\nCandele presenti: nessuna';
+                    }
+
+                    alert(infoText);
+                };
+
+                const btnModifica = createButton('Modifica', 'edit', 'btn-card-edit');
+                btnModifica.onclick = (e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: `lab` }));
+                };
+
+                const btnElimina = createButton('Elimina', 'delete', 'btn-card-delete');
+                btnElimina.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Eliminare \"${item.name}\"?`)) return;
                     const { error } = await supabase.from('blends').delete().eq('id', item.id);
                     if (error) alert('Errore: ' + error.message);
                     else loadList(activeTab);
                 };
-                
-                bottomActions.appendChild(btnDelete);
-                card.appendChild(bottomActions);
-                
+
+                rowBottom.appendChild(btnInfo);
+                rowBottom.appendChild(btnModifica);
+                rowBottom.appendChild(btnElimina);
+                card.appendChild(rowBottom);
+
                 grid.appendChild(card);
             });
             listContainer.appendChild(grid);
