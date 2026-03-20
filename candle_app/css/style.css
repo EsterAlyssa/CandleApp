@@ -694,12 +694,14 @@ input[type="password"]:focus {
 }
 
 .item-card,
-.essence-card {
+.essence-card,
+.mold-card {
     flex: 1 1 300px;
     max-width: 100%;
 }
 
-.essence-card {
+.essence-card,
+.mold-card {
     background: var(--md-sys-color-primary-container);
     color: var(--md-sys-color-on-primary-container);
     border-radius: 18px;

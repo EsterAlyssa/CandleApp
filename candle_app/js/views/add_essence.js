@@ -108,7 +108,7 @@ export async function renderAddEssence(container, categoryParam) {
             imgPreview.style = 'max-width: 160px; max-height: 160px; margin-top: 10px; border-radius: 12px; display: none;';
             imgGroup.appendChild(imgPreview);
 
-            imgInput.onchange = async (event) => {
+            imgInput.onchange = (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
 
@@ -116,22 +116,7 @@ export async function renderAddEssence(container, categoryParam) {
                 imgPreview.src = URL.createObjectURL(file);
                 imgPreview.style.display = 'block';
 
-                // Try uploading immediately (requires unsigned preset)
-                try {
-                    const { imageRef, secureUrl } = await uploadImageToCloudinary(file, dbCategory, nameInput.querySelector('.input-field')?.value || file.name);
-                    existingImageRef = imageRef;
-                    // Show the final URL once uploaded (prefer Cloudinary's returned URL)
-                    if (secureUrl) {
-                        imgPreview.src = secureUrl;
-                    } else {
-                        const uploadedUrl = buildImageUrl(imageRef);
-                        if (uploadedUrl) imgPreview.src = uploadedUrl;
-                    }
-                } catch (uploadError) {
-                    console.warn('[ADD_ESSENCE] Cloudinary upload failed', uploadError);
-                    alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);
-                    // Keep the local preview; upload will be attempted again on save.
-                }
+                // Keep existingImageRef unchanged until save, so we can apply atomic update.
             };
 
             wrapper.appendChild(imgGroup);
