@@ -666,14 +666,14 @@ input[type="password"]:focus {
 
 .items-container.items-list .essence-card,
 .items-container.items-list .dashboard-candle-card {
-    margin-bottom: 18px;
+    margin: 0 18px 18px;
 }
 
 .essence-card,
 .dashboard-candle-card {
     width: clamp(320px, 88vw, 840px);
     min-width: 320px;
-    margin: 0 auto;
+    margin: 0;
     box-sizing: border-box;
 }
 
