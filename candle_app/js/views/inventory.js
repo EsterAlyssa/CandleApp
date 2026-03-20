@@ -180,20 +180,14 @@ export async function renderInventory(container) {
                 actions.style.gap = '8px';
                 actions.style.marginTop = '8px';
 
-                const editBtn = document.createElement('button');
-                editBtn.className = 'outline';
-                editBtn.textContent = 'Modifica';
+                const editBtn = createButton('Modifica', 'edit', 'btn-card-edit');
                 editBtn.onclick = (e) => {
                     e.stopPropagation();
                     window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Stampi&id=${item.id}` }));
                 };
                 actions.appendChild(editBtn);
 
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'outline';
-                deleteBtn.style.color = 'var(--md-sys-color-error, #b3261e)';
-                deleteBtn.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
-                deleteBtn.textContent = 'Elimina';
+                const deleteBtn = createButton('Elimina', 'delete', 'btn-card-delete');
                 deleteBtn.onclick = async (e) => {
                     e.stopPropagation();
                     if (!confirm(`Eliminare "${item.name}"?`)) return;

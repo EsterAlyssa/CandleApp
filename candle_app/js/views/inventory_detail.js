@@ -95,12 +95,13 @@ export async function renderInventoryDetail(container, id) {
         const actions = document.createElement('div');
         actions.style.display = 'flex';
         actions.style.gap = '8px';
-        btnStock.style.flex = '1';
-        if(btnEdit) btnEdit.style.flex = '1';
-        if(btnPairings) btnPairings.style.flex = '1';
         if (btnStock) {
+            btnStock.style.flex = '1';
             actions.appendChild(btnStock);
         }
+        if (btnPairings) btnPairings.style.flex = '1';
+        if (btnEdit) btnEdit.style.flex = '1';
+
         if (item.category === 'scent') {
             actions.appendChild(btnPairings);
         }
