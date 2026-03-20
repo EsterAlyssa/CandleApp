@@ -2270,6 +2270,16 @@ input:checked + .toggle-slider:before {
     color: var(--md-sys-color-on-surface-variant);
     font-weight: 700;
     margin: 12px 0;
+    flex: 0 0 100%;
+}
+
+.lab-filter-bar {
+    flex: 0 0 100%;
+}
+
+.items-container .items-grid,
+.items-container .items-list {
+    flex: 0 0 100%;
 }
 
 /* Wax rows */
