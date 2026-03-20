@@ -617,7 +617,7 @@ export async function renderInventory(container) {
                 const bottomActions = document.createElement('div');
                 bottomActions.className = 'essence-side-actions';
                 bottomActions.style.flexDirection = 'row';
-                bottomActions.style.justifyContent = 'flex-start';
+                bottomActions.style.justifyContent = 'center';
 
                 const btnInfo = document.createElement('button');
                 btnInfo.className = 'outline';
