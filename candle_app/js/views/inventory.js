@@ -72,16 +72,34 @@ export async function renderInventory(container) {
 
         const updateCardLayout = () => {
             const containerWidth = listContainer.getBoundingClientRect().width || window.innerWidth;
-            const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
-            const usedSpace = cols * cardMinWidth;
-            const leftover = Math.max(0, containerWidth - usedSpace);
-            const dynamicGap = cols > 1 ? Math.min(40, leftover / (cols + 1)) : 16;
+            const minWidth = cardMinWidth;
+
+            // Quante card possono starci interamente (senza overflow)
+            const maxCards = Math.max(1, Math.floor(containerWidth / minWidth));
+
+            // Spazio residuo disponibile
+            const usedWidth = maxCards * minWidth;
+            const remaining = Math.max(0, containerWidth - usedWidth);
+
+            // Calcola gap uniforme tra card e ai bordi (cols + 1 spazi)
+            let dynamicGap = remaining / (maxCards + 1);
+
+            // Limita gap per non creare spacing enormi
+            dynamicGap = Math.max(12, Math.min(dynamicGap, 60));
 
             if (listContainer.classList.contains('items-grid')) {
-                listContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(${cardMinWidth}px, 1fr))`;
+                listContainer.style.display = 'grid';
+                listContainer.style.gridTemplateColumns = `repeat(${maxCards}, minmax(${minWidth}px, 1fr))`;
                 listContainer.style.gap = `${dynamicGap}px`;
+                listContainer.style.paddingLeft = `${dynamicGap}px`;
+                listContainer.style.paddingRight = `${dynamicGap}px`;
             } else {
-                listContainer.style.gap = `${Math.max(12, dynamicGap)}px`;
+                listContainer.style.display = 'flex';
+                listContainer.style.flexDirection = 'column';
+                listContainer.style.alignItems = 'center';
+                listContainer.style.gap = `${Math.max(14, dynamicGap)}px`;
+                listContainer.style.paddingLeft = '16px';
+                listContainer.style.paddingRight = '16px';
             }
         };
 
@@ -102,10 +120,10 @@ export async function renderInventory(container) {
         async function loadList(category) {
             listContainer.innerHTML = '';
             // Adjust container layout for category
-            if (category === 'Stampi') {
+            if (category === 'Stampi' || category === 'Fragranze' || category === 'Candele') {
                 listContainer.className = 'items-container items-grid';
-                cardMinWidth = 280;
-            } else if (category === 'Essenze' || category === 'Fragranze' || category === 'Candele') {
+                cardMinWidth = category === 'Stampi' ? 280 : 320;
+            } else if (category === 'Essenze') {
                 listContainer.className = 'items-container items-list';
                 cardMinWidth = 320;
             } else {
