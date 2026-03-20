@@ -101,12 +101,12 @@ export async function renderInventory(container) {
 
         async function loadList(category) {
             listContainer.innerHTML = '';
-            // Adjust grid for category
+            // Adjust container layout for category
             if (category === 'Stampi') {
                 listContainer.className = 'items-container items-grid';
                 cardMinWidth = 280;
-            } else if (category === 'Essenze' || category === 'Candele' || category === 'Fragranze') {
-                listContainer.className = 'items-container items-grid';
+            } else if (category === 'Essenze' || category === 'Fragranze' || category === 'Candele') {
+                listContainer.className = 'items-container items-list';
                 cardMinWidth = 320;
             } else {
                 listContainer.className = 'items-container items-list';
