@@ -553,9 +553,9 @@ export async function renderInventory(container) {
                             const label = c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`;
                             return label;
                         });
-                        infoText += `\n\nCandele presenti:\n${candleNames.join('\n')}`;
+                        infoText += `\n\nCandele in cui è presente:\n${candleNames.join('\n')}`;
                     } else {
-                        infoText += '\n\nCandele presenti: nessuna';
+                        infoText += '\n\nCandele in cui è presente: nessuna';
                     }
 
                     alert(infoText);
