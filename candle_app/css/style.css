@@ -632,16 +632,9 @@ input[type="password"]:focus {
     gap: 12px;
     flex-wrap: nowrap;
     justify-content: flex-start;
+    align-items: center;
     margin-bottom: 14px;
     width: 100%;
-    overflow-x: auto;
-}
-
-@media (max-width: 760px) {
-    .lab-filter-bar {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
 }
 
 .lab-filter-select {
