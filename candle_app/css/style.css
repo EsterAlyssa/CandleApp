@@ -637,6 +637,20 @@ input[type="password"]:focus {
     width: 100%;
 }
 
+@media (max-width: 600px) {
+    .lab-filter-bar {
+        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .lab-filter-bar .lab-filter-select {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
 .lab-filter-select {
     padding: 10px 14px;
     border-radius: 14px;
