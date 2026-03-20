@@ -700,16 +700,20 @@ input[type="password"]:focus {
     justify-content: space-between;
     width: 100%;
     max-width: 720px;
-    background: transparent;
+    background: linear-gradient(135deg, var(--md-sys-color-secondary-container), var(--md-sys-color-tertiary-container));
+    color: var(--md-sys-color-on-secondary-container);
+    border: 1px solid var(--md-sys-color-outline);
     border-radius: 14px;
     padding: 14px 18px;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
 
 .wax-row:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    filter: brightness(1.03);
 }
 
 .wax-row .wax-name,
