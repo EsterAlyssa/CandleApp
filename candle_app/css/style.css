@@ -668,7 +668,7 @@ input[type="password"]:focus {
 
 .items-container.items-list .essence-card,
 .items-container.items-list .dashboard-candle-card {
-    margin: 0;
+    margin: 0 auto; /* centra ogni card individualmente */
 }
 
 .essence-card,
