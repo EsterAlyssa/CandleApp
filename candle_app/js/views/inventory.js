@@ -68,6 +68,28 @@ export async function renderInventory(container) {
         listContainer.className = 'items-container';
         wrapper.appendChild(listContainer);
 
+        let cardMinWidth = 320;
+
+        const updateCardLayout = () => {
+            const containerWidth = listContainer.getBoundingClientRect().width || window.innerWidth;
+            const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
+            const usedSpace = cols * cardMinWidth;
+            const leftover = Math.max(0, containerWidth - usedSpace);
+            const dynamicGap = cols > 1 ? Math.min(40, leftover / (cols + 1)) : 16;
+
+            if (listContainer.classList.contains('items-grid')) {
+                listContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(${cardMinWidth}px, 1fr))`;
+                listContainer.style.gap = `${dynamicGap}px`;
+            } else {
+                listContainer.style.gap = `${Math.max(12, dynamicGap)}px`;
+            }
+        };
+
+        const resizeObserver = new ResizeObserver(updateCardLayout);
+        resizeObserver.observe(listContainer);
+
+        window.addEventListener('resize', updateCardLayout);
+
         // Determine current user (to scope inventory)
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id;
@@ -82,9 +104,16 @@ export async function renderInventory(container) {
             // Adjust grid for category
             if (category === 'Stampi') {
                 listContainer.className = 'items-container items-grid';
+                cardMinWidth = 280;
+            } else if (category === 'Essenze' || category === 'Candele' || category === 'Fragranze') {
+                listContainer.className = 'items-container items-grid';
+                cardMinWidth = 320;
             } else {
                 listContainer.className = 'items-container items-list';
+                cardMinWidth = 320;
             }
+
+            updateCardLayout();
 
             let data, error;
             if (category === 'Fragranze') {
