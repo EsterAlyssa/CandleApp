@@ -661,6 +661,12 @@ input[type="password"]:focus {
     flex-direction: column;
     align-items: stretch; /* cards should stretch for better use of space */
     max-width: 100%;
+    gap: 18px;
+}
+
+.items-container.items-list .essence-card,
+.items-container.items-list .dashboard-candle-card {
+    margin-bottom: 18px;
 }
 
 .essence-card,
