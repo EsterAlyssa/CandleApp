@@ -171,20 +171,15 @@ export async function renderAddEssence(container, categoryParam) {
 
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
-            if (existingTechData) record.tech_data = existingTechData;
 
             // Store only the image reference in Supabase (image_ref = category + '_' + dynamicPart)
             // The full URL is computed at runtime from the base Cloudinary URL.
             if (catLower === 'stampi') {
-                // If an image was selected but not yet uploaded or the existing reference is a full URL,
-                // attempt to upload using the configured unsigned preset.
-                const isExistingUrl = existingImageRef && /^(https?:)?\/\//.test(existingImageRef);
-                const needsUpload = selectedImageFile && (!existingImageRef || isExistingUrl);
-
+                // If the user picked a new image, replace the stored one on Cloudinary (if possible) and update reference.
                 if (selectedImageFile) {
-                    // If a previous Cloudinary image exists, try to delete it before replacing.
                     const existingDeleteToken = existingTechData?.cloudinary_delete_token;
                     const existingPublicId = existingTechData?.cloudinary_public_id;
+
                     if (existingDeleteToken) {
                         try {
                             await deleteImageFromCloudinary(existingDeleteToken);
@@ -192,7 +187,7 @@ export async function renderAddEssence(container, categoryParam) {
                             console.warn('[ADD_ESSENCE] Failed to delete previous image via Cloudinary token', deleteErr);
                         }
                     } else if (existingPublicId) {
-                        console.warn('[ADD_ESSENCE] Existing image has Cloudinary public_id but no delete token; backend deletion may be required', { existingPublicId });
+                        console.warn('[ADD_ESSENCE] Existing image has Cloudinary public_id but no delete token; backend deletion may be required for cleanup', { existingPublicId });
                     }
 
                     try {
@@ -208,7 +203,7 @@ export async function renderAddEssence(container, categoryParam) {
                         return;
                     }
                 }
-
+                // Update record with new image info (or keep existing if no new image chosen).
                 if (existingImageRef) {
                     record.image_ref = existingImageRef;
                 }
