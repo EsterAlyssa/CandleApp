@@ -122,83 +122,115 @@ export async function renderDashboard(container) {
     const familyMap = {};
     (familyResp.data || []).forEach(f => { familyMap[f.id] = f; });
 
-    // Render each log as card
+    function buildCandleCard(log, mold, blend, family) {
+        const candleName = blend?.name || `Candela ${log.batch_number || '—'}`;
+        const moldName = mold?.name || '—';
+        const moldCapacity = mold?.quantity_g ? `${mold.quantity_g} g` : '—';
+        const composition = blend?.name || '—';
+        const familyName = family?.name_it || '—';
+
+        const card = document.createElement('div');
+        card.className = 'essence-card fluid-essence-card dashboard-candle-card';
+
+        const topSection = document.createElement('div');
+        topSection.className = 'candle-top-section';
+
+        const infoCol = document.createElement('div');
+        infoCol.className = 'candle-info-col';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'essence-name';
+        nameEl.textContent = candleName;
+        infoCol.appendChild(nameEl);
+
+        const details = [
+            { label: 'Stampo', value: moldName },
+            { label: 'Capacità stampo', value: moldCapacity },
+            { label: 'Composizione', value: composition },
+            { label: 'Famiglia', value: familyName }
+        ];
+
+        details.forEach(d => {
+            const detailEl = document.createElement('div');
+            detailEl.className = 'essence-meta';
+            detailEl.textContent = `${d.label}: ${d.value}`;
+            infoCol.appendChild(detailEl);
+        });
+
+        topSection.appendChild(infoCol);
+
+        const imageCol = document.createElement('div');
+        imageCol.className = 'candle-image-col';
+
+        const imageUrl = getImageUrlFromRecord(mold);
+        if (imageUrl) {
+            const img = document.createElement('img');
+            img.className = 'card-media';
+            img.src = imageUrl;
+            img.alt = moldName;
+            imageCol.appendChild(img);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'card-media placeholder';
+            placeholder.innerHTML = '<span class="material-symbols-outlined" style="font-size: 2rem;">image_not_supported</span>';
+            imageCol.appendChild(placeholder);
+        }
+
+        const stars = document.createElement('div');
+        stars.className = 'essence-stars';
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement('span');
+            star.textContent = i <= (log.rating || 0) ? '★' : '☆';
+            star.className = i <= (log.rating || 0) ? 'essence-star filled' : 'essence-star';
+            stars.appendChild(star);
+        }
+        imageCol.appendChild(stars);
+
+        topSection.appendChild(imageCol);
+        card.appendChild(topSection);
+
+        const bottomActions = document.createElement('div');
+        bottomActions.className = 'essence-side-actions';
+        bottomActions.style.flexDirection = 'row';
+        bottomActions.style.justifyContent = 'flex-start';
+
+        const btnInfo = document.createElement('button');
+        btnInfo.className = 'outline';
+        btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
+        btnInfo.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'candle-detail:' + log.id })); };
+
+        const btnEdit = document.createElement('button');
+        btnEdit.className = 'outline';
+        btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
+        btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab:logId=' + log.id })); };
+
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'outline-red';
+        btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
+        btnDelete.onclick = async (e) => {
+            e.stopPropagation();
+            if (!confirm(`Eliminare la candela "${candleName}"?`)) return;
+            const { error } = await supabase.from('candle_log').delete().eq('id', log.id);
+            if (error) alert('Errore: ' + error.message);
+            else window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+        };
+
+        bottomActions.appendChild(btnInfo);
+        bottomActions.appendChild(btnEdit);
+        bottomActions.appendChild(btnDelete);
+        card.appendChild(bottomActions);
+
+        card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'candle-detail:' + log.id }));
+
+        return card;
+    }
+
     const cardPromises = logs.map(async (log) => {
         const blend = blendMap[log.blend_id] || null;
         const mold = moldMap[log.mold_id] || null;
         const family = blend?.resulting_family_id ? familyMap[blend.resulting_family_id] : null;
 
-        const titleText = blend?.name || `Candela ${log.batch_number || ''}`;
-
-        function timeAgoOrDate(iso) {
-            if (!iso) return '—';
-            const d = new Date(iso);
-            const diff = Date.now() - d.getTime();
-            const sec = Math.floor(diff/1000);
-            const min = Math.floor(sec/60);
-            const hrs = Math.floor(min/60);
-            const days = Math.floor(hrs/24);
-            if (sec < 60) return `${sec}s fa`;
-            if (min < 60) return `${min}m fa`;
-            if (hrs < 24) return `${hrs}h fa`;
-            if (days < 7) return `${days}gg fa`;
-            return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
-        }
-
-        const created = timeAgoOrDate(log.created_at);
-        const moldImageUrl = getImageUrlFromRecord(mold);
-        const imageHtml = moldImageUrl ? `<img class="card-media" src="${moldImageUrl}" alt="${mold?.name || ''}" />` : `<div class="card-media placeholder" style="display:flex;align-items:center;justify-content:center;background:var(--md-sys-color-surface-container-high, #e0e0e0);color:var(--md-sys-color-on-surface-variant);"><span class="material-symbols-outlined">view_in_ar</span></div>`;
-
-        const content = `
-            <div class="card-row">
-                ${imageHtml}
-                <div class="card-body">
-                    <div class="card-meta">${created} • Batch ${log.batch_number || '—'}</div>
-                    <p class="card-desc"><strong>Famiglia:</strong> ${family?.name_it || (blend?.resulting_family_id || '—')}</p>
-                    <p class="card-desc"><strong>Stampo:</strong> ${mold?.name || '—'}</p>
-                    <p class="card-drops"><strong>Gocce totali:</strong> ${log.total_wax_used != null ? log.total_wax_used : '—'} g</p>
-                    <p class="dashboard-notes">${log.notes ? escapeHtml(log.notes) : ''}</p>
-                </div>
-            </div>
-            <div class="dashboard-rating interactive-rating" style="cursor: pointer;" data-log-id="${log.id}" data-rating="${log.rating || 0}"></div>
-        `;
-        const btnInfo = createButton('Info', 'info', 'btn-card-edit');
-        btnInfo.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `candle-detail:${log.id}` }));
-        const btnEdit = createButton('Modifica', 'edit', 'btn-card-edit');
-        btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
-        const btnDelete = createButton('Elimina', 'delete', 'btn-card-delete');
-        btnDelete.onclick = async () => {
-            if (!confirm('Eliminare questa registrazione?')) return;
-            const { error } = await supabase.from('candle_log').delete().eq('id', log.id);
-            if (error) alert('Errore eliminazione: ' + error.message);
-            else window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-        };
-        const cardEl = createCard(titleText, content, [btnInfo, btnEdit, btnDelete]);
-        cardEl.classList.add('dashboard-candle-card');
-        
-        // Add interactive rating logic
-        const ratingContainer = cardEl.querySelector('.interactive-rating');
-        if (ratingContainer) {
-            const renderStars = (currentVal) => {
-                ratingContainer.innerHTML = '';
-                for (let i = 1; i <= 5; i++) {
-                    const star = document.createElement('span');
-                    star.textContent = i <= currentVal ? '★' : '☆';
-                    star.style.fontSize = '24px';
-                    star.style.color = 'var(--md-sys-color-primary)';
-                    star.onclick = async (e) => {
-                        e.stopPropagation();
-                        const { error } = await supabase.from('candle_log').update({ rating: i }).eq('id', log.id);
-                        if (error) alert('Errore nel salvataggio: ' + error.message);
-                        else renderStars(i);
-                    };
-                    ratingContainer.appendChild(star);
-                }
-            };
-            renderStars(log.rating || 0);
-        }
-
-        return cardEl;
+        return buildCandleCard(log, mold, blend, family);
     });
 
     const cards = await Promise.all(cardPromises);

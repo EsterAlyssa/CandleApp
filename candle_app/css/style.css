@@ -659,7 +659,23 @@ input[type="password"]:focus {
 
 .items-container.items-list {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch; /* cards should stretch for better use of space */
+    max-width: 100%;
+}
+
+.essence-card,
+.dashboard-candle-card {
+    width: clamp(320px, 88vw, 840px);
+    min-width: 320px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+@media (max-width: 840px) {
+    .essence-card,
+    .dashboard-candle-card {
+        width: min(100%, 88vw);
+    }
 }
 
 
