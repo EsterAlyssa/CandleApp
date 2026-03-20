@@ -70,43 +70,51 @@ export async function renderInventory(container) {
 
         let cardMinWidth = 320;
 
-        const updateCardLayout = () => {
-            const containerWidth = listContainer.getBoundingClientRect().width || window.innerWidth;
-            const minWidth = cardMinWidth;
+        let isLayoutPending = false;
+        const requestCardLayout = () => {
+            if (isLayoutPending) return;
+            isLayoutPending = true;
+            window.requestAnimationFrame(() => {
+                isLayoutPending = false;
 
-            // Quante card possono starci interamente (senza overflow)
-            const maxCards = Math.max(1, Math.floor(containerWidth / minWidth));
+                const containerWidth = listContainer.getBoundingClientRect().width || window.innerWidth;
+                const minWidth = cardMinWidth;
 
-            // Spazio residuo disponibile
-            const usedWidth = maxCards * minWidth;
-            const remaining = Math.max(0, containerWidth - usedWidth);
+                // Quante card possono starci interamente (senza overflow)
+                const maxCards = Math.max(1, Math.floor(containerWidth / minWidth));
 
-            // Calcola gap uniforme tra card e ai bordi (cols + 1 spazi)
-            let dynamicGap = remaining / (maxCards + 1);
+                // Spazio residuo disponibile
+                const usedWidth = maxCards * minWidth;
+                const remaining = Math.max(0, containerWidth - usedWidth);
 
-            // Limita gap per non creare spacing enormi
-            dynamicGap = Math.max(12, Math.min(dynamicGap, 60));
+                // Calcola gap uniforme tra card e ai bordi (cols + 1 spazi)
+                let dynamicGap = remaining / (maxCards + 1);
 
-            if (listContainer.classList.contains('items-grid')) {
-                listContainer.style.display = 'grid';
-                listContainer.style.gridTemplateColumns = `repeat(${maxCards}, minmax(${minWidth}px, 1fr))`;
-                listContainer.style.gap = `${dynamicGap}px`;
-                listContainer.style.paddingLeft = `${dynamicGap}px`;
-                listContainer.style.paddingRight = `${dynamicGap}px`;
-            } else {
-                listContainer.style.display = 'flex';
-                listContainer.style.flexDirection = 'column';
-                listContainer.style.alignItems = 'center';
-                listContainer.style.gap = `${Math.max(14, dynamicGap)}px`;
-                listContainer.style.paddingLeft = '16px';
-                listContainer.style.paddingRight = '16px';
-            }
+                // Limita gap per non creare spacing enormi
+                dynamicGap = Math.max(12, Math.min(dynamicGap, 60));
+
+                if (listContainer.classList.contains('items-grid')) {
+                    listContainer.style.display = 'grid';
+                    listContainer.style.gridTemplateColumns = `repeat(${maxCards}, minmax(${minWidth}px, 1fr))`;
+                    listContainer.style.gap = `${dynamicGap}px`;
+                    listContainer.style.paddingLeft = `${dynamicGap}px`;
+                    listContainer.style.paddingRight = `${dynamicGap}px`;
+                } else {
+                    listContainer.style.display = 'flex';
+                    listContainer.style.flexDirection = 'column';
+                    listContainer.style.alignItems = 'center';
+                    listContainer.style.gap = `${Math.max(14, dynamicGap)}px`;
+                    listContainer.style.paddingLeft = '16px';
+                    listContainer.style.paddingRight = '16px';
+                }
+            });
         };
 
-        const resizeObserver = new ResizeObserver(updateCardLayout);
+
+        const resizeObserver = new ResizeObserver(() => requestCardLayout());
         resizeObserver.observe(listContainer);
 
-        window.addEventListener('resize', updateCardLayout);
+        window.addEventListener('resize', requestCardLayout);
 
         // Determine current user (to scope inventory)
         const { data: { user } } = await supabase.auth.getUser();
