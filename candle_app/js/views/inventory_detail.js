@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle } from '../components.js?v=3';
+import { getImageUrlFromRecord } from '../image.js';
 
 export async function renderInventoryDetail(container, id) {
     console.log('[VIEW] Rendering Inventory Detail...', id);
@@ -27,6 +28,19 @@ export async function renderInventoryDetail(container, id) {
 
         const title = createTitle(item.name, 2);
         wrapper.appendChild(title);
+
+        const imageUrl = getImageUrlFromRecord(item);
+        if (imageUrl) {
+            const imgEl = document.createElement('img');
+            imgEl.src = imageUrl;
+            imgEl.alt = item.name;
+            imgEl.style.maxWidth = '320px';
+            imgEl.style.maxHeight = '320px';
+            imgEl.style.borderRadius = '12px';
+            imgEl.style.display = 'block';
+            imgEl.style.marginBottom = '12px';
+            wrapper.appendChild(imgEl);
+        }
 
         const html = `
             <p><strong>Categoria:</strong> ${item.category === 'mold' ? 'Stampo' : item.category === 'wax' ? 'Cera' : item.category === 'scent' ? 'Essenza' : item.category}</p>
