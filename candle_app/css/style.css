@@ -760,17 +760,23 @@ input[type="password"]:focus {
     justify-content: flex-start;
 }
 
-.essence-card .btn-card-edit {
+.essence-card .btn-card-edit,
+.item-card .btn-card-edit,
+.mold-card .btn-card-edit {
     background: rgba(0,0,0,0.08);
     border: 1px solid var(--md-sys-color-on-primary-container);
     color: var(--md-sys-color-on-primary-container);
 }
 
-.essence-card .btn-card-edit:hover {
+.essence-card .btn-card-edit:hover,
+.item-card .btn-card-edit:hover,
+.mold-card .btn-card-edit:hover {
     background: rgba(0,0,0,0.12);
 }
 
-.essence-card .btn-card-delete {
+.essence-card .btn-card-delete,
+.item-card .btn-card-delete,
+.mold-card .btn-card-delete {
     background: var(--md-sys-color-error);
     color: var(--md-sys-color-on-error);
 }
