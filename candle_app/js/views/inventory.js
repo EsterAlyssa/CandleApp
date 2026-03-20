@@ -139,7 +139,7 @@ export async function renderInventory(container) {
                 cardMinWidth = 320;
             }
 
-            updateCardLayout();
+            requestCardLayout();
 
             let data, error;
             if (category === 'Fragranze') {
