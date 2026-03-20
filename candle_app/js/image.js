@@ -93,12 +93,12 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     console.warn('[Cloudinary] imageRef adjusted', { requested: imageRef, returned: publicId, stored: resolvedImageRef });
   }
 
-  const publicId = json.public_id || json.publicId || null;
+  const cloudinaryPublicId = json.public_id || json.publicId || null;
 
   return {
     imageRef: resolvedImageRef,
     secureUrl: json.secure_url || buildImageUrl(resolvedImageRef),
-    cloudinaryPublicId: publicId
+    cloudinaryPublicId
   };
 }
 
