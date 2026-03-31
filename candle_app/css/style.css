@@ -2682,3 +2682,145 @@ select::-ms-expand {
     text-align: center;
     margin-top: 8px;
 }
+
+
+.lab-warning p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Dark mode adjustments */
+.dark .note-badge.note-head {
+    background: #1565c0;
+    color: #e3f2fd;
+}
+.dark .note-badge.note-heart {
+    background: #c2185b;
+    color: #fce4ec;
+}
+.dark .note-badge.note-base {
+    background: #e65100;
+    color: #fff3e0;
+}
+.dark .lab-warning {
+    background: #3d3300;
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+
+/* ============================================
+   LAB WIZARD - NUOVI STILI PER SELEZIONE ESSENZE
+   ============================================ */
+
+/* Istruzioni per l'utente */
+.lab-instruction {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+.lab-instruction ul {
+    margin: 10px 0 10px 20px;
+}
+.lab-instruction li {
+    margin-bottom: 4px;
+}
+
+/* Riepilogo selezione note */
+.lab-selection-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--md-sys-color-surface-container);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.selection-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.selection-row.filled .note-value {
+    color: var(--md-sys-color-primary);
+    font-weight: 600;
+}
+.selection-row.empty .note-value {
+    color: var(--md-sys-color-on-surface-variant);
+    font-style: italic;
+}
+.note-label {
+    font-weight: 600;
+    min-width: 60px;
+}
+
+/* Card essenze con stati harmony/contrast */
+.lab-select-card.harmony {
+    border-color: var(--md-sys-color-tertiary);
+    background: var(--md-sys-color-tertiary-container);
+}
+.lab-select-card.contrast {
+    border-color: var(--md-sys-color-secondary);
+    background: var(--md-sys-color-secondary-container);
+}
+.lab-select-card.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Badge per note e famiglie */
+.lab-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+.note-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.note-badge.note-head {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+.note-badge.note-heart {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+.note-badge.note-base {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+}
+.family-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.family-badge.family-harmony {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+.family-badge.family-contrast {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Avviso essenze insufficienti */
+.lab-warning {
+    background: var(--md-sys-color-error-container);
+    border: 1px solid var(--md-sys-color-error);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    color: var(--md-sys-color-on-error-container);
+}
+.lab-warning p {
+    margin: 0;
+    font-size: 14px;
+}

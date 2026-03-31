@@ -5,6 +5,7 @@
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
+import * as Store from '../store.js';
 
 export async function renderLab(container, param) {
     console.log('[VIEW] Rendering Lab...', param);
@@ -23,9 +24,8 @@ export async function renderLab(container, param) {
         });
     }
 
-    let editingLogId = null;
+    let editingLogId = navParams.logId || null;
     let editingLog = null;
-    editingLogId = navParams.logId || null;
 
     const title = createTitle('Crea una candela', 2);
     title.classList.add('page-title');
@@ -35,19 +35,42 @@ export async function renderLab(container, param) {
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    // --- State ---
-    let currentStep = editingLogId ? 2 : 0;
-    let selectedMold = null;
-    let selectedWax = null;
-    let selectedEssences = [];
-    let fragrancePct = 8;
-    let candleName = '';
-    let fragranceName = '';
+    // --- State: Carica dallo store o inizializza ---
+    const savedWizard = Store.getWizardState();
+    
+    // Se stiamo editando una candela esistente, resetta lo stato wizard
+    if (editingLogId && editingLogId !== savedWizard.editingLogId) {
+        Store.resetWizard();
+        Store.setWizardEditingLogId(editingLogId);
+    }
+    
+    // Usa lo stato salvato se presente e non stiamo iniziando da zero
+    let currentStep = editingLogId ? 2 : (savedWizard.currentStep || 0);
+    let selectedMold = savedWizard.selectedMold || null;
+    let selectedWax = savedWizard.selectedWax || null;
+    let selectedEssences = savedWizard.selectedEssences || [];
+    let fragrancePct = savedWizard.fragrancePct || 8;
+    let candleName = savedWizard.candleName || '';
+    let fragranceName = savedWizard.fragranceName || '';
     let fragranceNote = '';
     let fragranceFamily = '';
 
     let defaultCandleName = 'Candela 1';
     let nextBatchNumber = 1;
+
+    // Funzione per salvare lo stato corrente nello store
+    const saveStateToStore = () => {
+        Store.setWizardState({
+            currentStep,
+            selectedMold,
+            selectedWax,
+            selectedEssences,
+            fragrancePct,
+            candleName,
+            fragranceName,
+            editingLogId
+        });
+    };
 
     const formatNoteType = (noteType) => {
         if (!noteType) return '';
@@ -203,11 +226,17 @@ export async function renderLab(container, param) {
 
     function renderStep() {
         stepContent.innerHTML = '';
+        // Salva stato ad ogni render
+        saveStateToStore();
+        
         window.onTopBackClicked = () => {
             if (currentStep > 0) {
                 currentStep--;
+                saveStateToStore();
                 renderStep();
             } else {
+                // Resetta wizard quando si esce
+                Store.resetWizard();
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
             }
         };
@@ -241,7 +270,7 @@ export async function renderLab(container, param) {
                 ? `<img src="${moldImageUrl}" class="lab-card-img" alt="${m.name}">`
                 : `<div class="lab-card-img placeholder"><span class="material-symbols-outlined">view_in_ar</span></div>`;
             card.innerHTML = `${img}<div class="lab-card-name">${m.name}</div><div class="lab-card-meta">Capacità: ${m.quantity_g || '—'}g</div>`;
-            card.onclick = () => { selectedMold = m; renderStep(); };
+            card.onclick = () => { selectedMold = m; saveStateToStore(); renderStep(); };
             moldGrid.appendChild(card);
         });
         step.appendChild(moldGrid);
@@ -258,7 +287,7 @@ export async function renderLab(container, param) {
             const card = document.createElement('div');
             card.className = 'lab-select-card' + (selectedWax?.id === w.id ? ' selected' : '');
             card.innerHTML = `<div class="lab-card-name">${w.name}</div><div class="lab-card-meta">${w.quantity_g || '—'}g disponibili</div>`;
-            card.onclick = () => { selectedWax = w; renderStep(); };
+            card.onclick = () => { selectedWax = w; saveStateToStore(); renderStep(); };
             waxGrid.appendChild(card);
         });
         step.appendChild(waxGrid);
@@ -266,7 +295,7 @@ export async function renderLab(container, param) {
         // Next
         if (selectedMold && selectedWax) {
             const btn = createButton('Avanti', 'arrow_forward', 'btn-primary');
-            btn.onclick = () => { currentStep = 1; renderStep(); };
+            btn.onclick = () => { currentStep = 1; saveStateToStore(); renderStep(); };
             step.appendChild(btn);
         }
 
@@ -275,6 +304,8 @@ export async function renderLab(container, param) {
 
     // ========================
     // STEP 2: Scegli fragranza + percentuale
+    // Logica migliorata: 1 nota testa, 1 cuore, 1 fondo
+    // Colorazione dinamica per abbinamenti armonia/contrasto
     // ========================
     function renderStep2() {
         const step = document.createElement('div');
@@ -284,6 +315,18 @@ export async function renderLab(container, param) {
         fragH.className = 'lab-section-title';
         fragH.textContent = 'Scegli la fragranza';
         step.appendChild(fragH);
+
+        // Istruzioni per l'utente
+        const instructionDiv = document.createElement('div');
+        instructionDiv.className = 'lab-instruction';
+        instructionDiv.innerHTML = `<p>Seleziona le essenze per creare la tua fragranza. Puoi scegliere:</p>
+            <ul>
+                <li><strong>Nota di testa</strong> - prima impressione, volatile</li>
+                <li><strong>Nota di cuore</strong> - corpo della fragranza</li>
+                <li><strong>Nota di fondo</strong> - persistenza, base</li>
+            </ul>
+            <p>Le essenze compatibili saranno evidenziate in base agli abbinamenti.</p>`;
+        step.appendChild(instructionDiv);
 
         // --- MIX GIA USATI ---
         const mixContainer = document.createElement('div');
@@ -308,17 +351,57 @@ export async function renderLab(container, param) {
             if(!bId) {
                 selectedEssences = [];
                 fragranceName = '';
+                saveStateToStore();
                 buildEssenceCards();
                 return;
             }
             const {data: blend} = await supabase.from('blends').select('*').eq('id', bId).maybeSingle();
             if(!blend) return;
-            const ids = [blend.head_scent_id, blend.heart_scent_id, blend.base_scent_id].filter(Boolean);
-            if(ids.length > 0) {
-                selectedEssences = essences.filter(e => ids.includes(e.id));
-                fragranceName = blend.name;
-                buildEssenceCards();
+            
+            // Mappa le essenze del blend con i loro tipi di nota corretti
+            selectedEssences = [];
+            if (blend.head_scent_id) {
+                const ess = essences.find(e => e.id === blend.head_scent_id);
+                if (ess) {
+                    const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
+                    selectedEssences.push({ 
+                        id: ess.id, 
+                        name: ess.name, 
+                        family_name: famName, 
+                        family_id: ess.family_id, 
+                        note_type: 'head' 
+                    });
+                }
             }
+            if (blend.heart_scent_id) {
+                const ess = essences.find(e => e.id === blend.heart_scent_id);
+                if (ess) {
+                    const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
+                    selectedEssences.push({ 
+                        id: ess.id, 
+                        name: ess.name, 
+                        family_name: famName, 
+                        family_id: ess.family_id, 
+                        note_type: 'heart' 
+                    });
+                }
+            }
+            if (blend.base_scent_id) {
+                const ess = essences.find(e => e.id === blend.base_scent_id);
+                if (ess) {
+                    const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
+                    selectedEssences.push({ 
+                        id: ess.id, 
+                        name: ess.name, 
+                        family_name: famName, 
+                        family_id: ess.family_id, 
+                        note_type: 'base' 
+                    });
+                }
+            }
+            fragranceName = blend.name;
+            saveStateToStore();
+            buildEssenceCards();
         };
         mixContainer.appendChild(mixSelect);
         step.appendChild(mixContainer);
@@ -348,11 +431,10 @@ export async function renderLab(container, param) {
         noteOpt0.value = '';
         noteOpt0.textContent = 'Tutte le note';
         noteFilter.appendChild(noteOpt0);
-        const noteTypes = Array.from(new Set(essences.map(e => e.tech_data?.note_type).filter(Boolean)));
-        noteTypes.forEach(n => {
+        ['head', 'heart', 'base'].forEach(n => {
             const opt = document.createElement('option');
             opt.value = n;
-            opt.textContent = n;
+            opt.textContent = formatNoteType(n);
             noteFilter.appendChild(opt);
         });
 
@@ -360,18 +442,74 @@ export async function renderLab(container, param) {
         filterBar.appendChild(noteFilter);
         step.appendChild(filterBar);
 
-        // Compute allowed family IDs based on current selection
-        const selectedFamilyIds = selectedEssences.map(e => e.family_id).filter(Boolean);
-        const allowedFamilyIds = new Set(selectedFamilyIds);
-        if (selectedFamilyIds.length > 0) {
+        // Helper: calcola famiglie compatibili (armonia/contrasto)
+        const getCompatibleFamilies = () => {
+            const selectedFamilyIds = selectedEssences.map(e => e.family_id).filter(Boolean);
+            if (selectedFamilyIds.length === 0) return { all: true, harmony: new Set(), contrast: new Set() };
+            
+            const harmonyFamilies = new Set(selectedFamilyIds);
+            const contrastFamilies = new Set();
+            
             pairings.forEach(p => {
-                if (selectedFamilyIds.includes(p.source_family_id)) allowedFamilyIds.add(p.target_family_id);
-                if (selectedFamilyIds.includes(p.target_family_id)) allowedFamilyIds.add(p.source_family_id);
+                const isSourceSelected = selectedFamilyIds.includes(p.source_family_id);
+                const isTargetSelected = selectedFamilyIds.includes(p.target_family_id);
+                
+                if (isSourceSelected) {
+                    if (p.type === 'harmony' || p.type === 'armonia') {
+                        harmonyFamilies.add(p.target_family_id);
+                    } else if (p.type === 'contrast' || p.type === 'contrasto') {
+                        contrastFamilies.add(p.target_family_id);
+                    } else {
+                        // Se non specificato, considera come armonia
+                        harmonyFamilies.add(p.target_family_id);
+                    }
+                }
+                if (isTargetSelected) {
+                    if (p.type === 'harmony' || p.type === 'armonia') {
+                        harmonyFamilies.add(p.source_family_id);
+                    } else if (p.type === 'contrast' || p.type === 'contrasto') {
+                        contrastFamilies.add(p.source_family_id);
+                    } else {
+                        harmonyFamilies.add(p.source_family_id);
+                    }
+                }
             });
-        }
+            
+            return { all: false, harmony: harmonyFamilies, contrast: contrastFamilies };
+        };
 
-        // Determine which note types are already used
-        const usedNotes = new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
+        // Helper: determina quali tipi di nota sono già usati
+        const getUsedNotes = () => {
+            return new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
+        };
+
+        // Riepilogo selezione corrente
+        const selectionSummary = document.createElement('div');
+        selectionSummary.className = 'lab-selection-summary';
+        step.appendChild(selectionSummary);
+
+        const updateSelectionSummary = () => {
+            const usedNotes = getUsedNotes();
+            const headEss = selectedEssences.find(e => e.note_type === 'head');
+            const heartEss = selectedEssences.find(e => e.note_type === 'heart');
+            const baseEss = selectedEssences.find(e => e.note_type === 'base');
+            
+            selectionSummary.innerHTML = `
+                <div class="selection-row ${headEss ? 'filled' : 'empty'}">
+                    <span class="note-label">Testa:</span> 
+                    <span class="note-value">${headEss ? headEss.name : '(non selezionata)'}</span>
+                </div>
+                <div class="selection-row ${heartEss ? 'filled' : 'empty'}">
+                    <span class="note-label">Cuore:</span> 
+                    <span class="note-value">${heartEss ? heartEss.name : '(non selezionata)'}</span>
+                </div>
+                <div class="selection-row ${baseEss ? 'filled' : 'empty'}">
+                    <span class="note-label">Fondo:</span> 
+                    <span class="note-value">${baseEss ? baseEss.name : '(non selezionata)'}</span>
+                </div>
+            `;
+        };
+        updateSelectionSummary();
 
         const essGrid = document.createElement('div');
         essGrid.className = 'lab-grid';
@@ -380,31 +518,74 @@ export async function renderLab(container, param) {
             essGrid.innerHTML = '';
             const familyVal = familyFilter.value;
             const noteVal = noteFilter.value;
+            const usedNotes = getUsedNotes();
+            const compatibility = getCompatibleFamilies();
 
             essences.forEach(e => {
                 const noteType = e.tech_data?.note_type || '';
                 const famId = e.family_id || '';
                 const famName = famId ? (familiesMap[famId] || '') : '';
 
+                // Filtri UI
                 if (familyVal && famId !== familyVal) return;
                 if (noteVal && noteType !== noteVal) return;
 
                 const isSel = selectedEssences.some(se => se.id === e.id);
-                const isDisabledByNote = noteType && usedNotes.has(noteType) && !isSel;
-                const isDisabledByFamily = selectedFamilyIds.length > 0 && famId && !allowedFamilyIds.has(famId);
-                const isDisabled = isDisabledByNote || isDisabledByFamily;
+                
+                // Verifica se la nota è già usata (una sola essenza per tipo di nota)
+                const isNoteUsed = noteType && usedNotes.has(noteType) && !isSel;
+                
+                // Verifica compatibilità famiglia
+                let familyStatus = 'compatible'; // 'compatible', 'harmony', 'contrast', 'incompatible'
+                if (!compatibility.all && famId) {
+                    if (compatibility.harmony.has(famId)) {
+                        familyStatus = 'harmony';
+                    } else if (compatibility.contrast.has(famId)) {
+                        familyStatus = 'contrast';
+                    } else if (selectedEssences.length > 0) {
+                        familyStatus = 'incompatible';
+                    }
+                }
+
+                const isDisabled = isNoteUsed || familyStatus === 'incompatible';
 
                 const card = document.createElement('div');
-                card.className = 'lab-select-card' + (isSel ? ' selected' : '') + (isDisabled ? ' disabled' : '');
-                card.innerHTML = `<div class="lab-card-name">${e.name}</div><div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}${noteType ? ' • ' + noteType : ''}</div>`;
+                let cardClass = 'lab-select-card';
+                if (isSel) cardClass += ' selected';
+                if (isDisabled) cardClass += ' disabled';
+                if (!isDisabled && familyStatus === 'harmony') cardClass += ' harmony';
+                if (!isDisabled && familyStatus === 'contrast') cardClass += ' contrast';
+                card.className = cardClass;
+                
+                // Aggiungi badge per tipo di nota
+                const noteBadge = noteType ? `<span class="note-badge note-${noteType}">${formatNoteType(noteType)}</span>` : '';
+                const familyBadge = familyStatus !== 'compatible' && !isSel ? 
+                    `<span class="family-badge family-${familyStatus}">${familyStatus === 'harmony' ? '♥ armonia' : familyStatus === 'contrast' ? '⚡ contrasto' : ''}</span>` : '';
+                
+                card.innerHTML = `
+                    <div class="lab-card-name">${e.name}</div>
+                    <div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}</div>
+                    <div class="lab-card-badges">${noteBadge}${familyBadge}</div>
+                `;
+                
                 card.onclick = () => {
                     if (isDisabled) return;
-                    if (isSel) selectedEssences = selectedEssences.filter(se => se.id !== e.id);
-                    else selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: famId, note_type: noteType });
-                      mixSelect.value = '';
-                      fragranceName = '';
-                      buildEssenceCards();
-
+                    if (isSel) {
+                        selectedEssences = selectedEssences.filter(se => se.id !== e.id);
+                    } else {
+                        selectedEssences.push({ 
+                            id: e.id, 
+                            name: e.name, 
+                            family_name: famName, 
+                            family_id: famId, 
+                            note_type: noteType 
+                        });
+                    }
+                    mixSelect.value = '';
+                    fragranceName = '';
+                    saveStateToStore();
+                    updateSelectionSummary();
+                    buildEssenceCards();
                 };
                 essGrid.appendChild(card);
             });
@@ -450,19 +631,36 @@ export async function renderLab(container, param) {
         slider.oninput = (ev) => { 
             fragrancePct = parseInt(ev.target.value); 
             pctVal.textContent = `${fragrancePct}%`; 
+            saveStateToStore();
             updateInfo();
         };
         step.insertBefore(slider, infoDiv);
+
+        // Avviso se meno di 3 essenze
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'lab-warning';
+        step.appendChild(warningDiv);
+
+        const updateWarning = () => {
+            const count = selectedEssences.length;
+            if (count > 0 && count < 3) {
+                warningDiv.innerHTML = `<p>⚠️ Hai selezionato solo ${count} essenz${count === 1 ? 'a' : 'e'}. Per una fragranza completa, seleziona 1 nota di testa, 1 di cuore e 1 di fondo.</p>`;
+                warningDiv.style.display = 'block';
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        };
+        updateWarning();
 
         // Nav buttons
         const btns = document.createElement('div');
         btns.className = 'btn-container';
         const backBtn = createButton('Indietro', 'arrow_back', 'btn-secondary');
-        backBtn.onclick = () => { currentStep = 0; renderStep(); };
+        backBtn.onclick = () => { currentStep = 0; saveStateToStore(); renderStep(); };
         btns.appendChild(backBtn);
         if (selectedEssences.length > 0) {
             const nextBtn = createButton('Avanti', 'arrow_forward', 'btn-primary');
-            nextBtn.onclick = () => { currentStep = 2; renderStep(); };
+            nextBtn.onclick = () => { currentStep = 2; saveStateToStore(); renderStep(); };
             btns.appendChild(nextBtn);
         }
         step.appendChild(btns);
@@ -574,7 +772,7 @@ export async function renderLab(container, param) {
         const btns = document.createElement('div');
         btns.className = 'btn-container';
         const backBtn = createButton('Indietro', 'arrow_back', 'btn-secondary');
-        backBtn.onclick = () => { currentStep = 1; renderStep(); };
+        backBtn.onclick = () => { currentStep = 1; saveStateToStore(); renderStep(); };
         btns.appendChild(backBtn);
         const saveBtn = createButton('Salva candela', 'save', 'btn-primary');
         saveBtn.onclick = async () => {
@@ -610,9 +808,15 @@ export async function renderLab(container, param) {
 
             // Create or update a blend record matching the selected essences
             const blendName = (candleName || '').trim() || `Candela ${batchNumber}`;
-            const headScentId = selectedEssences[0]?.id || null;
-            const heartScentId = selectedEssences[1]?.id || null;
-            const baseScentId = selectedEssences[2]?.id || null;
+            
+            // Assegna correttamente le essenze per tipo di nota
+            const headEss = selectedEssences.find(e => e.note_type === 'head');
+            const heartEss = selectedEssences.find(e => e.note_type === 'heart');
+            const baseEss = selectedEssences.find(e => e.note_type === 'base');
+            
+            const headScentId = headEss?.id || null;
+            const heartScentId = heartEss?.id || null;
+            const baseScentId = baseEss?.id || null;
 
             const familyCounts = {};
             selectedEssences.forEach(e => {
@@ -693,6 +897,9 @@ export async function renderLab(container, param) {
                     }
                 }
 
+                // Reset wizard state dopo il salvataggio
+                Store.resetWizard();
+                
                 alert('Candela salvata!');
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
             }

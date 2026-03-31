@@ -18,6 +18,7 @@ import { renderProfile } from './views/profile.js';
 import { renderStock } from './views/stock.js';
 import { renderCandleDetail } from './views/candle_detail.js';
 import { renderCandlesByEssence } from './views/candles_by_essence.js';
+import * as Store from './store.js';
 
 // Load environment variables (if .env is served) before rendering.
 await loadEnv();
@@ -129,13 +130,61 @@ if (window.matchMedia) {
 }
 
 // ===== ROUTER =====
-async function navigateTo(rawInput) {
+// Mappa delle pagine con le loro "pagine parent" per la navigazione indietro
+const pageParentMap = {
+    'landing': null,
+    'login': 'landing',
+    'register': 'landing',
+    'dashboard': 'landing',
+    'inventory': 'dashboard',
+    'inventory-detail': 'inventory',
+    'add-essence': 'inventory',
+    'pairings': 'inventory',
+    'stock': 'inventory',
+    'candles-by-essence': 'inventory',
+    'lab': 'dashboard',
+    'info': 'dashboard',
+    'profile': 'dashboard',
+    'candle-detail': 'dashboard'
+};
+
+// Funzione per ottenere la pagina precedente
+function getPreviousPage(currentPage) {
+    // Prima prova con lo history stack
+    const history = Store.getNavigationHistory();
+    if (history.length > 1) {
+        // Trova la pagina corrente nella history e ritorna quella precedente
+        const currentIndex = history.lastIndexOf(currentPage);
+        if (currentIndex > 0) {
+            return history[currentIndex - 1];
+        }
+    }
+    // Fallback alla mappa statica
+    return pageParentMap[currentPage] || 'dashboard';
+}
+
+// Funzione per navigare indietro
+function navigateBack() {
+    const prev = Store.popNavigation();
+    if (prev) {
+        navigateTo(prev, { skipHistoryPush: true });
+    } else {
+        navigateTo('dashboard', { skipHistoryPush: true });
+    }
+}
+
+async function navigateTo(rawInput, options = {}) {
     window.onTopBackClicked = null;
     const _parts = String(rawInput).split(':');
     const pageId = _parts[0];
     const param = _parts.slice(1).join(':') || null;
     console.log(`[ROUTER] Navigating to: ${pageId}, param: ${param}`);
-    /* window.scrollTo(0,0) deferred */
+    
+    // Salva nella history se non stiamo tornando indietro
+    if (!options.skipHistoryPush) {
+        Store.pushNavigation(rawInput);
+    }
+    Store.setCurrentPage(rawInput);
 
     // Controlla sessione per decidere visibilità barre
     const { data: { session } } = await supabase.auth.getSession();
@@ -164,19 +213,31 @@ async function navigateTo(rawInput) {
             const rawName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'CandleApp';
             const userName = String(rawName).split(' ').map(p => p ? (p[0].toUpperCase() + p.slice(1)) : '').join(' ');
 
+            // Helper per creare il back button con logica corretta
+            const createBackButton = (targetPage) => {
+                return () => {
+                    if (typeof window.onTopBackClicked === 'function') {
+                        window.onTopBackClicked();
+                    } else if (targetPage) {
+                        window.dispatchEvent(new CustomEvent('navigate', { detail: targetPage }));
+                    } else {
+                        navigateBack();
+                    }
+                };
+            };
+
             if (pageId === 'dashboard') {
                 topBarEl.innerHTML = `
                     <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
                     <div class="top-title">${userName}</div>
                     <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
                 `;
-                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' }));
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
+                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = createBackButton('landing');
+                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
                 return;
             }
 
             if (['inventory','lab','info','profile'].includes(pageId)) {
-                // On these pages show a reply icon that behaves contextually
                 topBarEl.innerHTML = `
                     <div class="left-slot"><button id="top-home" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
                     <div class="top-title">${userName}</div>
@@ -184,27 +245,31 @@ async function navigateTo(rawInput) {
                 `;
                 const homeBtn = document.getElementById('top-home'); 
                 if (homeBtn) {
-                    homeBtn.onclick = () => {
-                        if (typeof window.onTopBackClicked === 'function') {
-                            window.onTopBackClicked();
-                        } else {
-                            window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-                        }
-                    };
+                    homeBtn.onclick = createBackButton('dashboard');
                 }
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
+                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
                 return;
             }
 
-            if (['inventory-detail','pairings','stock','add-essence'].includes(pageId)) {
-                // Sub-pages: back button goes to inventory
+            if (['inventory-detail','pairings','stock','add-essence','candles-by-essence'].includes(pageId)) {
                 topBarEl.innerHTML = `
                     <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
                     <div class="top-title">${userName}</div>
                     <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
                 `;
-                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
+                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = createBackButton('inventory');
+                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
+                return;
+            }
+
+            if (pageId === 'candle-detail') {
+                topBarEl.innerHTML = `
+                    <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
+                    <div class="top-title">${userName}</div>
+                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
+                `;
+                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = createBackButton('dashboard');
+                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
                 return;
             }
 
@@ -215,7 +280,7 @@ async function navigateTo(rawInput) {
                     <div class="top-title">${userName}</div>
                     <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
                 `;
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
+                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
                 return;
             }
 
@@ -225,8 +290,9 @@ async function navigateTo(rawInput) {
                 <div class="top-title">${userName}</div>
                 <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
             `;
-            const backBtn2 = document.getElementById('top-back'); if (backBtn2) backBtn2.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' }));
-            const logoutBtn2 = document.getElementById('top-logout'); if (logoutBtn2) logoutBtn2.onclick = async () => { await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };        } catch (e) {
+            const backBtn2 = document.getElementById('top-back'); if (backBtn2) backBtn2.onclick = createBackButton(null);
+            const logoutBtn2 = document.getElementById('top-logout'); if (logoutBtn2) logoutBtn2.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
+        } catch (e) {
             console.warn('[ROUTER] updateTopBarFor failed', e);
         }
     }
@@ -338,6 +404,13 @@ function initNavbar() {
 // ===== EVENTI GLOBALI =====
 window.addEventListener('navigate', (e) => { navigateTo(e.detail).catch(err => console.error('[ROUTER] navigate failed', err)); });
 
+// Supporto per il back button del browser
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.page) {
+        navigateTo(e.state.page, { skipHistoryPush: true }).catch(err => console.error('[ROUTER] popstate navigate failed', err));
+    }
+});
+
 // ===== INIZIALIZZAZIONE APP =====
 async function init() {
     console.log('[APP] Initializing...');
@@ -360,13 +433,36 @@ async function init() {
     // Listen to auth changes to update header/nav dynamically
     supabase.auth.onAuthStateChange((event, session) => {
         console.log('[AUTH] state changed', event, session);
-        if (event === 'SIGNED_OUT') { navigateTo('landing').catch(err => console.error(err)); }
+        if (event === 'SIGNED_OUT') { 
+            Store.resetAllState();
+            navigateTo('landing').catch(err => console.error(err)); 
+        }
+        // Salva userId per rapido accesso
+        if (session?.user?.id) {
+            Store.setAuthUserId(session.user.id);
+        } else {
+            Store.setAuthUserId(null);
+        }
     });
 
     // Controlla autenticazione alla partenza
     const { data: { session } } = await supabase.auth.getSession();
-    // Vai sempre alla home all'apertura della PWA
-    await navigateTo('landing');
+    
+    // Salva userId se autenticato
+    if (session?.user?.id) {
+        Store.setAuthUserId(session.user.id);
+    }
+    
+    // Controlla se c'è una pagina salvata nello store (per resume dopo background)
+    const savedPage = Store.getCurrentPage();
+    if (savedPage && savedPage !== 'landing' && session) {
+        // Ripristina la pagina precedente se l'utente era loggato
+        console.log('[APP] Resuming to saved page:', savedPage);
+        await navigateTo(savedPage, { skipHistoryPush: true });
+    } else {
+        // Vai sempre alla home all'apertura della PWA
+        await navigateTo('landing');
+    }
 }
 
 init();

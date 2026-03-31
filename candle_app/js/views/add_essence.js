@@ -83,44 +83,41 @@ export async function renderAddEssence(container, categoryParam) {
         const qtyInput = createInput('Quantità (g)', 'number', 'add-qty', category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi');
         wrapper.appendChild(qtyInput);
 
-        // for stamps: allow adding/uploading a photo
+        // Upload immagine per tutte le categorie (stampi, cere, essenze)
         let selectedImageFile = null;
         let existingImageRef = null;
         let existingTechData = null;
         let imgPreview = null;
 
-        if (catLower === 'stampi') {
-            const imgGroup = document.createElement('div');
-            imgGroup.className = 'input-group';
-            const imgLabel = document.createElement('label');
-            imgLabel.className = 'input-label';
-            imgLabel.textContent = 'Foto stampo (opzionale)';
-            imgGroup.appendChild(imgLabel);
+        // Aggiungi sezione upload immagine
+        const imgGroup = document.createElement('div');
+        imgGroup.className = 'input-group';
+        const imgLabel = document.createElement('label');
+        imgLabel.className = 'input-label';
+        imgLabel.textContent = `Foto ${isEssence ? 'essenza' : (category === 'Stampi' ? 'stampo' : 'cera')} (opzionale)`;
+        imgGroup.appendChild(imgLabel);
 
-            const imgInput = document.createElement('input');
-            imgInput.type = 'file';
-            imgInput.accept = 'image/*';
-            imgInput.capture = 'environment';
-            imgInput.className = 'input-field';
-            imgGroup.appendChild(imgInput);
+        const imgInput = document.createElement('input');
+        imgInput.type = 'file';
+        imgInput.accept = 'image/*';
+        imgInput.capture = 'environment';
+        imgInput.className = 'input-field';
+        imgGroup.appendChild(imgInput);
 
-            imgPreview = document.createElement('img');
-            imgPreview.style = 'max-width: 160px; max-height: 160px; margin-top: 10px; border-radius: 12px; display: none;';
-            imgGroup.appendChild(imgPreview);
+        imgPreview = document.createElement('img');
+        imgPreview.style = 'max-width: 160px; max-height: 160px; margin-top: 10px; border-radius: 12px; display: none;';
+        imgGroup.appendChild(imgPreview);
 
-            imgInput.onchange = (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
+        imgInput.onchange = (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
 
-                selectedImageFile = file;
-                imgPreview.src = URL.createObjectURL(file);
-                imgPreview.style.display = 'block';
+            selectedImageFile = file;
+            imgPreview.src = URL.createObjectURL(file);
+            imgPreview.style.display = 'block';
+        };
 
-                // Keep existingImageRef unchanged until save, so we can apply atomic update.
-            };
-
-            wrapper.appendChild(imgGroup);
-        }
+        wrapper.appendChild(imgGroup);
 
         // Supplier
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
@@ -140,14 +137,12 @@ export async function renderAddEssence(container, categoryParam) {
                     }
 
                     // Keep existing image ref so we do not lose it when editing
-                    if (catLower === 'stampi') {
-                        existingImageRef = existing.image_ref || existing.image_url || null;
-                        existingTechData = existing.tech_data || null;
-                        const existingUrl = getImageUrlFromRecord(existing);
-                        if (existingUrl && imgPreview) {
-                            imgPreview.src = existingUrl;
-                            imgPreview.style.display = 'block';
-                        }
+                    existingImageRef = existing.image_ref || existing.image_url || null;
+                    existingTechData = existing.tech_data || null;
+                    const existingUrl = getImageUrlFromRecord(existing);
+                    if (existingUrl && imgPreview) {
+                        imgPreview.src = existingUrl;
+                        imgPreview.style.display = 'block';
                     }
                 } else {
                     console.warn('[ADD_ESSENCE] editId category mismatch', { expected: dbCategory, actual: existing.category });
@@ -174,42 +169,41 @@ export async function renderAddEssence(container, categoryParam) {
 
             // Store only the image reference in Supabase (image_ref = category + '_' + dynamicPart)
             // The full URL is computed at runtime from the base Cloudinary URL.
-            if (catLower === 'stampi') {
-                // If the user picked a new image, replace the stored one on Cloudinary (if possible) and update reference.
-                if (selectedImageFile) {
-                    const existingDeleteToken = existingTechData?.cloudinary_delete_token;
-                    const existingPublicId = existingTechData?.cloudinary_public_id;
+            // Gestisce upload immagini per tutte le categorie (stampi, cere, essenze)
+            if (selectedImageFile) {
+                const existingDeleteToken = existingTechData?.cloudinary_delete_token;
+                const existingPublicId = existingTechData?.cloudinary_public_id;
 
-                    if (existingDeleteToken) {
-                        try {
-                            await deleteImageFromCloudinary(existingDeleteToken);
-                        } catch (deleteErr) {
-                            console.warn('[ADD_ESSENCE] Failed to delete previous image via Cloudinary token', deleteErr);
-                        }
-                    } else if (existingPublicId) {
-                        console.warn('[ADD_ESSENCE] Existing image has Cloudinary public_id but no delete token; backend deletion may be required for cleanup', { existingPublicId });
-                    }
-
+                if (existingDeleteToken) {
                     try {
-                        const { imageRef, cloudinaryPublicId } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
-                        existingImageRef = imageRef;
-                        existingTechData = existingTechData || {};
-                        if (cloudinaryPublicId) {
-                            existingTechData.cloudinary_public_id = cloudinaryPublicId;
-                        }
-                    } catch (uploadError) {
-                        console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
-                        alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);
-                        return;
+                        await deleteImageFromCloudinary(existingDeleteToken);
+                    } catch (deleteErr) {
+                        console.warn('[ADD_ESSENCE] Failed to delete previous image via Cloudinary token', deleteErr);
                     }
+                } else if (existingPublicId) {
+                    console.warn('[ADD_ESSENCE] Existing image has Cloudinary public_id but no delete token; backend deletion may be required for cleanup', { existingPublicId });
                 }
-                // Update record with new image info (or keep existing if no new image chosen).
-                if (existingImageRef) {
-                    record.image_ref = existingImageRef;
+
+                try {
+                    const { imageRef, cloudinaryPublicId } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
+                    existingImageRef = imageRef;
+                    existingTechData = existingTechData || {};
+                    if (cloudinaryPublicId) {
+                        existingTechData.cloudinary_public_id = cloudinaryPublicId;
+                    }
+                } catch (uploadError) {
+                    console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
+                    alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);
+                    return;
                 }
-                if (existingTechData) {
-                    record.tech_data = existingTechData;
-                }
+            }
+            
+            // Update record with new image info (or keep existing if no new image chosen).
+            if (existingImageRef) {
+                record.image_ref = existingImageRef;
+            }
+            if (existingTechData) {
+                record.tech_data = existingTechData;
             }
 
             if (!['wax','mold','scent'].includes(dbCategory)) {

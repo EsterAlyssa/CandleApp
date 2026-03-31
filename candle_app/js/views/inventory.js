@@ -1,10 +1,11 @@
 // ===================================================
-// INVENTORY.JS - Gestione Magazzino (con 3 tab)
+// INVENTORY.JS - Gestione Magazzino (con 5 tab)
 // ===================================================
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord, deleteImageFromCloudinary } from '../image.js';
+import * as Store from '../store.js';
 
 export async function renderInventory(container) {
     console.log('[VIEW] Rendering Inventory...');
@@ -17,7 +18,7 @@ export async function renderInventory(container) {
         title.classList.add('page-title');
         wrapper.appendChild(title);
 
-        // Tabs: Cere, Stampi, Essenze
+        // Tabs: Cere, Stampi, Essenze, Mix usati, Candele
         const tabsContainer = document.createElement('div');
         tabsContainer.className = 'tabs-container';
 
@@ -36,14 +37,16 @@ export async function renderInventory(container) {
             'Essenze': 'scent'
         };
 
-        let activeTab = sessionStorage.getItem('inventoryActiveTab') || 'Cere';
+        // Usa lo store per mantenere il tab attivo
+        let activeTab = Store.getInventoryTab() || 'Cere';
 
         tabs.forEach(tab => {
             const btn = document.createElement('button');
             btn.className = 'tab-btn' + (tab.id === activeTab ? ' active' : '');
             btn.textContent = tab.label;
             btn.onclick = async () => {
-                activeTab = tab.id; sessionStorage.setItem('inventoryActiveTab', tab.id);
+                activeTab = tab.id; 
+                Store.setInventoryTab(tab.id);
                 tabsContainer.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 await loadList(tab.id);
