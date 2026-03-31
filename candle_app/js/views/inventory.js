@@ -425,9 +425,7 @@ export async function renderInventory(container) {
                     btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${item.id}` })); };
                     
                     const btnDelete = document.createElement('button');
-                    btnDelete.className = 'outline';
-                    btnDelete.style.color = 'var(--md-sys-color-error)';
-                    btnDelete.style.borderColor = 'var(--md-sys-color-error)';
+                    btnDelete.className = 'outline-red';
                     btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
                     btnDelete.onclick = async (e) => {
                         e.stopPropagation();
@@ -511,37 +509,41 @@ export async function renderInventory(container) {
 
             items.forEach(item => {
                 const card = document.createElement('div');
-                card.className = 'essence-card fluid-essence-card fragranze-card';
+                card.className = 'essence-card fluid-essence-card';
 
                 const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString('it-IT') : '—';
                 const familyName = item.resulting_family_id ? (familiesMap[item.resulting_family_id] || '—') : '—';
 
-                // Prima riga: titolo / data / famiglia
-                const rowTop = document.createElement('div');
-                rowTop.className = 'fragranze-row fragranze-row-top';
+                // Top section: info
+                const topSection = document.createElement('div');
+                topSection.style.marginBottom = '16px';
 
                 const titleEl = document.createElement('div');
-                titleEl.className = 'fragranze-title';
+                titleEl.className = 'essence-name';
                 titleEl.textContent = item.name;
-                rowTop.appendChild(titleEl);
+                topSection.appendChild(titleEl);
 
                 const dateEl = document.createElement('div');
-                dateEl.className = 'fragranze-meta';
-                dateEl.innerHTML = `<strong>Creato il</strong> ${createdDate}`;
-                rowTop.appendChild(dateEl);
+                dateEl.className = 'essence-meta';
+                dateEl.textContent = `Creato il ${createdDate}`;
+                topSection.appendChild(dateEl);
 
                 const familyEl = document.createElement('div');
-                familyEl.className = 'fragranze-meta';
-                familyEl.innerHTML = `<strong>Famiglia</strong>: ${familyName}`;
-                rowTop.appendChild(familyEl);
+                familyEl.className = 'essence-meta';
+                familyEl.textContent = `Famiglia: ${familyName}`;
+                topSection.appendChild(familyEl);
 
-                card.appendChild(rowTop);
+                card.appendChild(topSection);
 
-                // Seconda riga: bottoni
-                const rowBottom = document.createElement('div');
-                rowBottom.className = 'fragranze-row fragranze-row-bottom';
+                // Bottom actions - tutti i bottoni sulla stessa riga come le Candele
+                const bottomActions = document.createElement('div');
+                bottomActions.className = 'essence-side-actions';
+                bottomActions.style.flexDirection = 'row';
+                bottomActions.style.justifyContent = 'center';
 
-                const btnInfo = createButton('Info', 'info', 'btn-card-edit');
+                const btnInfo = document.createElement('button');
+                btnInfo.className = 'outline';
+                btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
                 btnInfo.onclick = async (e) => {
                     e.stopPropagation();
 
@@ -589,25 +591,29 @@ export async function renderInventory(container) {
                     alert(infoText);
                 };
 
-                const btnModifica = createButton('Modifica', 'edit', 'btn-card-edit');
+                const btnModifica = document.createElement('button');
+                btnModifica.className = 'outline';
+                btnModifica.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
                 btnModifica.onclick = (e) => {
                     e.stopPropagation();
                     window.dispatchEvent(new CustomEvent('navigate', { detail: `edit-blend:${item.id}` }));
                 };
 
-                const btnElimina = createButton('Elimina', 'delete', 'btn-card-delete');
+                const btnElimina = document.createElement('button');
+                btnElimina.className = 'outline-red';
+                btnElimina.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
                 btnElimina.onclick = async (e) => {
                     e.stopPropagation();
-                    if (!confirm(`Eliminare \"${item.name}\"?`)) return;
+                    if (!confirm(`Eliminare "${item.name}"?`)) return;
                     const { error } = await supabase.from('blends').delete().eq('id', item.id);
                     if (error) alert('Errore: ' + error.message);
                     else loadList(activeTab);
                 };
 
-                rowBottom.appendChild(btnInfo);
-                rowBottom.appendChild(btnModifica);
-                rowBottom.appendChild(btnElimina);
-                card.appendChild(rowBottom);
+                bottomActions.appendChild(btnInfo);
+                bottomActions.appendChild(btnModifica);
+                bottomActions.appendChild(btnElimina);
+                card.appendChild(bottomActions);
 
                 grid.appendChild(card);
             });

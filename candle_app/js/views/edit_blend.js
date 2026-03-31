@@ -319,19 +319,25 @@ export async function renderEditBlend(container, blendId) {
             return;
         }
 
-        const headEss = selectedEssences.find(e => e.note_type === 'head');
+        // Support multiple head notes - take first one for head_scent_id
+        const headEssences = selectedEssences.filter(e => e.note_type === 'head');
         const heartEss = selectedEssences.find(e => e.note_type === 'heart');
         const baseEss = selectedEssences.find(e => e.note_type === 'base');
 
         const resultingFamily = computeFragranceFamily();
         const resultingFamilyId = Object.entries(familiesMap).find(([id, name]) => name === resultingFamily)?.[0] || null;
 
+        // Store all head notes in tech_data for future reference
+        const techData = blend.tech_data || {};
+        techData.all_head_notes = headEssences.map(e => ({ id: e.id, name: e.name }));
+
         const { error } = await supabase.from('blends').update({
             name: fragranceName || 'Mix senza nome',
-            head_scent_id: headEss?.id || null,
+            head_scent_id: headEssences[0]?.id || null,
             heart_scent_id: heartEss?.id || null,
             base_scent_id: baseEss?.id || null,
-            resulting_family_id: resultingFamilyId
+            resulting_family_id: resultingFamilyId,
+            tech_data: techData
         }).eq('id', blendId);
 
         if (error) {
