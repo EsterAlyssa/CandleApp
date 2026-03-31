@@ -352,7 +352,7 @@ export async function renderLab(container, param) {
                 selectedEssences = [];
                 fragranceName = '';
                 saveStateToStore();
-                buildEssenceCards();
+                updateUIAfterSelection();
                 return;
             }
             const {data: blend} = await supabase.from('blends').select('*').eq('id', bId).maybeSingle();
@@ -401,7 +401,7 @@ export async function renderLab(container, param) {
             }
             fragranceName = blend.name;
             saveStateToStore();
-            buildEssenceCards();
+            updateUIAfterSelection();
         };
         mixContainer.appendChild(mixSelect);
         step.appendChild(mixContainer);
@@ -514,6 +514,14 @@ export async function renderLab(container, param) {
         const essGrid = document.createElement('div');
         essGrid.className = 'lab-grid';
 
+        // Funzione helper per aggiornare tutta la UI dopo una selezione
+        function updateUIAfterSelection() {
+            updateSelectionSummary();
+            buildEssenceCards();
+            updateWarning();
+            updateNavigationButtons();
+        }
+
         function buildEssenceCards() {
             essGrid.innerHTML = '';
             const familyVal = familyFilter.value;
@@ -584,8 +592,7 @@ export async function renderLab(container, param) {
                     mixSelect.value = '';
                     fragranceName = '';
                     saveStateToStore();
-                    updateSelectionSummary();
-                    buildEssenceCards();
+                    updateUIAfterSelection();
                 };
                 essGrid.appendChild(card);
             });
@@ -650,7 +657,6 @@ export async function renderLab(container, param) {
                 warningDiv.style.display = 'none';
             }
         };
-        updateWarning();
 
         // Nav buttons
         const btns = document.createElement('div');
@@ -658,11 +664,23 @@ export async function renderLab(container, param) {
         const backBtn = createButton('Indietro', 'arrow_back', 'btn-secondary');
         backBtn.onclick = () => { currentStep = 0; saveStateToStore(); renderStep(); };
         btns.appendChild(backBtn);
-        if (selectedEssences.length > 0) {
-            const nextBtn = createButton('Avanti', 'arrow_forward', 'btn-primary');
-            nextBtn.onclick = () => { currentStep = 2; saveStateToStore(); renderStep(); };
-            btns.appendChild(nextBtn);
-        }
+        
+        const updateNavigationButtons = () => {
+            // Rimuovi il bottone Avanti se esiste
+            const existingNextBtn = btns.querySelector('[data-btn="next"]');
+            if (existingNextBtn) existingNextBtn.remove();
+            
+            // Aggiungi il bottone Avanti se ci sono essenze selezionate
+            if (selectedEssences.length > 0) {
+                const nextBtn = createButton('Avanti', 'arrow_forward', 'btn-primary');
+                nextBtn.setAttribute('data-btn', 'next');
+                nextBtn.onclick = () => { currentStep = 2; saveStateToStore(); renderStep(); };
+                btns.appendChild(nextBtn);
+            }
+        };
+        
+        updateWarning();
+        updateNavigationButtons();
         step.appendChild(btns);
         stepContent.appendChild(step);
     }
