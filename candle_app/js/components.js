@@ -36,11 +36,47 @@ export function createTitle(text, level = 2) {
 }
 
 // ===== BOTTONE =====
-export function createButton(label, icon = '', extraClass = '') {
-    console.log('[COMPONENTS] createButton called with:', { label, icon, extraClass });
+// Varianti supportate: 'primary', 'outline', 'danger', 'ghost'
+// Sizes: 'sm', 'lg'
+// Modificatori: 'full' (full width)
+export function createButton(label, icon = '', variant = 'outline') {
+    console.log('[COMPONENTS] createButton called with:', { label, icon, variant });
+    
+    // Parse variant string - può contenere multiple classi separate da spazio
+    // Es: "primary lg full", "outline sm", "danger"
+    const variants = variant.split(' ').filter(Boolean);
+    let classes = ['app-btn'];
+    
+    // Map legacy class names to new system
+    const legacyMap = {
+        'btn-primary': 'app-btn-primary app-btn-lg app-btn-full',
+        'btn-secondary': 'app-btn-outline',
+        'btn-card-edit': 'app-btn-outline',
+        'btn-card-delete': 'app-btn-danger',
+        'outline': 'app-btn-outline',
+        'outline-red': 'app-btn-danger'
+    };
+    
+    variants.forEach(v => {
+        if (legacyMap[v]) {
+            classes.push(...legacyMap[v].split(' '));
+        } else if (v === 'primary' || v === 'outline' || v === 'danger' || v === 'ghost') {
+            classes.push(`app-btn-${v}`);
+        } else if (v === 'sm' || v === 'lg') {
+            classes.push(`app-btn-${v}`);
+        } else if (v === 'full') {
+            classes.push('app-btn-full');
+        } else {
+            // Keep unknown classes for backward compatibility
+            classes.push(v);
+        }
+    });
+    
+    const className = [...new Set(classes)].join(' ');
+    
     const iconHtml = icon ? `<span class="material-symbols-outlined btn-icon">${icon}</span>` : '';
     const html = `
-        <button class="btn ${extraClass}">
+        <button class="${className}">
             ${iconHtml}
             <span class="btn-label">${label}</span>
         </button>
@@ -53,7 +89,7 @@ export function createButton(label, icon = '', extraClass = '') {
     try {
         console.log('[COMPONENTS] createButton using fallback');
         const btn = document.createElement('button');
-        btn.className = `btn ${extraClass}`.trim();
+        btn.className = className;
         if (icon) {
             const ic = document.createElement('span');
             ic.className = 'material-symbols-outlined btn-icon';
@@ -67,7 +103,7 @@ export function createButton(label, icon = '', extraClass = '') {
         console.log('[COMPONENTS] createButton fallback result:', btn);
         return btn;
     } catch (e) {
-        console.error('[COMPONENTS] createButton fallback failed', e, { label, icon, extraClass });
+        console.error('[COMPONENTS] createButton fallback failed', e, { label, icon, variant });
         return null;
     }
 }

@@ -592,7 +592,7 @@ export async function renderInventory(container) {
                 const btnModifica = createButton('Modifica', 'edit', 'btn-card-edit');
                 btnModifica.onclick = (e) => {
                     e.stopPropagation();
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: `lab` }));
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: `edit-blend:${item.id}` }));
                 };
 
                 const btnElimina = createButton('Elimina', 'delete', 'btn-card-delete');

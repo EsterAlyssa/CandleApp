@@ -49,7 +49,7 @@ export async function renderLab(container, param) {
     let selectedMold = savedWizard.selectedMold || null;
     let selectedWax = savedWizard.selectedWax || null;
     let selectedEssences = savedWizard.selectedEssences || [];
-    let fragrancePct = savedWizard.fragrancePct || 8;
+    let fragrancePct = savedWizard.fragrancePct || 8; // Default 8%, range 5-12%
     let candleName = savedWizard.candleName || '';
     let fragranceName = savedWizard.fragranceName || '';
     let fragranceNote = '';
@@ -490,14 +490,17 @@ export async function renderLab(container, param) {
 
         const updateSelectionSummary = () => {
             const usedNotes = getUsedNotes();
-            const headEss = selectedEssences.find(e => e.note_type === 'head');
+            // Permette multiple note di testa
+            const headEss = selectedEssences.filter(e => e.note_type === 'head');
             const heartEss = selectedEssences.find(e => e.note_type === 'heart');
             const baseEss = selectedEssences.find(e => e.note_type === 'base');
             
+            const headNames = headEss.length > 0 ? headEss.map(e => e.name).join(', ') : '(non selezionata)';
+            
             selectionSummary.innerHTML = `
-                <div class="selection-row ${headEss ? 'filled' : 'empty'}">
+                <div class="selection-row ${headEss.length > 0 ? 'filled' : 'empty'}">
                     <span class="note-label">Testa:</span> 
-                    <span class="note-value">${headEss ? headEss.name : '(non selezionata)'}</span>
+                    <span class="note-value">${headNames}</span>
                 </div>
                 <div class="selection-row ${heartEss ? 'filled' : 'empty'}">
                     <span class="note-label">Cuore:</span> 
@@ -540,8 +543,9 @@ export async function renderLab(container, param) {
 
                 const isSel = selectedEssences.some(se => se.id === e.id);
                 
-                // Verifica se la nota è già usata (una sola essenza per tipo di nota)
-                const isNoteUsed = noteType && usedNotes.has(noteType) && !isSel;
+                // Verifica se la nota è già usata
+                // NOTA: Le note di testa possono essere multiple, cuore e fondo sono singole
+                const isNoteUsed = noteType && noteType !== 'head' && usedNotes.has(noteType) && !isSel;
                 
                 // Verifica compatibilità famiglia
                 let familyStatus = 'compatible'; // 'compatible', 'harmony', 'contrast', 'incompatible'
@@ -642,9 +646,9 @@ export async function renderLab(container, param) {
 
         const slider = document.createElement('input');
         slider.type = 'range';
-        slider.min = '0';
-        slider.max = '15';
-        slider.value = String(fragrancePct);
+        slider.min = '5';
+        slider.max = '12';
+        slider.value = String(Math.max(5, Math.min(12, fragrancePct)));
         slider.oninput = (ev) => { 
             fragrancePct = parseInt(ev.target.value); 
             pctVal.textContent = `${fragrancePct}%`; 

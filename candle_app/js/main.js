@@ -18,6 +18,7 @@ import { renderProfile } from './views/profile.js';
 import { renderStock } from './views/stock.js';
 import { renderCandleDetail } from './views/candle_detail.js';
 import { renderCandlesByEssence } from './views/candles_by_essence.js';
+import { renderEditBlend } from './views/edit_blend.js';
 import * as Store from './store.js';
 
 // Load environment variables (if .env is served) before rendering.
@@ -145,7 +146,8 @@ const pageParentMap = {
     'lab': 'dashboard',
     'info': 'dashboard',
     'profile': 'dashboard',
-    'candle-detail': 'dashboard'
+    'candle-detail': 'dashboard',
+    'edit-blend': 'inventory'
 };
 
 // Funzione per ottenere la pagina precedente
@@ -322,6 +324,7 @@ async function navigateTo(rawInput, options = {}) {
             case 'info': await renderInfo(frame); break;
             case 'candle-detail': await renderCandleDetail(frame, param); break;
             case 'candles-by-essence': await renderCandlesByEssence(frame, param); break;
+            case 'edit-blend': await renderEditBlend(frame, param); break;
             case 'profile': await renderProfile(frame); break;
             default:
                 frame.innerHTML = '<h1>Pagina non trovata</h1>';

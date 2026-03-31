@@ -214,32 +214,158 @@ body.with-bars {
     font-size: 18px;
 }
 
+/* ============================================
+   UNIFIED BUTTON SYSTEM
+   Base: .app-btn
+   Variants: .app-btn-primary, .app-btn-outline, .app-btn-danger, .app-btn-ghost
+   Sizes: .app-btn-sm, .app-btn-lg
+   ============================================ */
+.app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--md-sys-color-on-surface);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.app-btn .material-symbols-outlined,
+.app-btn .btn-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* Primary - Filled button */
+.app-btn-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-color: var(--md-sys-color-primary);
+}
+
+.app-btn-primary:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Outline - Bordered button */
+.app-btn-outline {
+    background: transparent;
+    border-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-primary);
+}
+
+.app-btn-outline:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+/* Danger - Delete/destructive actions */
+.app-btn-danger {
+    background: var(--md-sys-color-error-container);
+    border-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-error);
+}
+
+.app-btn-danger:hover {
+    background: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+}
+
+/* Ghost - Minimal button */
+.app-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--md-sys-color-primary);
+}
+
+.app-btn-ghost:hover {
+    background: var(--md-sys-color-surface-container);
+}
+
+/* Sizes */
+.app-btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.app-btn-sm .material-symbols-outlined,
+.app-btn-sm .btn-icon {
+    font-size: 16px;
+}
+
+.app-btn-lg {
+    padding: 14px 24px;
+    font-size: 16px;
+    border-radius: 50px;
+}
+
+/* Full width variant */
+.app-btn-full {
+    width: 100%;
+}
+
+/* Disabled state */
+.app-btn:disabled,
+.app-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ============================================
+   LEGACY BUTTON ALIASES (for backward compatibility)
+   ============================================ */
 .btn-card-edit {
-    background: var(--md-sys-color-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
     border: 1px solid var(--md-sys-color-primary);
     color: var(--md-sys-color-primary);
-    padding: 6px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+}
+
+.btn-card-edit:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
 }
 
 .btn-card-delete {
-    background: var(--md-sys-color-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--md-sys-color-error-container);
     border: 1px solid var(--md-sys-color-error);
     color: var(--md-sys-color-error);
-    padding: 6px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+}
+
+.btn-card-delete:hover {
+    background: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
 }
 
 /* ============================================
@@ -2281,17 +2407,19 @@ input:checked + .toggle-slider:before {
 
 .items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 12px;
+    width: 100%;
 }
 
 .inv-section-title {
     font-size: 18px;
     color: var(--md-sys-color-on-surface-variant);
     font-weight: 700;
-    margin: 12px 0;
+    margin: 16px 0 12px 0;
     width: 100%;
     display: block;
+    text-align: left;
 }
 
 .lab-filter-bar {
@@ -2348,7 +2476,7 @@ input:checked + .toggle-slider:before {
 .essence-card {
     background: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
-    padding: 16px;
+    padding: 12px;
     border-radius: 16px;
     margin-bottom: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -2362,13 +2490,13 @@ input:checked + .toggle-slider:before {
 
 .essence-name {
     font-weight: 700;
-    font-size: 17px;
-    margin-bottom: 6px;
+    font-size: 16px;
+    margin-bottom: 4px;
     color: var(--title, #004D40);
 }
 
 .essence-meta {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--md-sys-color-on-secondary-container);
     opacity: 0.8;
     margin: 2px 0;
@@ -2376,8 +2504,8 @@ input:checked + .toggle-slider:before {
 
 .essence-stars {
     color: var(--md-sys-color-primary);
-    font-size: 18px;
-    margin: 8px 0;
+    font-size: 16px;
+    margin: 4px 0;
     letter-spacing: 2px;
 }
 
@@ -2561,29 +2689,44 @@ select::-ms-expand {
 .essence-side-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    min-width: 100px;
+    gap: 6px;
+    min-width: 90px;
 }
+
 .essence-side-actions button {
     border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 5px 10px;
+    font-size: 12px;
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 4px;
     justify-content: center;
     border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
+
 .essence-side-actions .outline {
     background: transparent;
-    border-color: var(--md-sys-color-primary, #00695c);
-    color: var(--md-sys-color-primary, #00695c);
+    border-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-primary);
 }
+
+.essence-side-actions .outline:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
 .essence-side-actions .outline-red {
     background: var(--md-sys-color-error-container);
     border-color: var(--md-sys-color-error);
     color: var(--md-sys-color-error);
+}
+
+.essence-side-actions .outline-red:hover {
+    background: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
 }
 
 /* Bottom actions for essence cards - row layout centered */
@@ -2609,12 +2752,19 @@ select::-ms-expand {
     border: 1px solid transparent;
     flex: 1;
     max-width: 130px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .essence-bottom-actions .outline {
     background: transparent;
     border-color: var(--md-sys-color-primary);
     color: var(--md-sys-color-primary);
+}
+
+.essence-bottom-actions .outline:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
 }
 
 .candle-top-section {
