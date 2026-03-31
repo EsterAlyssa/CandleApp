@@ -2540,20 +2540,24 @@ select::-ms-expand {
     flex-direction: column;
     padding: 12px;
     gap: 8px;
-    height: 100%;
+    height: auto;
+    min-height: unset;
 }
+
 .essence-top-section {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
 }
+
 .essence-info-col {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     flex: 1;
 }
+
 .essence-side-actions {
     display: flex;
     flex-direction: column;
@@ -2581,6 +2585,38 @@ select::-ms-expand {
     border-color: var(--md-sys-color-error);
     color: var(--md-sys-color-error);
 }
+
+/* Bottom actions for essence cards - row layout centered */
+.essence-bottom-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.essence-bottom-actions button {
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+    border: 1px solid transparent;
+    flex: 1;
+    max-width: 130px;
+}
+
+.essence-bottom-actions .outline {
+    background: transparent;
+    border-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-primary);
+}
+
 .candle-top-section {
     display: flex;
     gap: 12px;
@@ -2683,32 +2719,6 @@ select::-ms-expand {
     margin-top: 8px;
 }
 
-
-.lab-warning p {
-    margin: 0;
-    font-size: 14px;
-}
-
-/* Dark mode adjustments */
-.dark .note-badge.note-head {
-    background: #1565c0;
-    color: #e3f2fd;
-}
-.dark .note-badge.note-heart {
-    background: #c2185b;
-    color: #fce4ec;
-}
-.dark .note-badge.note-base {
-    background: #e65100;
-    color: #fff3e0;
-}
-.dark .lab-warning {
-    background: #3d3300;
-    border-color: #ffc107;
-    color: #ffc107;
-}
-
-
 /* ============================================
    LAB WIZARD - NUOVI STILI PER SELEZIONE ESSENZE
    ============================================ */
@@ -2722,9 +2732,11 @@ select::-ms-expand {
     font-size: 14px;
     color: var(--md-sys-color-on-surface-variant);
 }
+
 .lab-instruction ul {
     margin: 10px 0 10px 20px;
 }
+
 .lab-instruction li {
     margin-bottom: 4px;
 }
@@ -2739,19 +2751,23 @@ select::-ms-expand {
     padding: 16px;
     margin-bottom: 16px;
 }
+
 .selection-row {
     display: flex;
     align-items: center;
     gap: 8px;
 }
+
 .selection-row.filled .note-value {
     color: var(--md-sys-color-primary);
     font-weight: 600;
 }
+
 .selection-row.empty .note-value {
     color: var(--md-sys-color-on-surface-variant);
     font-style: italic;
 }
+
 .note-label {
     font-weight: 600;
     min-width: 60px;
@@ -2762,10 +2778,12 @@ select::-ms-expand {
     border-color: var(--md-sys-color-tertiary);
     background: var(--md-sys-color-tertiary-container);
 }
+
 .lab-select-card.contrast {
     border-color: var(--md-sys-color-secondary);
     background: var(--md-sys-color-secondary-container);
 }
+
 .lab-select-card.disabled {
     opacity: 0.4;
     pointer-events: none;
@@ -2778,34 +2796,41 @@ select::-ms-expand {
     gap: 4px;
     margin-top: 8px;
 }
+
 .note-badge {
     font-size: 10px;
     padding: 2px 8px;
     border-radius: 12px;
     font-weight: 600;
 }
+
 .note-badge.note-head {
     background: var(--md-sys-color-tertiary-container);
     color: var(--md-sys-color-on-tertiary-container);
 }
+
 .note-badge.note-heart {
     background: var(--md-sys-color-primary-container);
     color: var(--md-sys-color-on-primary-container);
 }
+
 .note-badge.note-base {
     background: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
 }
+
 .family-badge {
     font-size: 10px;
     padding: 2px 8px;
     border-radius: 12px;
     font-weight: 600;
 }
+
 .family-badge.family-harmony {
     background: var(--md-sys-color-tertiary-container);
     color: var(--md-sys-color-on-tertiary-container);
 }
+
 .family-badge.family-contrast {
     background: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
@@ -2820,6 +2845,7 @@ select::-ms-expand {
     margin: 16px 0;
     color: var(--md-sys-color-on-error-container);
 }
+
 .lab-warning p {
     margin: 0;
     font-size: 14px;

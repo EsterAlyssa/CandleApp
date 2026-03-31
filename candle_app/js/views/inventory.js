@@ -415,36 +415,10 @@ export async function renderInventory(container) {
                     infoCol.appendChild(starsEl);
                     topSection.appendChild(infoCol);
 
-                    // Action buttons (side)
+                    // Action buttons (side) - Modifica ed Elimina a destra, verticalmente
                     const sideActions = document.createElement('div');
                     sideActions.className = 'essence-side-actions';
 
-                    const btnAbb = document.createElement('button');
-                    btnAbb.className = 'outline';
-                    btnAbb.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">link</span>Abbinamenti';
-                    btnAbb.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `pairings:${item.family_id || item.id}` })); };
-                    
-                    const btnCandles = document.createElement('button');
-                    btnCandles.className = 'outline';
-                    btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">local_fire_department</span>In candele';
-                    btnCandles.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `candles-by-essence:${item.id}` })); };
-
-                    sideActions.appendChild(btnAbb);
-                    sideActions.appendChild(btnCandles);
-                    topSection.appendChild(sideActions);
-
-                    card.appendChild(topSection);
-
-                    const bottomActions = document.createElement('div');
-                    bottomActions.className = 'essence-side-actions';
-                    bottomActions.style.flexDirection = 'row';
-                    bottomActions.style.justifyContent = 'flex-start';
-
-                    const btnStock = document.createElement('button');
-                    btnStock.className = 'outline';
-                    btnStock.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">inventory</span>Stock';
-                    btnStock.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `stock:${item.id}` })); };
-                    
                     const btnEdit = document.createElement('button');
                     btnEdit.className = 'outline';
                     btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
@@ -452,8 +426,8 @@ export async function renderInventory(container) {
                     
                     const btnDelete = document.createElement('button');
                     btnDelete.className = 'outline';
-                    btnDelete.style.color = 'var(--md-sys-color-error, #b3261e)';
-                    btnDelete.style.borderColor = 'var(--md-sys-color-error, #b3261e)';
+                    btnDelete.style.color = 'var(--md-sys-color-error)';
+                    btnDelete.style.borderColor = 'var(--md-sys-color-error)';
                     btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
                     btnDelete.onclick = async (e) => {
                         e.stopPropagation();
@@ -485,9 +459,34 @@ export async function renderInventory(container) {
                         }
                     };
 
+                    sideActions.appendChild(btnEdit);
+                    sideActions.appendChild(btnDelete);
+                    topSection.appendChild(sideActions);
+
+                    card.appendChild(topSection);
+
+                    // Bottom actions - Stock, Abbinamenti, In candele su una riga, centrati
+                    const bottomActions = document.createElement('div');
+                    bottomActions.className = 'essence-bottom-actions';
+
+                    const btnStock = document.createElement('button');
+                    btnStock.className = 'outline';
+                    btnStock.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">inventory</span>Stock';
+                    btnStock.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `stock:${item.id}` })); };
+
+                    const btnAbb = document.createElement('button');
+                    btnAbb.className = 'outline';
+                    btnAbb.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">link</span>Abbinamenti';
+                    btnAbb.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `pairings:${item.family_id || item.id}` })); };
+                    
+                    const btnCandles = document.createElement('button');
+                    btnCandles.className = 'outline';
+                    btnCandles.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">local_fire_department</span>In candele';
+                    btnCandles.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `candles-by-essence:${item.id}` })); };
+
                     bottomActions.appendChild(btnStock);
-                    bottomActions.appendChild(btnEdit);
-                    bottomActions.appendChild(btnDelete);
+                    bottomActions.appendChild(btnAbb);
+                    bottomActions.appendChild(btnCandles);
                     
                     card.appendChild(bottomActions);
                     card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:Essenze&id=${item.id}` }));

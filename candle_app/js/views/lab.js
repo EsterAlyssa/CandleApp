@@ -615,16 +615,26 @@ export async function renderLab(container, param) {
         pctVal.textContent = `${fragrancePct}%`;
         step.appendChild(pctVal);
 
-        // Info
+        // Info - FORMULA CORRETTA:
+        // x = capacità stampo (in acqua)
+        // y = cera da sciogliere = x × wax_conversion_factor (fisso)
+        // z = fragranza = y × fragrancePct / 100
         const infoDiv = document.createElement('div');
         infoDiv.className = 'lab-calc-info';
         
         const updateInfo = () => {
-            if (selectedMold) {
+            if (selectedMold && selectedWax) {
                 const cap = selectedMold.quantity_g || 100;
-                const waxAmt = Math.round(cap * (1 - fragrancePct / 100));
-                const fragAmt = Math.round(cap * fragrancePct / 100);
-                infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong></p><p>Fragranza da usare: <strong>${fragAmt}g</strong> (${fragrancePct}%)</p>`;
+                // Costante di conversione della cera (da tech_data o default 0.90)
+                const waxFactor = selectedWax.tech_data?.conversion_factor || 0.90;
+                const waxAmt = Math.round(cap * waxFactor);
+                const fragAmt = Math.round(waxAmt * fragrancePct / 100);
+                infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong> (fisso)</p><p>Fragranza da aggiungere: <strong>${fragAmt}g</strong> (${fragrancePct}% della cera)</p>`;
+            } else if (selectedMold) {
+                const cap = selectedMold.quantity_g || 100;
+                const waxAmt = Math.round(cap * 0.90);
+                const fragAmt = Math.round(waxAmt * fragrancePct / 100);
+                infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong> (fisso)</p><p>Fragranza da aggiungere: <strong>${fragAmt}g</strong> (${fragrancePct}% della cera)</p>`;
             }
         };
         updateInfo();
@@ -697,9 +707,14 @@ export async function renderLab(container, param) {
         resH.textContent = 'Candela risultante';
         step.appendChild(resH);
 
+        // FORMULA CORRETTA:
+        // x = capacità stampo (in acqua)
+        // y = cera da sciogliere = x × wax_conversion_factor (fisso)
+        // z = fragranza = y × fragrancePct / 100
         const cap = selectedMold?.quantity_g || 100;
-        const waxAmt = Math.round(cap * (1 - fragrancePct / 100));
-        const fragAmt = Math.round(cap * fragrancePct / 100);
+        const waxFactor = selectedWax?.tech_data?.conversion_factor || 0.90;
+        const waxAmt = Math.round(cap * waxFactor);
+        const fragAmt = Math.round(waxAmt * fragrancePct / 100);
 
         // Distribute fragrance grams by note type (head/heart/base) using approx ratios 25/50/25
         const noteRatios = { head: 0.25, heart: 0.5, base: 0.25 };
@@ -738,8 +753,8 @@ export async function renderLab(container, param) {
             <h3>${candleName || defaultCandleName || 'Candela'}</h3>
             <div class="recipe-section"><h4>Stampo</h4><p>${selectedMold?.name || '—'}</p></div>
             <div class="recipe-section"><h4>Capacità stampo</h4><p class="recipe-amount">${cap}g</p></div>
-            <div class="recipe-section"><h4>Cera da sciogliere</h4><p>${selectedWax?.name || '—'}: <strong>${waxAmt}g</strong></p></div>
-            <div class="recipe-section"><h4>Fragranza da usare</h4><p><strong>${fragAmt}g</strong> (${fragrancePct}%)</p></div>
+            <div class="recipe-section"><h4>Cera da sciogliere</h4><p>${selectedWax?.name || '—'}: <strong>${waxAmt}g</strong> (fisso)</p></div>
+            <div class="recipe-section"><h4>Fragranza da aggiungere</h4><p><strong>${fragAmt}g</strong> (${fragrancePct}% della cera)</p></div>
             <div class="recipe-section"><h4>Ingredienti</h4><p>${ingredientsLines.join(', ') || '—'}</p></div>
             <div class="recipe-section"><h4>Famiglia</h4><p>${selectedEssences.map(e => e.family_name).filter(Boolean).join(', ') || '—'}</p></div>
         `;
