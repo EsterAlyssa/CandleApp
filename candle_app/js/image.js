@@ -72,12 +72,6 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   // Always request a delete token. This allows edits/deletes to remove old assets.
   form.append('return_delete_token', 'true');
 
-  // Avoid Cloudinary generating a unique name (we control the public_id).
-  form.append('unique_filename', 'false');
-
-  // Overwrite existing public_id if needed for same-name updates.
-  form.append('overwrite', 'true');
-
   // Use a stable public_id based on category and name, with timestamp suffix to avoid collisions.
   form.append('public_id', uniqueImageRef);
 
