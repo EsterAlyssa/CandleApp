@@ -16,11 +16,15 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const publicId = body?.public_id;
 
+    console.log('[API] cloudinary-delete request', { publicId });
+
     if (!publicId) {
       return res.status(400).json({ error: 'Missing public_id' });
     }
 
     const result = await cloudinary.uploader.destroy(publicId, { invalidate: true });
+    console.log('[API] cloudinary-delete result', { publicId, result });
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('[API] cloudinary-delete failed', error);

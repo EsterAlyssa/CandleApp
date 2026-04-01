@@ -279,7 +279,7 @@ export async function renderInventory(container) {
                         alert('Errore: ' + error.message);
                     } else {
                         if (cloudError) {
-                            alert('Elemento eliminato, ma non è stato possibile cancellare l\'immagine da Cloudinary.');
+                            alert('Elemento eliminato, ma non è stato possibile cancellare l\'immagine da Cloudinary: ' + (cloudError.message || cloudError));
                         }
                         loadList(activeTab);
                     }
