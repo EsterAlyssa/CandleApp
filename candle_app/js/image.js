@@ -60,17 +60,28 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     cloudName: config.cloudName
   });
 
-  const imageRef = buildImageRef(category, nameHint || file.name);
+  const baseImageRef = buildImageRef(category, nameHint || file.name);
+  const uniqueImageRef = `${baseImageRef}_${Date.now()}`;
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', config.uploadPreset);
   if (config.folder) {
     form.append('folder', config.folder);
   }
-  // Set public_id so Cloudinary saves it with predictable name (no version prefix)
-  form.append('public_id', imageRef);
 
-  console.log('[Cloudinary] Uploading...', { imageRef, fileName: file.name, fileSize: file.size });
+  // Always request a delete token. This allows edits/deletes to remove old assets.
+  form.append('return_delete_token', 'true');
+
+  // Avoid Cloudinary generating a unique name (we control the public_id).
+  form.append('unique_filename', 'false');
+
+  // Overwrite existing public_id if needed for same-name updates.
+  form.append('overwrite', 'true');
+
+  // Use a stable public_id based on category and name, with timestamp suffix to avoid collisions.
+  form.append('public_id', uniqueImageRef);
+
+  console.log('[Cloudinary] Uploading...', { imageRef: uniqueImageRef, fileName: file.name, fileSize: file.size });
 
   try {
     const resp = await fetch(config.uploadUrl, {
@@ -102,15 +113,15 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     // Cloudinary returns a `public_id`. When uploading with a `folder`, the
     // returned value is typically "<folder>/<public_id>". We store only the
     // part after the configured folder so that `baseUrl + imageRef` stays valid.
-    let publicId = json.public_id || imageRef;
+    let publicId = json.public_id || uniqueImageRef;
     const folderPrefix = config.folder ? `${config.folder.replace(/\/+$/, '')}/` : '';
     if (folderPrefix && publicId.startsWith(folderPrefix)) {
       publicId = publicId.slice(folderPrefix.length);
     }
 
-    const resolvedImageRef = publicId || imageRef;
-    if (resolvedImageRef !== imageRef) {
-      console.warn('[Cloudinary] imageRef adjusted', { requested: imageRef, returned: publicId, stored: resolvedImageRef });
+    const resolvedImageRef = publicId || uniqueImageRef;
+    if (resolvedImageRef !== uniqueImageRef) {
+      console.warn('[Cloudinary] imageRef adjusted', { requested: uniqueImageRef, returned: publicId, stored: resolvedImageRef });
     }
 
     const cloudinaryPublicId = json.public_id || json.publicId || null;
