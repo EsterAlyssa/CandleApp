@@ -58,9 +58,14 @@ export async function renderInventory(container) {
         // Add button
         const addBtn = createButton('Aggiungi un elemento', 'add', 'btn-primary');
         addBtn.onclick = () => {
-            if (activeTab === 'Candele' || activeTab === 'Fragranze') {
+            if (activeTab === 'Candele') {
+                // Candele: apre il wizard completo
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
+            } else if (activeTab === 'Fragranze') {
+                // Mix usati: apre edit-blend senza ID (modalità creazione)
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'edit-blend' }));
             } else {
+                // Cere, Stampi, Essenze: apre add-essence
                 window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${activeTab}` }));
             }
         };
@@ -177,10 +182,8 @@ export async function renderInventory(container) {
 
         // ===== CERE: simple list =====
         function renderWaxList(items) {
-            const heading = document.createElement('h3');
-            heading.className = 'inv-section-title';
-            heading.textContent = 'Cere presenti';
-            listContainer.appendChild(heading);
+            // Add margin-top to create space between add button and cards
+            listContainer.style.marginTop = '20px';
 
             items.forEach(item => {
                 const row = document.createElement('div');
@@ -286,10 +289,8 @@ export async function renderInventory(container) {
 
         // ===== ESSENZE: detailed cards =====
         function renderEssenceList(items) {
-            const heading = document.createElement('h3');
-            heading.className = 'inv-section-title';
-            heading.textContent = 'Essenze disponibili';
-            listContainer.appendChild(heading);
+            // Add margin-top to create space between add button and cards
+            listContainer.style.marginTop = '20px';
 
             const filterBar = document.createElement('div');
             filterBar.className = 'lab-filter-bar';
@@ -499,10 +500,8 @@ export async function renderInventory(container) {
         }
 
         function renderFragranzeList(items) {
-            const heading = document.createElement('h3');
-            heading.className = 'inv-section-title';
-            heading.textContent = 'Mix usati';
-            listContainer.appendChild(heading);
+            // Add margin-top to create space between add button and cards
+            listContainer.style.marginTop = '20px';
 
             const grid = document.createElement('div');
             grid.className = 'items-grid';
@@ -621,10 +620,8 @@ export async function renderInventory(container) {
         }
 
         async function renderCandeleList(items) {
-            const heading = document.createElement('h3');
-            heading.className = 'inv-section-title';
-            heading.textContent = 'Candele fatte';
-            listContainer.appendChild(heading);
+            // Add margin-top to create space between add button and cards
+            listContainer.style.marginTop = '20px';
 
             const grid = document.createElement('div');
             grid.className = 'items-grid';

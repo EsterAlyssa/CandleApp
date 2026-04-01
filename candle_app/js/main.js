@@ -301,6 +301,15 @@ async function navigateTo(rawInput, options = {}) {
 
     await updateTopBarFor(pageId, session);
 
+    // Show/hide bottom navigation based on page
+    if (bottomNav) {
+        if (pageId === 'landing' || pageId === 'login' || pageId === 'register') {
+            bottomNav.style.display = 'none';
+        } else {
+            bottomNav.style.display = '';
+        }
+    }
+
     // Routing delle viste
     try {
         // Mostra loading nella UI (ad es. sulla top bar)

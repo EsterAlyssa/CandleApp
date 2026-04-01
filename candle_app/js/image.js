@@ -45,18 +45,19 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   if (!config) {
     const base = getCloudinaryBaseUrl();
     console.error('[Cloudinary] invalid config. base:', base);
-    throw new Error(`Cloudinary configuration missing/invalid (base="${base}"). Check NEXT_PUBLIC_CLOUDINARY_BASE_URL.`);
+    throw new Error(`Cloudinary configuration missing/invalid (base="${base}"). Check NEXT_PUBLIC_CLOUDINARY_BASE_URL in .env or env.json`);
   }
   if (!config.uploadPreset) {
     console.error('[Cloudinary] missing unsigned preset. config:', config);
-    throw new Error(`Cloudinary unsigned upload preset is not configured (NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET). current base="${getCloudinaryBaseUrl()}"`);
+    throw new Error(`Cloudinary unsigned upload preset is not configured (NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET). Check .env or env.json file. current base="${getCloudinaryBaseUrl()}"`);
   }
 
   // Debug: log config values to help diagnose preset issues (no secret is logged).
   console.debug('[Cloudinary] upload config', {
     uploadUrl: config.uploadUrl,
     uploadPreset: config.uploadPreset,
-    folder: config.folder
+    folder: config.folder,
+    cloudName: config.cloudName
   });
 
   const imageRef = buildImageRef(category, nameHint || file.name);
@@ -69,37 +70,60 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   // Set public_id so Cloudinary saves it with predictable name (no version prefix)
   form.append('public_id', imageRef);
 
-  const resp = await fetch(config.uploadUrl, {
-    method: 'POST',
-    body: form
-  });
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Cloudinary upload failed: ${resp.status} ${resp.statusText} ${text}`);
+  console.log('[Cloudinary] Uploading...', { imageRef, fileName: file.name, fileSize: file.size });
+
+  try {
+    const resp = await fetch(config.uploadUrl, {
+      method: 'POST',
+      body: form
+    });
+    
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error('[Cloudinary] Upload failed response:', { status: resp.status, statusText: resp.statusText, body: text });
+      
+      // Parse error for better diagnostics
+      let errorMsg = `Cloudinary upload failed: ${resp.status} ${resp.statusText}`;
+      try {
+        const errorJson = JSON.parse(text);
+        if (errorJson.error && errorJson.error.message) {
+          errorMsg += ` - ${errorJson.error.message}`;
+        }
+      } catch (e) {
+        errorMsg += ` - ${text.slice(0, 200)}`;
+      }
+      
+      throw new Error(errorMsg);
+    }
+    
+    const json = await resp.json();
+    console.log('[Cloudinary] Upload successful:', { public_id: json.public_id, secure_url: json.secure_url });
+
+    // Cloudinary returns a `public_id`. When uploading with a `folder`, the
+    // returned value is typically "<folder>/<public_id>". We store only the
+    // part after the configured folder so that `baseUrl + imageRef` stays valid.
+    let publicId = json.public_id || imageRef;
+    const folderPrefix = config.folder ? `${config.folder.replace(/\/+$/, '')}/` : '';
+    if (folderPrefix && publicId.startsWith(folderPrefix)) {
+      publicId = publicId.slice(folderPrefix.length);
+    }
+
+    const resolvedImageRef = publicId || imageRef;
+    if (resolvedImageRef !== imageRef) {
+      console.warn('[Cloudinary] imageRef adjusted', { requested: imageRef, returned: publicId, stored: resolvedImageRef });
+    }
+
+    const cloudinaryPublicId = json.public_id || json.publicId || null;
+
+    return {
+      imageRef: resolvedImageRef,
+      secureUrl: json.secure_url || buildImageUrl(resolvedImageRef),
+      cloudinaryPublicId
+    };
+  } catch (error) {
+    console.error('[Cloudinary] Upload error:', error);
+    throw error;
   }
-  const json = await resp.json();
-
-  // Cloudinary returns a `public_id`. When uploading with a `folder`, the
-  // returned value is typically "<folder>/<public_id>". We store only the
-  // part after the configured folder so that `baseUrl + imageRef` stays valid.
-  let publicId = json.public_id || imageRef;
-  const folderPrefix = config.folder ? `${config.folder.replace(/\/+$/, '')}/` : '';
-  if (folderPrefix && publicId.startsWith(folderPrefix)) {
-    publicId = publicId.slice(folderPrefix.length);
-  }
-
-  const resolvedImageRef = publicId || imageRef;
-  if (resolvedImageRef !== imageRef) {
-    console.warn('[Cloudinary] imageRef adjusted', { requested: imageRef, returned: publicId, stored: resolvedImageRef });
-  }
-
-  const cloudinaryPublicId = json.public_id || json.publicId || null;
-
-  return {
-    imageRef: resolvedImageRef,
-    secureUrl: json.secure_url || buildImageUrl(resolvedImageRef),
-    cloudinaryPublicId
-  };
 }
 
 export async function deleteImageFromCloudinary(deleteToken) {

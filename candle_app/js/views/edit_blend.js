@@ -9,10 +9,12 @@ export async function renderEditBlend(container, blendId) {
     console.log('[VIEW] Rendering EditBlend...', blendId);
     container.innerHTML = '';
 
+    const isCreating = !blendId;
+
     const wrapper = document.createElement('div');
     wrapper.className = 'lab-wrapper';
 
-    const title = createTitle('Modifica Mix', 2);
+    const title = createTitle(isCreating ? 'Crea nuovo Mix' : 'Modifica Mix', 2);
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
@@ -21,22 +23,26 @@ export async function renderEditBlend(container, blendId) {
     const userId = user?.id;
 
     if (!userId) {
-        wrapper.innerHTML = '<p class="error-text">Devi essere loggato per modificare un mix.</p>';
+        wrapper.innerHTML = '<p class="error-text">Devi essere loggato per creare/modificare un mix.</p>';
         container.appendChild(wrapper);
         return;
     }
 
-    // --- Fetch blend data ---
-    const { data: blend, error: blendError } = await supabase
-        .from('blends')
-        .select('*')
-        .eq('id', blendId)
-        .maybeSingle();
+    // --- Fetch blend data (if editing) ---
+    let blend = null;
+    if (!isCreating) {
+        const { data: blendData, error: blendError } = await supabase
+            .from('blends')
+            .select('*')
+            .eq('id', blendId)
+            .maybeSingle();
 
-    if (blendError || !blend) {
-        wrapper.innerHTML = '<p class="error-text">Mix non trovato.</p>';
-        container.appendChild(wrapper);
-        return;
+        if (blendError || !blendData) {
+            wrapper.innerHTML = '<p class="error-text">Mix non trovato.</p>';
+            container.appendChild(wrapper);
+            return;
+        }
+        blend = blendData;
     }
 
     // --- Fetch essences and families ---
@@ -53,27 +59,29 @@ export async function renderEditBlend(container, blendId) {
 
     // --- State ---
     let selectedEssences = [];
-    let fragranceName = blend.name || '';
+    let fragranceName = blend?.name || '';
 
-    // Pre-populate selected essences from blend
-    const loadEssenceById = (id, noteType) => {
-        if (!id) return;
-        const ess = essences.find(e => e.id === id);
-        if (ess) {
-            const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
-            selectedEssences.push({
-                id: ess.id,
-                name: ess.name,
-                family_name: famName,
-                family_id: ess.family_id,
-                note_type: noteType
-            });
-        }
-    };
+    // Pre-populate selected essences from blend (only if editing)
+    if (blend) {
+        const loadEssenceById = (id, noteType) => {
+            if (!id) return;
+            const ess = essences.find(e => e.id === id);
+            if (ess) {
+                const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
+                selectedEssences.push({
+                    id: ess.id,
+                    name: ess.name,
+                    family_name: famName,
+                    family_id: ess.family_id,
+                    note_type: noteType
+                });
+            }
+        };
 
-    loadEssenceById(blend.head_scent_id, 'head');
-    loadEssenceById(blend.heart_scent_id, 'heart');
-    loadEssenceById(blend.base_scent_id, 'base');
+        loadEssenceById(blend.head_scent_id, 'head');
+        loadEssenceById(blend.heart_scent_id, 'heart');
+        loadEssenceById(blend.base_scent_id, 'base');
+    }
 
     // --- Helpers ---
     const formatNoteType = (nt) => {
@@ -312,7 +320,7 @@ export async function renderEditBlend(container, blendId) {
     };
     btns.appendChild(backBtn);
 
-    const saveBtn = createButton('Salva modifiche', 'save', 'primary lg');
+    const saveBtn = createButton(isCreating ? 'Crea Mix' : 'Salva modifiche', 'save', 'primary lg');
     saveBtn.onclick = async () => {
         if (selectedEssences.length === 0) {
             alert('Seleziona almeno un\'essenza.');
@@ -328,22 +336,34 @@ export async function renderEditBlend(container, blendId) {
         const resultingFamilyId = Object.entries(familiesMap).find(([id, name]) => name === resultingFamily)?.[0] || null;
 
         // Store all head notes in tech_data for future reference
-        const techData = blend.tech_data || {};
+        const techData = blend?.tech_data || {};
         techData.all_head_notes = headEssences.map(e => ({ id: e.id, name: e.name }));
 
-        const { error } = await supabase.from('blends').update({
+        const blendData = {
             name: fragranceName || 'Mix senza nome',
             head_scent_id: headEssences[0]?.id || null,
             heart_scent_id: heartEss?.id || null,
             base_scent_id: baseEss?.id || null,
             resulting_family_id: resultingFamilyId,
-            tech_data: techData
-        }).eq('id', blendId);
+            tech_data: techData,
+            user_id: userId
+        };
+
+        let error;
+        if (isCreating) {
+            // INSERT new blend
+            const result = await supabase.from('blends').insert([blendData]);
+            error = result.error;
+        } else {
+            // UPDATE existing blend
+            const result = await supabase.from('blends').update(blendData).eq('id', blendId);
+            error = result.error;
+        }
 
         if (error) {
             alert('Errore nel salvataggio: ' + error.message);
         } else {
-            alert('Mix aggiornato con successo!');
+            alert(isCreating ? 'Mix creato con successo!' : 'Mix aggiornato con successo!');
             window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
         }
     };
