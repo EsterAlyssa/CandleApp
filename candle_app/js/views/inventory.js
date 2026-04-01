@@ -103,7 +103,7 @@ export async function renderInventory(container) {
 
                 if (listContainer.classList.contains('items-grid')) {
                     listContainer.style.display = 'grid';
-                    listContainer.style.gridTemplateColumns = `repeat(${maxCards}, minmax(${minWidth}px, 1fr))`;
+                    listContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minWidth}px, 1fr))`;
                     listContainer.style.gap = `${dynamicGap}px`;
                     listContainer.style.paddingLeft = `${dynamicGap}px`;
                     listContainer.style.paddingRight = `${dynamicGap}px`;

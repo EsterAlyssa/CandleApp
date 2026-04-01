@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
-import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary } from '../image.js';
+import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary } from '../image.js?v=4';
 
 export async function renderAddEssence(container, categoryParam) {
     console.log('[VIEW] Rendering Add Essence, categoryParam:', categoryParam);
@@ -119,6 +119,23 @@ export async function renderAddEssence(container, categoryParam) {
 
         wrapper.appendChild(imgGroup);
 
+        // Debug Cloudinary button (temporary)
+        if (!isEdit) {
+            const debugBtn = createButton('🐛 Test Cloudinary Config', '', 'outline');
+            debugBtn.onclick = async () => {
+                const { getCloudinaryUploadConfig } = await import('../env.js?v=4');
+                const config = getCloudinaryUploadConfig();
+                console.log('=== CLOUDINARY DEBUG ===');
+                console.log('Config:', config);
+                console.log('uploadUrl:', config?.uploadUrl);
+                console.log('uploadPreset:', config?.uploadPreset);
+                console.log('folder:', config?.folder);
+                console.log('cloudName:', config?.cloudName);
+                alert(`Cloudinary Config:\n- Cloud Name: ${config?.cloudName || 'MISSING'}\n- Upload Preset: ${config?.uploadPreset || 'MISSING'}\n- Folder: ${config?.folder || 'MISSING'}\n- Upload URL: ${config?.uploadUrl || 'MISSING'}\n\nCheck console for full details.`);
+            };
+            wrapper.appendChild(debugBtn);
+        }
+
         // Supplier
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
         wrapper.appendChild(supplierInput);
@@ -232,8 +249,8 @@ export async function renderAddEssence(container, categoryParam) {
         const cancelBtn = createButton('Annulla', 'close', 'btn-secondary');
         cancelBtn.style.flex = '1';
         cancelBtn.onclick = () => {
-            if (isEdit && editId) window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory-detail:' + editId }));
-            else window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
+            // Always go back to inventory, regardless of edit/create mode
+            window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
         };
 
         const btnContainer = document.createElement('div');

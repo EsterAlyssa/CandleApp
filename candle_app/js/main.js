@@ -18,7 +18,7 @@ import { renderProfile } from './views/profile.js';
 import { renderStock } from './views/stock.js';
 import { renderCandleDetail } from './views/candle_detail.js';
 import { renderCandlesByEssence } from './views/candles_by_essence.js';
-import { renderEditBlend } from './views/edit_blend.js';
+import { renderEditBlend } from './views/edit_blend.js?v=4';
 import * as Store from './store.js';
 
 // Load environment variables (if .env is served) before rendering.

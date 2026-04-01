@@ -335,9 +335,9 @@ export async function renderEditBlend(container, blendId) {
         const resultingFamily = computeFragranceFamily();
         const resultingFamilyId = Object.entries(familiesMap).find(([id, name]) => name === resultingFamily)?.[0] || null;
 
-        // Store all head notes in tech_data for future reference
-        const techData = blend?.tech_data || {};
-        techData.all_head_notes = headEssences.map(e => ({ id: e.id, name: e.name }));
+        // Note: blends table doesn't have tech_data column (only inventory has it)
+        // For multiple head notes, we store only the first one in head_scent_id
+        // Additional head notes can be tracked in a separate junction table if needed
 
         const blendData = {
             name: fragranceName || 'Mix senza nome',
@@ -345,7 +345,6 @@ export async function renderEditBlend(container, blendId) {
             heart_scent_id: heartEss?.id || null,
             base_scent_id: baseEss?.id || null,
             resulting_family_id: resultingFamilyId,
-            tech_data: techData,
             user_id: userId
         };
 
