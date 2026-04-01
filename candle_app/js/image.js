@@ -69,9 +69,8 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     form.append('folder', config.folder);
   }
 
-  // Always request a delete token. This allows edits/deletes to remove old assets.
-  form.append('return_delete_token', 'true');
-
+  // NOTE: unsigned upload does not allow return_delete_token.
+  // Cloudinary provides delete_token only for signed uploads; with unsigned we must rely on public_id tracking.
   // Use a stable public_id based on category and name, with timestamp suffix to avoid collisions.
   form.append('public_id', uniqueImageRef);
 
