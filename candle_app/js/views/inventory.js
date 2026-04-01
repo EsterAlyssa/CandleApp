@@ -256,6 +256,7 @@ export async function renderInventory(container) {
                     const deleteToken = item?.tech_data?.cloudinary_delete_token;
                     const publicId = item?.tech_data?.cloudinary_public_id;
                     let cloudError = null;
+                    console.log('[INVENTORY] deleting item image', { itemId: item.id, deleteToken, publicId });
 
                     if (deleteToken) {
                         try {

@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
-import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary } from '../image.js?v=5';
+import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary, deleteImageByPublicId } from '../image.js?v=5';
 import * as Store from '../store.js';
 
 export async function renderAddEssence(container, categoryParam) {
@@ -174,6 +174,7 @@ export async function renderAddEssence(container, categoryParam) {
             if (selectedImageFile) {
                 const existingDeleteToken = existingTechData?.cloudinary_delete_token;
                 const existingPublicId = existingTechData?.cloudinary_public_id;
+                console.log('[ADD_ESSENCE] existing image delete check', { existingDeleteToken, existingPublicId });
 
                 if (existingDeleteToken) {
                     try {
