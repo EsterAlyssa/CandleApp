@@ -25,6 +25,13 @@ export default async function handler(req, res) {
     const result = await cloudinary.uploader.destroy(publicId, { invalidate: true });
     console.log('[API] cloudinary-delete result', { publicId, result });
 
+    if (result.result === 'not found' && process.env.CLOUDINARY_FOLDER) {
+      const foldered = `${process.env.CLOUDINARY_FOLDER.replace(/\/+$/, '')}/${publicId}`;
+      console.log('[API] cloudinary-delete fallback with folder publicId', { foldered });
+      const fallbackResult = await cloudinary.uploader.destroy(foldered, { invalidate: true });
+      return res.status(200).json({ fallback: true, result: fallbackResult });
+    }
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('[API] cloudinary-delete failed', error);

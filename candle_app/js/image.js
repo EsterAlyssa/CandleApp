@@ -103,21 +103,23 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     const json = await resp.json();
     console.log('[Cloudinary] Upload successful:', { public_id: json.public_id, secure_url: json.secure_url });
 
-    // Cloudinary returns a `public_id`. When uploading with a `folder`, the
-    // returned value is typically "<folder>/<public_id>". We store only the
-    // part after the configured folder so that `baseUrl + imageRef` stays valid.
-    let publicId = json.public_id || uniqueImageRef;
+    // Cloudinary returns the final public_id (with folder prefix, if set).
+    const returnedPublicId = json.public_id || json.publicId || uniqueImageRef;
+
+    // For frontend URL, we keep the part after the configured folder (same behavior as before).
+    let urlPublicId = returnedPublicId;
     const folderPrefix = config.folder ? `${config.folder.replace(/\/+$/, '')}/` : '';
-    if (folderPrefix && publicId.startsWith(folderPrefix)) {
-      publicId = publicId.slice(folderPrefix.length);
+    if (folderPrefix && urlPublicId.startsWith(folderPrefix)) {
+      urlPublicId = urlPublicId.slice(folderPrefix.length);
     }
 
-    const resolvedImageRef = publicId || uniqueImageRef;
+    const resolvedImageRef = urlPublicId || uniqueImageRef;
+
     if (resolvedImageRef !== uniqueImageRef) {
-      console.warn('[Cloudinary] imageRef adjusted', { requested: uniqueImageRef, returned: publicId, stored: resolvedImageRef });
+      console.warn('[Cloudinary] imageRef adjusted', { requested: uniqueImageRef, returned: returnedPublicId, stored: resolvedImageRef });
     }
 
-    const cloudinaryPublicId = json.public_id || json.publicId || null;
+    const cloudinaryPublicId = returnedPublicId;
     const deleteToken = json.delete_token || null;
     const version = json.version || null;
 
