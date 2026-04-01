@@ -151,14 +151,28 @@ export async function deleteImageFromCloudinary(deleteToken) {
     body: JSON.stringify({ token: deleteToken })
   });
 
+  return resp.json();
+}
+
+export async function deleteImageByPublicId(publicId) {
+  if (!publicId) {
+    throw new Error('Missing Cloudinary public_id');
+  }
+
+  // This endpoint must be implemented as a secure server-side function (Vercel, Supabase Edge, etc.)
+  const resp = await fetch('/api/cloudinary-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ public_id: publicId })
+  });
+
   if (!resp.ok) {
     const text = await resp.text();
-    throw new Error(`Cloudinary delete failed: ${resp.status} ${resp.statusText} ${text}`);
+    throw new Error(`Cloudinary public_id delete failed: ${resp.status} ${resp.statusText} ${text}`);
   }
 
   return resp.json();
 }
-
 
 export function buildImageRef(category, originalNameOrId) {
   const cat = (category || 'item').toString().trim().toLowerCase();

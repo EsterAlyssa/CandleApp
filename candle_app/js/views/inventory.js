@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
-import { getImageUrlFromRecord, deleteImageFromCloudinary } from '../image.js?v=5';
+import { getImageUrlFromRecord, deleteImageFromCloudinary, deleteImageByPublicId } from '../image.js?v=5';
 import * as Store from '../store.js';
 
 export async function renderInventory(container) {
@@ -265,7 +265,12 @@ export async function renderInventory(container) {
                             cloudError = err;
                         }
                     } else if (publicId) {
-                        console.warn('[INVENTORY] No delete token; image remains in Cloudinary until backend cleanup', { publicId });
+                        try {
+                            await deleteImageByPublicId(publicId);
+                        } catch (err) {
+                            console.warn('[INVENTORY] Cloudinary delete by public_id failed', err);
+                            cloudError = err;
+                        }
                     }
 
                     const { error } = await supabase.from('inventory').delete().eq('id', item.id);
