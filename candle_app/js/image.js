@@ -38,6 +38,42 @@ export function buildImageUrl(imageRef) {
   return `${normalizedBase}${resolvedRef}`;
 }
 
+export function normalizeCloudinaryPublicId(input) {
+  if (!input) return null;
+  let id = `${input}`.trim();
+
+  // Handle legacy strings like "category :: publicId".
+  if (id.includes('::')) {
+    const parts = id.split('::').map((part) => part.trim()).filter(Boolean);
+    id = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+  }
+
+  // Be robust to full URLs.
+  try {
+    const parsed = new URL(id);
+    // Example: https://res.cloudinary.com/<cloud>/image/upload/folder/abc123.jpg
+    const path = parsed.pathname.replace(/^\/+/, '');
+    const parts = path.split('/');
+    // Remove known Cloudinary path segments if present.
+    const uploadIndex = parts.findIndex((p) => p === 'upload');
+    if (uploadIndex !== -1 && uploadIndex + 1 < parts.length) {
+      id = parts.slice(uploadIndex + 1).join('/');
+    } else {
+      id = parts.join('/');
+    }
+  } catch (e) {
+    // Not a URL, ignore.
+  }
+
+  // Strip common extension from public_id if present.
+  const extMatch = id.match(/\.(jpg|jpeg|png|webp|gif|avif|bmp|tiff)$/i);
+  if (extMatch) {
+    id = id.slice(0, -extMatch[0].length);
+  }
+
+  return id;
+}
+
 export async function uploadImageToCloudinary(file, category, nameHint) {
   if (!file) throw new Error('Missing file to upload');
 
@@ -161,11 +197,18 @@ export async function deleteImageByPublicId(publicId) {
     throw new Error('Missing Cloudinary public_id');
   }
 
+  const normalizedPublicId = normalizeCloudinaryPublicId(publicId);
+  if (!normalizedPublicId) {
+    throw new Error(`Invalid Cloudinary public_id: ${publicId}`);
+  }
+
+  console.debug('[Cloudinary] delete by public_id', { publicId, normalizedPublicId });
+
   // This endpoint must be implemented as a secure server-side function (Vercel, Supabase Edge, etc.)
   const resp = await fetch('/api/cloudinary-delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ public_id: publicId })
+    body: JSON.stringify({ public_id: normalizedPublicId })
   });
 
   if (!resp.ok) {
@@ -173,7 +216,8 @@ export async function deleteImageByPublicId(publicId) {
     throw new Error(`Cloudinary public_id delete failed: ${resp.status} ${resp.statusText} ${text}`);
   }
 
-  return resp.json();
+  const result = await resp.json();
+  return result;
 }
 
 export function buildImageRef(category, originalNameOrId) {

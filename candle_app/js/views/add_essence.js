@@ -182,11 +182,14 @@ export async function renderAddEssence(container, categoryParam) {
                     } catch (deleteErr) {
                         console.warn('[ADD_ESSENCE] Failed to delete previous image via Cloudinary token', deleteErr);
                     }
-                } else if (existingPublicId) {
-                    try {
-                        await deleteImageByPublicId(existingPublicId);
-                    } catch (deleteErr) {
-                        console.warn('[ADD_ESSENCE] Failed to delete previous image via public_id endpoint', deleteErr);
+                } else {
+                    const previousPublicId = existingPublicId || existingImageRef;
+                    if (previousPublicId) {
+                        try {
+                            await deleteImageByPublicId(previousPublicId);
+                        } catch (deleteErr) {
+                            console.warn('[ADD_ESSENCE] Failed to delete previous image via public_id endpoint', deleteErr);
+                        }
                     }
                 }
 

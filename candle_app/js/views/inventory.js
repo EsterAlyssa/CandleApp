@@ -255,8 +255,9 @@ export async function renderInventory(container) {
 
                     const deleteToken = item?.tech_data?.cloudinary_delete_token;
                     const publicId = item?.tech_data?.cloudinary_public_id;
+                    const fallbackPublicId = item?.image_ref || item?.image_url || null;
                     let cloudError = null;
-                    console.log('[INVENTORY] deleting item image', { itemId: item.id, deleteToken, publicId });
+                    console.log('[INVENTORY] deleting item image', { itemId: item.id, deleteToken, publicId, fallbackPublicId });
 
                     if (deleteToken) {
                         try {
@@ -265,12 +266,15 @@ export async function renderInventory(container) {
                             console.warn('[INVENTORY] Cloudinary delete failed by token', err);
                             cloudError = err;
                         }
-                    } else if (publicId) {
-                        try {
-                            await deleteImageByPublicId(publicId);
-                        } catch (err) {
-                            console.warn('[INVENTORY] Cloudinary delete by public_id failed', err);
-                            cloudError = err;
+                    } else {
+                        const toDelete = publicId || fallbackPublicId;
+                        if (toDelete) {
+                            try {
+                                await deleteImageByPublicId(toDelete);
+                            } catch (err) {
+                                console.warn('[INVENTORY] Cloudinary delete by public_id failed', err);
+                                cloudError = err;
+                            }
                         }
                     }
 
@@ -449,8 +453,18 @@ export async function renderInventory(container) {
                                 console.warn('[INVENTORY] Cloudinary delete failed by token', err);
                                 cloudError = err;
                             }
-                        } else if (publicId) {
-                            console.warn('[INVENTORY] Cloudinary delete token unavailable; image can only be deleted via backend API using Admin API key for public_id:', publicId);
+                        } else {
+                            const resolvedPublicId = publicId || item?.image_ref || item?.image_url;
+                            if (resolvedPublicId) {
+                                try {
+                                    await deleteImageByPublicId(resolvedPublicId);
+                                } catch (err) {
+                                    console.warn('[INVENTORY] Cloudinary delete by public_id failed', err);
+                                    cloudError = err;
+                                }
+                            } else {
+                                console.warn('[INVENTORY] no public ID found for Cloudinary delete');
+                            }
                         }
 
                         const { error } = await supabase.from('inventory').delete().eq('id', item.id);
