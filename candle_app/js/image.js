@@ -64,7 +64,6 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', config.uploadPreset);
-  form.append('return_delete_token', 'true');
   if (config.folder) {
     form.append('folder', config.folder);
   }
