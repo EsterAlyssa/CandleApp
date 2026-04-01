@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
+import * as Store from '../store.js';
 
 export async function renderEditBlend(container, blendId) {
     console.log('[VIEW] Rendering EditBlend...', blendId);
@@ -363,6 +364,7 @@ export async function renderEditBlend(container, blendId) {
             alert('Errore nel salvataggio: ' + error.message);
         } else {
             alert(isCreating ? 'Mix creato con successo!' : 'Mix aggiornato con successo!');
+            Store.setInventoryTab('Fragranze');
             window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
         }
     };

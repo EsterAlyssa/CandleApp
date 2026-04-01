@@ -193,6 +193,13 @@ body.with-bars {
     text-align: center;
 }
 
+.dashboard-create-btn {
+    display: flex !important;
+    margin: 12px auto !important;
+    width: fit-content !important;
+    align-self: center;
+}
+
 .dashboard-candle-card {
     position: relative;
 }
@@ -811,7 +818,7 @@ input[type="password"]:focus {
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 16px;
     width: 100%;
-    justify-items: center;
+    justify-items: stretch;
 }
 
 .items-container.items-list .essence-card,
@@ -821,7 +828,7 @@ input[type="password"]:focus {
 
 .essence-card,
 .dashboard-candle-card {
-    width: clamp(320px, 88vw, 840px);
+    width: 100%;
     min-width: 320px;
     margin: 0;
     box-sizing: border-box;

@@ -64,6 +64,7 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', config.uploadPreset);
+  form.append('return_delete_token', 'true');
   if (config.folder) {
     form.append('folder', config.folder);
   }
@@ -114,11 +115,15 @@ export async function uploadImageToCloudinary(file, category, nameHint) {
     }
 
     const cloudinaryPublicId = json.public_id || json.publicId || null;
+    const deleteToken = json.delete_token || null;
+    const version = json.version || null;
 
     return {
       imageRef: resolvedImageRef,
       secureUrl: json.secure_url || buildImageUrl(resolvedImageRef),
-      cloudinaryPublicId
+      cloudinaryPublicId,
+      deleteToken,
+      version
     };
   } catch (error) {
     console.error('[Cloudinary] Upload error:', error);
@@ -187,7 +192,15 @@ export function getImageRefFromRecord(record) {
 export function getImageUrlFromRecord(record) {
   if (!record) return null;
   const ref = record.image_ref || record.imageRef;
-  if (ref) return buildImageUrl(ref);
+  if (ref) {
+    const url = buildImageUrl(ref);
+    const version = record?.tech_data?.cloudinary_version;
+    if (url && version) {
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}v=${version}`;
+    }
+    return url;
+  }
   // Fallback to legacy image_url if still present in the record
   if (record.image_url) return record.image_url;
   return null;

@@ -4,7 +4,8 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
-import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary } from '../image.js?v=4';
+import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary } from '../image.js?v=5';
+import * as Store from '../store.js';
 
 export async function renderAddEssence(container, categoryParam) {
     console.log('[VIEW] Rendering Add Essence, categoryParam:', categoryParam);
@@ -119,23 +120,6 @@ export async function renderAddEssence(container, categoryParam) {
 
         wrapper.appendChild(imgGroup);
 
-        // Debug Cloudinary button (temporary)
-        if (!isEdit) {
-            const debugBtn = createButton('🐛 Test Cloudinary Config', '', 'outline');
-            debugBtn.onclick = async () => {
-                const { getCloudinaryUploadConfig } = await import('../env.js?v=4');
-                const config = getCloudinaryUploadConfig();
-                console.log('=== CLOUDINARY DEBUG ===');
-                console.log('Config:', config);
-                console.log('uploadUrl:', config?.uploadUrl);
-                console.log('uploadPreset:', config?.uploadPreset);
-                console.log('folder:', config?.folder);
-                console.log('cloudName:', config?.cloudName);
-                alert(`Cloudinary Config:\n- Cloud Name: ${config?.cloudName || 'MISSING'}\n- Upload Preset: ${config?.uploadPreset || 'MISSING'}\n- Folder: ${config?.folder || 'MISSING'}\n- Upload URL: ${config?.uploadUrl || 'MISSING'}\n\nCheck console for full details.`);
-            };
-            wrapper.appendChild(debugBtn);
-        }
-
         // Supplier
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
         wrapper.appendChild(supplierInput);
@@ -202,11 +186,17 @@ export async function renderAddEssence(container, categoryParam) {
                 }
 
                 try {
-                    const { imageRef, cloudinaryPublicId } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
+                    const { imageRef, cloudinaryPublicId, deleteToken, version } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
                     existingImageRef = imageRef;
                     existingTechData = existingTechData || {};
                     if (cloudinaryPublicId) {
                         existingTechData.cloudinary_public_id = cloudinaryPublicId;
+                    }
+                    if (deleteToken) {
+                        existingTechData.cloudinary_delete_token = deleteToken;
+                    }
+                    if (version) {
+                        existingTechData.cloudinary_version = version;
                     }
                 } catch (uploadError) {
                     console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
@@ -241,8 +231,9 @@ export async function renderAddEssence(container, categoryParam) {
 
             if (error) alert('Errore: ' + error.message);
             else {
-                if (isEdit && editId) window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory-detail:' + editId }));
-                else window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
+                const tabByCategory = { wax: 'Cere', mold: 'Stampi', scent: 'Essenze' };
+                Store.setInventoryTab(tabByCategory[dbCategory] || 'Cere');
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
             }
         };
 

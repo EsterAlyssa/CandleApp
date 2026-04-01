@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
-import { getImageUrlFromRecord, deleteImageFromCloudinary } from '../image.js';
+import { getImageUrlFromRecord, deleteImageFromCloudinary } from '../image.js?v=5';
 import * as Store from '../store.js';
 
 export async function renderInventory(container) {

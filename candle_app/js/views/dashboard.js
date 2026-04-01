@@ -4,7 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle, createAlert } from '../components.js?v=3';
-import { getImageUrlFromRecord } from '../image.js';
+import { getImageUrlFromRecord } from '../image.js?v=5';
 
 export async function renderDashboard(container) {
     console.log('[VIEW] Rendering Dashboard...');
@@ -61,6 +61,7 @@ export async function renderDashboard(container) {
 
     // Bottone Crea
     const btnCreate = createButton('Crea una nuova candela', 'add_circle', 'btn-primary btn-compact');
+    btnCreate.classList.add('dashboard-create-btn');
     btnCreate.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
     wrapper.appendChild(btnCreate);
 
