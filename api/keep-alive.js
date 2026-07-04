@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
+  console.log("🟢 Inizio connessione a Supabase...")
+
   // Inizializzazione del client usando le variabili d'ambiente di Vercel
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
+
+  console.log("✅ Query eseguita con successo:", data)
 
   try {
     // ⚠️ CRITICO: Eseguiamo una query microscopica. 
