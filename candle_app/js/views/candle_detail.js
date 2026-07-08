@@ -145,6 +145,12 @@ export async function renderCandleDetail(container, logId) {
     editBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
     btns.appendChild(editBtn);
 
+    // Guida di colata passo-passo (avviabile anche a posteriori)
+    const guideBtn = createButton('Guida di colata', 'menu_book', 'btn-secondary');
+    guideBtn.style.flex = '1';
+    guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
+    btns.appendChild(guideBtn);
+
     const deleteBtn = createButton('Elimina', 'delete', 'btn-primary');
     deleteBtn.style.flex = '1';
     deleteBtn.style.setProperty('--md-sys-color-primary', 'var(--md-sys-color-error, #b3261e)');

@@ -66,6 +66,10 @@ export async function renderInventoryDetail(container, id) {
                 } else if(k==='max_fragrance') {
                     keyStr = 'Carico max fragranza';
                     val = v + ' %';
+                } else if(k==='conversion_factor') {
+                    keyStr = 'Coefficiente di conversione';
+                } else if(k==='cloudinary_public_id' || k==='cloudinary_delete_token' || k==='cloudinary_version') {
+                    return ''; // dati interni immagine: non mostrarli
                 } else if(k==='wax_type') {
                     keyStr = 'Tipo cera';
                 } else if(k==='volume_ml') {

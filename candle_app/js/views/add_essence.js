@@ -5,6 +5,7 @@
 import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
 import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary, deleteImageByPublicId } from '../image.js?v=5';
+import { WAX_PRESETS, SCENT_PRESETS, findWaxPreset, findScentPreset } from '../presets.js';
 import * as Store from '../store.js';
 
 export async function renderAddEssence(container, categoryParam) {
@@ -44,6 +45,28 @@ export async function renderAddEssence(container, categoryParam) {
         // Name
         const nameInput = createInput('Nome', 'text', 'add-name', 'Inserisci il nome');
         wrapper.appendChild(nameInput);
+        const nameField = nameInput.querySelector('.input-field');
+
+        // Datalist con suggerimenti preimpostati (cere o essenze)
+        const presetList = dbCategory === 'wax' ? WAX_PRESETS : dbCategory === 'scent' ? SCENT_PRESETS : [];
+        if (presetList.length > 0 && nameField) {
+            const datalistId = 'preset-suggestions';
+            const datalist = document.createElement('datalist');
+            datalist.id = datalistId;
+            presetList.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                datalist.appendChild(opt);
+            });
+            wrapper.appendChild(datalist);
+            nameField.setAttribute('list', datalistId);
+            const presetHint = document.createElement('p');
+            presetHint.className = 'form-note';
+            presetHint.textContent = dbCategory === 'wax'
+                ? 'Scegli un tipo di cera dai suggerimenti per compilare in automatico i dati tecnici (modificabili).'
+                : 'Scegli un\'essenza dai suggerimenti per compilare in automatico famiglia e nota (modificabili).';
+            nameInput.appendChild(presetHint);
+        }
 
         // Nota olfattiva (solo per essenze): testa / cuore / fondo
         let noteTypeSelect = null;
@@ -112,6 +135,23 @@ export async function renderAddEssence(container, categoryParam) {
         const qtyInput = createInput('Quantità (g)', 'number', 'add-qty', category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi');
         wrapper.appendChild(qtyInput);
 
+        // Dati tecnici cera (solo per le cere)
+        let waxFields = null;
+        if (dbCategory === 'wax') {
+            const makeNum = (label, id, placeholder, step) => {
+                const grp = createInput(label, 'number', id, placeholder);
+                const f = grp.querySelector('.input-field');
+                if (step) f.setAttribute('step', step);
+                wrapper.appendChild(grp);
+                return f;
+            };
+            const cf = makeNum('Coefficiente di conversione', 'add-cf', 'es. 0.90 (densità rispetto all\'acqua)', '0.01');
+            const mt = makeNum('Temperatura di fusione (°C)', 'add-melt', 'es. 52', '1');
+            const pt = makeNum('Temperatura di versata (°C)', 'add-pour', 'es. 62', '1');
+            const mf = makeNum('Carico max fragranza (%)', 'add-maxfrag', 'es. 10', '0.5');
+            waxFields = { conversion_factor: cf, melt_temp: mt, pour_temp: pt, max_fragrance: mf };
+        }
+
         // Upload immagine per tutte le categorie (stampi, cere, essenze)
         let selectedImageFile = null;
         let existingImageRef = null;
@@ -152,6 +192,33 @@ export async function renderAddEssence(container, categoryParam) {
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
         wrapper.appendChild(supplierInput);
 
+        // Precompilazione dai preset quando si sceglie/scrive un nome noto
+        if (nameField && (dbCategory === 'wax' || dbCategory === 'scent')) {
+            const applyPreset = () => {
+                const val = nameField.value;
+                if (dbCategory === 'wax' && waxFields) {
+                    const preset = findWaxPreset(val);
+                    if (!preset) return;
+                    const td = preset.tech_data || {};
+                    if (td.conversion_factor != null) waxFields.conversion_factor.value = td.conversion_factor;
+                    if (td.melt_temp != null) waxFields.melt_temp.value = td.melt_temp;
+                    if (td.pour_temp != null) waxFields.pour_temp.value = td.pour_temp;
+                    if (td.max_fragrance != null) waxFields.max_fragrance.value = td.max_fragrance;
+                } else if (dbCategory === 'scent') {
+                    const preset = findScentPreset(val);
+                    if (!preset) return;
+                    if (noteTypeSelect && preset.note) noteTypeSelect.value = preset.note;
+                    if (familySelect && preset.family_id) {
+                        // Seleziona la famiglia solo se esiste tra quelle dell'utente
+                        const hasOption = Array.from(familySelect.options).some(o => o.value === preset.family_id);
+                        if (hasOption) familySelect.value = preset.family_id;
+                    }
+                }
+            };
+            nameField.addEventListener('change', applyPreset);
+            nameField.addEventListener('input', applyPreset);
+        }
+
         // Load existing item when in edit mode
         if (isEdit) {
             const { data: existing, error: existingError } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', editId).maybeSingle();
@@ -166,6 +233,13 @@ export async function renderAddEssence(container, categoryParam) {
                     }
                     if (noteTypeSelect && existing.tech_data?.note_type) {
                         noteTypeSelect.value = existing.tech_data.note_type;
+                    }
+                    if (waxFields && existing.tech_data) {
+                        const td = existing.tech_data;
+                        if (td.conversion_factor != null) waxFields.conversion_factor.value = td.conversion_factor;
+                        if (td.melt_temp != null) waxFields.melt_temp.value = td.melt_temp;
+                        if (td.pour_temp != null) waxFields.pour_temp.value = td.pour_temp;
+                        if (td.max_fragrance != null) waxFields.max_fragrance.value = td.max_fragrance;
                     }
 
                     // Keep existing image ref so we do not lose it when editing
@@ -250,6 +324,22 @@ export async function renderAddEssence(container, categoryParam) {
                 existingTechData = existingTechData || {};
                 if (nt) existingTechData.note_type = nt;
                 else delete existingTechData.note_type;
+            }
+
+            // Dati tecnici cera: salvali in tech_data
+            if (waxFields) {
+                existingTechData = existingTechData || {};
+                const setNum = (key, field) => {
+                    const raw = field.value;
+                    if (raw === '' || raw == null) { delete existingTechData[key]; return; }
+                    const num = parseFloat(raw);
+                    if (Number.isNaN(num)) delete existingTechData[key];
+                    else existingTechData[key] = num;
+                };
+                setNum('conversion_factor', waxFields.conversion_factor);
+                setNum('melt_temp', waxFields.melt_temp);
+                setNum('pour_temp', waxFields.pour_temp);
+                setNum('max_fragrance', waxFields.max_fragrance);
             }
 
             // Update record with new image info (or keep existing if no new image chosen).
