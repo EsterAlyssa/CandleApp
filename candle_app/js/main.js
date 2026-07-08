@@ -17,6 +17,7 @@ import { renderInfo } from './views/info.js';
 import { renderProfile } from './views/profile.js';
 import { renderStock } from './views/stock.js';
 import { renderCandleDetail } from './views/candle_detail.js';
+import { renderGuide } from './views/guide.js';
 import { renderCandlesByEssence } from './views/candles_by_essence.js';
 import { renderEditBlend } from './views/edit_blend.js?v=4';
 import * as Store from './store.js';
@@ -147,7 +148,8 @@ const pageParentMap = {
     'info': 'dashboard',
     'profile': 'dashboard',
     'candle-detail': 'dashboard',
-    'edit-blend': 'inventory'
+    'edit-blend': 'inventory',
+    'guide': 'dashboard'
 };
 
 // Funzione per ottenere la pagina precedente
@@ -332,6 +334,7 @@ async function navigateTo(rawInput, options = {}) {
             case 'lab': await renderLab(frame, param); break;
             case 'info': await renderInfo(frame); break;
             case 'candle-detail': await renderCandleDetail(frame, param); break;
+            case 'guide': await renderGuide(frame, param); break;
             case 'candles-by-essence': await renderCandlesByEssence(frame, param); break;
             case 'edit-blend': await renderEditBlend(frame, param); break;
             case 'profile': await renderProfile(frame); break;

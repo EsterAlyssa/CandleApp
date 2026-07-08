@@ -45,6 +45,34 @@ export async function renderAddEssence(container, categoryParam) {
         const nameInput = createInput('Nome', 'text', 'add-name', 'Inserisci il nome');
         wrapper.appendChild(nameInput);
 
+        // Nota olfattiva (solo per essenze): testa / cuore / fondo
+        let noteTypeSelect = null;
+        if (rawCategory.trim().toLowerCase() === 'essenze') {
+            const noteGroup = document.createElement('div');
+            noteGroup.className = 'input-group';
+            const noteLabel = document.createElement('label');
+            noteLabel.className = 'input-label';
+            noteLabel.textContent = 'Nota olfattiva';
+            noteGroup.appendChild(noteLabel);
+
+            noteTypeSelect = document.createElement('select');
+            noteTypeSelect.className = 'input-field';
+            noteTypeSelect.id = 'add-note-type';
+            [
+                { v: '', t: 'Seleziona nota' },
+                { v: 'head', t: 'Di testa' },
+                { v: 'heart', t: 'Di cuore' },
+                { v: 'base', t: 'Di fondo' }
+            ].forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.v;
+                opt.textContent = o.t;
+                noteTypeSelect.appendChild(opt);
+            });
+            noteGroup.appendChild(noteTypeSelect);
+            wrapper.appendChild(noteGroup);
+        }
+
         // Family (only for essences)
         let familySelect = null;
         if (isEssence) {
@@ -136,6 +164,9 @@ export async function renderAddEssence(container, categoryParam) {
                     if (familySelect && existing.family_id) {
                         familySelect.value = existing.family_id;
                     }
+                    if (noteTypeSelect && existing.tech_data?.note_type) {
+                        noteTypeSelect.value = existing.tech_data.note_type;
+                    }
 
                     // Keep existing image ref so we do not lose it when editing
                     existingImageRef = existing.image_ref || existing.image_url || null;
@@ -213,11 +244,19 @@ export async function renderAddEssence(container, categoryParam) {
                 }
             }
             
+            // Nota olfattiva (solo essenze): salvala in tech_data.note_type
+            if (noteTypeSelect) {
+                const nt = noteTypeSelect.value || '';
+                existingTechData = existingTechData || {};
+                if (nt) existingTechData.note_type = nt;
+                else delete existingTechData.note_type;
+            }
+
             // Update record with new image info (or keep existing if no new image chosen).
             if (existingImageRef) {
                 record.image_ref = existingImageRef;
             }
-            if (existingTechData) {
+            if (existingTechData && Object.keys(existingTechData).length > 0) {
                 record.tech_data = existingTechData;
             }
 

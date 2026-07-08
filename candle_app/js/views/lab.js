@@ -5,6 +5,7 @@
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
+import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
 import * as Store from '../store.js';
 
 export async function renderLab(container, param) {
@@ -212,6 +213,12 @@ export async function renderLab(container, param) {
                         addNoteScent(blend.head_scent_id, 'head');
                         addNoteScent(blend.heart_scent_id, 'heart');
                         addNoteScent(blend.base_scent_id, 'base');
+
+                        // Preferisci la tabella ponte (supporta più essenze per nota)
+                        const rows = await loadBlendScents(blend.id);
+                        if (rows.length > 0) {
+                            selectedEssences = mapScentRows(rows, essences, familiesMap);
+                        }
                     }
                 }
             }
@@ -398,6 +405,11 @@ export async function renderLab(container, param) {
                         note_type: 'base' 
                     });
                 }
+            }
+            // Preferisci la tabella ponte (supporta più essenze per nota)
+            const rows = await loadBlendScents(blend.id);
+            if (rows.length > 0) {
+                selectedEssences = mapScentRows(rows, essences, familiesMap);
             }
             fragranceName = blend.name;
             saveStateToStore();
@@ -895,6 +907,9 @@ export async function renderLab(container, param) {
                 blendId = blendData?.id;
             }
 
+            // Salva TUTTE le essenze selezionate (anche più note di testa) nella tabella ponte
+            await saveBlendScents(blendId, selectedEssences);
+
             const notes = candleNotesInput ? candleNotesInput.value.trim() : '';
 
             const logPayload = {
@@ -909,14 +924,16 @@ export async function renderLab(container, param) {
             };
 
             let error;
+            let savedLogId = editingLog?.id || null;
             if (editingLog && editingLog.id) {
                 // Update existing log
                 const res = await supabase.from('candle_log').update(logPayload).eq('id', editingLog.id);
                 error = res.error;
             } else {
                 // Create new log
-                const res = await supabase.from('candle_log').insert([logPayload]);
+                const res = await supabase.from('candle_log').insert([logPayload]).select('id').single();
                 error = res.error;
+                savedLogId = res.data?.id || null;
             }
 
             if (error) {
@@ -936,9 +953,15 @@ export async function renderLab(container, param) {
 
                 // Reset wizard state dopo il salvataggio
                 Store.resetWizard();
-                
-                alert('Candela salvata!');
-                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+
+                // Se è una NUOVA candela, avvia la guida di colata passo-passo.
+                // In modifica, torna al dettaglio/dashboard senza guida.
+                if (!editingLog && savedLogId) {
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${savedLogId}` }));
+                } else {
+                    alert('Candela salvata!');
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+                }
             }
         };
         btns.appendChild(saveBtn);

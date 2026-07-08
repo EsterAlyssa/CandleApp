@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
+import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
 import * as Store from '../store.js';
 
 export async function renderEditBlend(container, blendId) {
@@ -82,6 +83,12 @@ export async function renderEditBlend(container, blendId) {
         loadEssenceById(blend.head_scent_id, 'head');
         loadEssenceById(blend.heart_scent_id, 'heart');
         loadEssenceById(blend.base_scent_id, 'base');
+
+        // Preferisci la tabella ponte (supporta più essenze per nota)
+        const rows = await loadBlendScents(blend.id);
+        if (rows.length > 0) {
+            selectedEssences = mapScentRows(rows, essences, familiesMap);
+        }
     }
 
     // --- Helpers ---
@@ -350,10 +357,12 @@ export async function renderEditBlend(container, blendId) {
         };
 
         let error;
+        let savedBlendId = blendId;
         if (isCreating) {
             // INSERT new blend
-            const result = await supabase.from('blends').insert([blendData]);
+            const result = await supabase.from('blends').insert([blendData]).select('id').single();
             error = result.error;
+            savedBlendId = result.data?.id || null;
         } else {
             // UPDATE existing blend
             const result = await supabase.from('blends').update(blendData).eq('id', blendId);
@@ -363,6 +372,8 @@ export async function renderEditBlend(container, blendId) {
         if (error) {
             alert('Errore nel salvataggio: ' + error.message);
         } else {
+            // Salva TUTTE le essenze selezionate (anche più note di testa)
+            await saveBlendScents(savedBlendId, selectedEssences);
             alert(isCreating ? 'Mix creato con successo!' : 'Mix aggiornato con successo!');
             Store.setInventoryTab('Fragranze');
             window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));

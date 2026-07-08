@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase.js';
 import { createButton, createTitle, createCard } from '../components.js?v=3';
+import { loadBlendScents } from '../blends.js';
 
 export async function renderCandleDetail(container, logId) {
     console.log('[VIEW] Rendering Candle Detail...', logId);
@@ -33,11 +34,30 @@ export async function renderCandleDetail(container, logId) {
     const wax = waxResp.data;
     const blend = blendResp.data;
 
+    // Carica le essenze del blend: preferisci la tabella ponte (più essenze per nota),
+    // con fallback alle colonne singole per i blend non ancora migrati.
+    let scentRows = blend ? await loadBlendScents(blend.id) : [];
+    if (scentRows.length === 0 && blend) {
+        scentRows = [
+            blend.head_scent_id ? { scent_id: blend.head_scent_id, note_type: 'head' } : null,
+            blend.heart_scent_id ? { scent_id: blend.heart_scent_id, note_type: 'heart' } : null,
+            blend.base_scent_id ? { scent_id: blend.base_scent_id, note_type: 'base' } : null
+        ].filter(Boolean);
+    }
+
     // Load names for selected scents
-    const scentIds = [blend?.head_scent_id, blend?.heart_scent_id, blend?.base_scent_id].filter(Boolean);
+    const scentIds = Array.from(new Set(scentRows.map(r => r.scent_id).filter(Boolean)));
     const scentsResp = await (scentIds.length > 0 ? supabase.from('inventory').select('id, name').in('id', scentIds) : { data: [] });
     const scentMap = {};
     (scentsResp.data || []).forEach(s => { scentMap[s.id] = s.name; });
+
+    const namesByNote = (nt) => scentRows
+        .filter(r => r.note_type === nt)
+        .map(r => scentMap[r.scent_id] || r.scent_id)
+        .join(', ');
+    const headNames = namesByNote('head');
+    const heartNames = namesByNote('heart');
+    const baseNames = namesByNote('base');
 
     let displayNotes = log.notes || '';
     if (displayNotes.includes('Note: ')) {
@@ -87,9 +107,9 @@ export async function renderCandleDetail(container, logId) {
         ${blend ? `
             <p><strong>Note selezionate:</strong></p>
             <ul>
-                ${blend.head_scent_id ? `   <li>Testa: ${scentMap[blend.head_scent_id] || blend.head_scent_id}</li>` : ''}
-                ${blend.heart_scent_id ? `   <li>Cuore: ${scentMap[blend.heart_scent_id] || blend.heart_scent_id}</li>` : ''}
-                ${blend.base_scent_id ? `   <li>Fondo: ${scentMap[blend.base_scent_id] || blend.base_scent_id}</li>` : ''}
+                ${headNames ? `   <li>Testa: ${headNames}</li>` : ''}
+                ${heartNames ? `   <li>Cuore: ${heartNames}</li>` : ''}
+                ${baseNames ? `   <li>Fondo: ${baseNames}</li>` : ''}
             </ul>
         ` : ''}
     `;

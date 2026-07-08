@@ -3008,3 +3008,79 @@ select::-ms-expand {
     margin: 0;
     font-size: 14px;
 }
+
+/* ===================================================
+   GUIDA DI COLATA (guide.js)
+   =================================================== */
+.guide-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 16px;
+}
+.guide-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--md-sys-color-surface-variant);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.guide-dot.done {
+    background: var(--md-sys-color-primary);
+    opacity: 0.55;
+}
+.guide-dot.active {
+    background: var(--md-sys-color-primary);
+    transform: scale(1.3);
+}
+.guide-step-count {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+.guide-step {
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 16px;
+    padding: 18px;
+}
+.guide-step-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.guide-step-icon {
+    color: var(--md-sys-color-primary);
+    font-size: 28px;
+}
+.guide-step-title {
+    margin: 0;
+    font-size: 18px;
+    color: var(--md-sys-color-on-surface);
+}
+.guide-step-body p {
+    margin: 0 0 10px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--md-sys-color-on-surface);
+}
+.guide-sub {
+    font-weight: 600;
+    margin-top: 4px !important;
+}
+.guide-note {
+    font-size: 14px !important;
+    color: var(--md-sys-color-on-surface-variant) !important;
+    font-style: italic;
+}
+.guide-list {
+    margin: 0 0 10px;
+    padding-left: 20px;
+}
+.guide-list li {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    color: var(--md-sys-color-on-surface);
+}
