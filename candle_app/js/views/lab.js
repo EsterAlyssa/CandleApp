@@ -6,6 +6,7 @@ import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
 import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
+import { resolveResultingFamily } from '../accords.js';
 import * as Store from '../store.js';
 
 export async function renderLab(container, param) {
@@ -94,14 +95,8 @@ export async function renderLab(container, param) {
     };
 
     const computeFragranceFamily = () => {
-        const familyCounts = {};
-        selectedEssences.forEach(e => {
-            if (e.family_id) familyCounts[e.family_id] = (familyCounts[e.family_id] || 0) + 1;
-        });
-        const topFamilyId = Object.entries(familyCounts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([fam]) => fam)[0];
-        return topFamilyId ? (familiesMap[topFamilyId] || '') : '';
+        const fid = resolveResultingFamily(selectedEssences.map(e => e.family_id));
+        return fid ? (familiesMap[fid] || '') : '';
     };
 
     const computeDefaultCandleName = async () => {
@@ -867,13 +862,7 @@ export async function renderLab(container, param) {
             const heartScentId = heartEss?.id || null;
             const baseScentId = baseEss?.id || null;
 
-            const familyCounts = {};
-            selectedEssences.forEach(e => {
-                if (e.family_id) familyCounts[e.family_id] = (familyCounts[e.family_id] || 0) + 1;
-            });
-            const resultingFamilyId = Object.entries(familyCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([fam]) => fam)[0] || null;
+            const resultingFamilyId = resolveResultingFamily(selectedEssences.map(e => e.family_id));
 
             let blendId = editingLog?.blend_id || null;
             if (blendId) {

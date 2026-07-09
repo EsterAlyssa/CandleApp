@@ -5,6 +5,7 @@
 import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle, createAlert } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js?v=5';
+import { resolveResultingFamily } from '../accords.js';
 
 export async function renderDashboard(container) {
     console.log('[VIEW] Rendering Dashboard...');
@@ -107,9 +108,10 @@ export async function renderDashboard(container) {
     const blendIds = Array.from(new Set(logs.map(l => l.blend_id).filter(Boolean)));
     const moldIds = Array.from(new Set(logs.map(l => l.mold_id).filter(Boolean)));
 
-    const [blendResp, moldResp] = await Promise.all([
-        blendIds.length > 0 ? supabase.from('blends').select('id, name, resulting_family_id').in('id', blendIds) : { data: [], error: null },
-        moldIds.length > 0 ? supabase.from('inventory').select('id, name, category, image_ref').in('id', moldIds) : { data: [], error: null }
+    const [blendResp, moldResp, blendScentsResp] = await Promise.all([
+        blendIds.length > 0 ? supabase.from('blends').select('id, name, resulting_family_id, head_scent_id, heart_scent_id, base_scent_id').in('id', blendIds) : { data: [], error: null },
+        moldIds.length > 0 ? supabase.from('inventory').select('id, name, category, image_ref, quantity_g').in('id', moldIds) : { data: [], error: null },
+        blendIds.length > 0 ? supabase.from('blend_scents').select('blend_id, scent_id').in('blend_id', blendIds) : { data: [], error: null }
     ]);
 
     const blendMap = {};
@@ -118,7 +120,35 @@ export async function renderDashboard(container) {
     const moldMap = {};
     (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
 
-    const familyIds = Array.from(new Set((blendResp.data || []).map(b => b.resulting_family_id).filter(Boolean)));
+    // Raggruppa le essenze per blend: preferisci blend_scents, altrimenti le colonne singole
+    const scentIdsByBlend = {};
+    (blendScentsResp.data || []).forEach(r => {
+        if (!r.scent_id) return;
+        (scentIdsByBlend[r.blend_id] = scentIdsByBlend[r.blend_id] || []).push(r.scent_id);
+    });
+    (blendResp.data || []).forEach(b => {
+        if (!scentIdsByBlend[b.id]) {
+            scentIdsByBlend[b.id] = [b.head_scent_id, b.heart_scent_id, b.base_scent_id].filter(Boolean);
+        }
+    });
+
+    // Carica la famiglia (family_id) di ogni essenza usata
+    const allScentIds = Array.from(new Set(Object.values(scentIdsByBlend).flat().filter(Boolean)));
+    const scentFamResp = allScentIds.length > 0 ? await supabase.from('inventory').select('id, family_id').in('id', allScentIds) : { data: [] };
+    const scentFamily = {};
+    (scentFamResp.data || []).forEach(s => { scentFamily[s.id] = s.family_id || null; });
+
+    // Famiglia risultante del blend = accordo (se combacia) o famiglia dominante
+    const dominantFamilyByBlend = {};
+    Object.entries(scentIdsByBlend).forEach(([blendId, scentIds]) => {
+        const familyIds = scentIds.map(sid => scentFamily[sid]).filter(Boolean);
+        dominantFamilyByBlend[blendId] = resolveResultingFamily(familyIds) || (blendMap[blendId]?.resulting_family_id || null);
+    });
+
+    const familyIds = Array.from(new Set([
+        ...Object.values(dominantFamilyByBlend).filter(Boolean),
+        ...(blendResp.data || []).map(b => b.resulting_family_id).filter(Boolean)
+    ]));
     const familyResp = familyIds.length > 0 ? await supabase.from('families').select('id, name_it').in('id', familyIds) : { data: [], error: null };
     const familyMap = {};
     (familyResp.data || []).forEach(f => { familyMap[f.id] = f; });
@@ -229,7 +259,8 @@ export async function renderDashboard(container) {
     const cardPromises = logs.map(async (log) => {
         const blend = blendMap[log.blend_id] || null;
         const mold = moldMap[log.mold_id] || null;
-        const family = blend?.resulting_family_id ? familyMap[blend.resulting_family_id] : null;
+        const domFamId = log.blend_id ? dominantFamilyByBlend[log.blend_id] : null;
+        const family = domFamId ? familyMap[domFamId] : (blend?.resulting_family_id ? familyMap[blend.resulting_family_id] : null);
 
         return buildCandleCard(log, mold, blend, family);
     });

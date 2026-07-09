@@ -5,6 +5,7 @@
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
+import { resolveResultingFamily } from '../accords.js';
 import * as Store from '../store.js';
 
 export async function renderEditBlend(container, blendId) {
@@ -128,21 +129,6 @@ export async function renderEditBlend(container, blendId) {
         });
 
         return { all: false, harmony, contrast };
-    };
-
-    const computeFragranceFamily = () => {
-        const famCounts = {};
-        selectedEssences.forEach(e => {
-            if (e.family_name) {
-                famCounts[e.family_name] = (famCounts[e.family_name] || 0) + 1;
-            }
-        });
-        let maxFam = '';
-        let maxCount = 0;
-        Object.entries(famCounts).forEach(([fam, cnt]) => {
-            if (cnt > maxCount) { maxCount = cnt; maxFam = fam; }
-        });
-        return maxFam;
     };
 
     // --- Selection Summary ---
@@ -340,8 +326,7 @@ export async function renderEditBlend(container, blendId) {
         const heartEss = selectedEssences.find(e => e.note_type === 'heart');
         const baseEss = selectedEssences.find(e => e.note_type === 'base');
 
-        const resultingFamily = computeFragranceFamily();
-        const resultingFamilyId = Object.entries(familiesMap).find(([id, name]) => name === resultingFamily)?.[0] || null;
+        const resultingFamilyId = resolveResultingFamily(selectedEssences.map(e => e.family_id));
 
         // Note: blends table doesn't have tech_data column (only inventory has it)
         // For multiple head notes, we store only the first one in head_scent_id

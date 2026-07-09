@@ -104,7 +104,20 @@ export const SCENT_PRESETS = [
     { name: 'Ambra',             family_id: 'orientale',     note: 'base' },
     { name: 'Incenso',           family_id: 'orientale',     note: 'base' },
     { name: 'Benzoino',          family_id: 'orientale_morbido', note: 'base' },
-    { name: 'Mirra',             family_id: 'orientale',     note: 'base' }
+    { name: 'Mirra',             family_id: 'orientale',     note: 'base' },
+
+    // Orientale legnoso (orientale_legnoso)
+    { name: 'Legno di rosa',     family_id: 'orientale_legnoso', note: 'heart' },
+    { name: 'Oud',               family_id: 'orientale_legnoso', note: 'base' },
+
+    // Floreale orientale (floral_oriental)
+    { name: 'Tuberosa',          family_id: 'floral_oriental', note: 'heart' },
+    { name: 'Gelsomino Sambac',  family_id: 'floral_oriental', note: 'heart' },
+
+    // Cipriata / floreale leggera (soft_floral)
+    { name: 'Rosa damascena',    family_id: 'soft_floral',   note: 'heart' },
+    { name: 'Iris',              family_id: 'soft_floral',   note: 'base' },
+    { name: 'Labdano',           family_id: 'soft_floral',   note: 'base' }
 ];
 
 // Normalizza una stringa per confronto case/accent-insensitive.
