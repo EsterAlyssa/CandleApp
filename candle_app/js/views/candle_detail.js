@@ -137,22 +137,22 @@ export async function renderCandleDetail(container, logId) {
 
     const btns = document.createElement('div');
     btns.className = 'btn-container';
-    btns.style.display = 'flex';
-    btns.style.gap = '8px';
+
+    // Prima riga: Modifica + Elimina (affiancati)
+    const rowMain = document.createElement('div');
+    rowMain.style.display = 'flex';
+    rowMain.style.gap = '8px';
+    rowMain.style.width = '100%';
 
     const editBtn = createButton('Modifica', 'edit', 'btn-secondary');
     editBtn.style.flex = '1';
+    editBtn.style.minWidth = '0';
     editBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
-    btns.appendChild(editBtn);
-
-    // Guida di colata passo-passo (avviabile anche a posteriori)
-    const guideBtn = createButton('Guida di colata', 'menu_book', 'btn-secondary');
-    guideBtn.style.flex = '1';
-    guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
-    btns.appendChild(guideBtn);
+    rowMain.appendChild(editBtn);
 
     const deleteBtn = createButton('Elimina', 'delete', 'btn-primary');
     deleteBtn.style.flex = '1';
+    deleteBtn.style.minWidth = '0';
     deleteBtn.style.setProperty('--md-sys-color-primary', 'var(--md-sys-color-error, #b3261e)');
     deleteBtn.style.setProperty('--md-sys-color-on-primary', 'var(--md-sys-color-on-error, #ffffff)');
     deleteBtn.onclick = async () => {
@@ -161,7 +161,18 @@ export async function renderCandleDetail(container, logId) {
         if (error) alert('Errore: ' + error.message);
         else window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
     };
-    btns.appendChild(deleteBtn);
+    rowMain.appendChild(deleteBtn);
+
+    // Seconda riga: Guida di colata a tutta larghezza (avviabile anche a posteriori)
+    const guideBtn = createButton('Guida di colata', 'menu_book', 'btn-secondary');
+    guideBtn.style.width = '100%';
+    guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
+
+    btns.style.display = 'flex';
+    btns.style.flexDirection = 'column';
+    btns.style.gap = '8px';
+    btns.appendChild(rowMain);
+    btns.appendChild(guideBtn);
 
     wrapper.appendChild(btns);
     container.appendChild(wrapper);
