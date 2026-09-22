@@ -10,7 +10,8 @@ export default async function handler(req, res) {
 
             if (count === 'true' && user_id) {
                 result = await sql`SELECT COUNT(*) as count FROM candle_log WHERE user_id = ${user_id}`;
-                return res.status(200).json({ count: parseInt(result.rows[0].count, 10) });
+                // CORREZIONE: usiamo result[0] e non result.rows[0]
+                return res.status(200).json({ count: parseInt(result[0].count, 10) });
             }
             
             if (id) {
@@ -23,7 +24,9 @@ export default async function handler(req, res) {
             } else {
                 result = await sql`SELECT * FROM candle_log ORDER BY created_at DESC LIMIT ${limitNum}`;
             }
-            return res.status(200).json(result.rows);
+            
+            // CORREZIONE: result è già l'array dei nostri dati!
+            return res.status(200).json(result);
         }
 
         // NUOVA LOGICA POST
@@ -35,14 +38,14 @@ export default async function handler(req, res) {
                 VALUES (${user_id}, ${mold_id}, ${wax_id}, ${blend_id}, ${total_wax_used}, ${fragrance_load_percent}, ${notes}, ${batch_number}, ${is_favorite || false}, ${image_ref})
                 RETURNING id
             `;
-            return res.status(200).json({ success: true, id: result.rows[0].id });
+            // CORREZIONE: usiamo result[0]
+            return res.status(200).json({ success: true, id: result[0].id });
         }
 
         if (req.method === 'PUT') {
             const { id, user_id, mold_id, wax_id, blend_id, total_wax_used, fragrance_load_percent, notes, batch_number, rating } = req.body;
             if (!id) return res.status(400).json({ error: 'ID richiesto' });
 
-            // Se vengono passati i parametri completi da lab.js, facciamo un update completo
             if (mold_id !== undefined) {
                 await sql`
                     UPDATE candle_log 
@@ -52,7 +55,6 @@ export default async function handler(req, res) {
                     WHERE id = ${id}
                 `;
             } else {
-                // Update parziale da candle_detail.js
                 if (notes !== undefined && rating !== undefined) {
                     await sql`UPDATE candle_log SET notes = ${notes}, rating = ${rating} WHERE id = ${id}`;
                 } else if (notes !== undefined) {

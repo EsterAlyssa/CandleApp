@@ -24,7 +24,7 @@ export default async function handler(req, res) {
             } else {
                 result = await sql`SELECT * FROM blends ORDER BY name`;
             }
-            return res.status(200).json(result.rows);
+            return res.status(200).json(result);
         }
 
         if (req.method === 'POST') {
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
                 VALUES (${name}, ${head_scent_id}, ${heart_scent_id}, ${base_scent_id}, ${resulting_family_id}, ${user_id})
                 RETURNING id
             `;
-            return res.status(200).json({ success: true, id: result.rows[0].id });
+            return res.status(200).json({ success: true, id: result[0].id });
         }
 
         if (req.method === 'PUT') {

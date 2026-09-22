@@ -8,7 +8,7 @@ export default async function handler(req, res) {
             if (!blend_id) return res.status(400).json({ error: 'blend_id mancante' });
 
             const result = await sql`SELECT scent_id, note_type FROM blend_scents WHERE blend_id = ${blend_id}`;
-            return res.status(200).json(result.rows);
+            return res.status(200).json(result);
         }
 
         if (req.method === 'POST') {

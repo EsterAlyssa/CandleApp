@@ -14,7 +14,7 @@ export default async function handler(req, res) {
         } else {
             result = await sql`SELECT id, name_it FROM families ORDER BY name_it;`;
         }
-        res.status(200).json(result.rows);
+        res.status(200).json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

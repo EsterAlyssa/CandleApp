@@ -39,7 +39,7 @@ export default async function handler(req, res) {
                 // Lettura completa
                 result = await sql`SELECT * FROM inventory ORDER BY name`;
             }
-            return res.status(200).json(result.rows);
+            return res.status(200).json(result);
         }
 
         // === CREAZIONE (POST) ===
