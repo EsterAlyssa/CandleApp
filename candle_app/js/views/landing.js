@@ -1,9 +1,8 @@
 // ===================================================
-// LANDING.JS - Pagina iniziale (Home 1)
+// LANDING.JS - Pagina iniziale (Custom Vercel Auth)
 // ===================================================
 
 import { createLogo } from '../components.js?v=3';
-import { supabase } from '../supabase.js';
 
 export async function renderLanding(container) {
     console.log('[VIEW] Rendering Landing...');
@@ -11,22 +10,14 @@ export async function renderLanding(container) {
     const wrapper = document.createElement('div');
     wrapper.className = 'landing-wrapper';
 
-    // Login link (top right) - only show in-page Log In when logged out (logout is shown in the top bar)
+    // Leggiamo l'utente dal LocalStorage invece che da Supabase
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
+
+    // Login link (top right) - mostra "Log In" solo se l'utente non è loggato
     const loginDiv = document.createElement('div');
     loginDiv.className = 'landing-login-div';
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            const loginBtn = document.createElement('button');
-            loginBtn.className = 'btn-link landing-login-btn';
-            loginBtn.textContent = 'Log In';
-            loginBtn.onclick = () => {
-                window.dispatchEvent(new CustomEvent('navigate', { detail: 'login' }));
-            };
-            loginDiv.appendChild(loginBtn);
-        }
-    } catch (e) {
-        console.warn('[LANDING] could not check session', e);
+    
+    if (!user) {
         const loginBtn = document.createElement('button');
         loginBtn.className = 'btn-link landing-login-btn';
         loginBtn.textContent = 'Log In';
@@ -118,9 +109,12 @@ export async function renderLanding(container) {
     document.addEventListener('pointercancel', stopDrag);
 
     async function triggerStart() {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-        else window.dispatchEvent(new CustomEvent('navigate', { detail: 'login' }));
+        // Usa l'utente in memoria invece di chiedere al server Supabase
+        if (user) {
+            window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+        } else {
+            window.dispatchEvent(new CustomEvent('navigate', { detail: 'login' }));
+        }
     }
 
     container.appendChild(wrapper);

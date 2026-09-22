@@ -693,8 +693,10 @@ export async function renderLab(container, param) {
         
         const saveBtn = createButton('Salva candela', 'save', 'btn-primary');
         saveBtn.onclick = async () => {
-            const { data: userData } = await supabase.auth.getUser();
+            const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
+             const userData = user?.data;
             const userId = userData?.user?.id;
+            
             if (!userId) { alert('Devi essere loggato!'); return; }
 
             let batchNumber = editingLog?.batch_number || 1;
