@@ -16,7 +16,7 @@ export async function renderProfile(container) {
 
     // Get user info (Auth su vercel)
     const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
-    const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utente';
+    const name = user?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utente';
     const userId = user?.id;
 
     // Greeting
