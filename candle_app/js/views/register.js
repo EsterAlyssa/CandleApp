@@ -141,40 +141,38 @@ export function renderRegister(container) {
     separator.innerHTML = 'Oppure registrati con il tuo<br>account Google!';
     wrapper.appendChild(separator);
 
-    // --- INTEGRAZIONE GOOGLE LOGIN NATIVO ---
-    const googleBtnContainer = document.createElement('div');
-    googleBtnContainer.id = 'google-register-btn-container';
-    googleBtnContainer.style.display = 'flex';
-    googleBtnContainer.style.justifyContent = 'center';
-    googleBtnContainer.style.marginTop = '10px';
-    wrapper.appendChild(googleBtnContainer);
-
-    window.handleGoogleRegisterResponse = async (response) => {
-        try {
-            const res = await fetch('/api/auth/google', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ credential: response.credential })
-            });
-            
-            const data = await res.json();
-            
-            if (res.ok) {
-                localStorage.setItem('candle_token', data.token);
-                localStorage.setItem('candle_user', JSON.stringify(data.user));
-                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-            } else {
-                alert('Errore Google Auth: ' + data.error);
+    // --- INTEGRAZIONE GOOGLE CUSTOM BUTTON ---
+    let googleClient;
+    const initGoogleClient = () => {
+        googleClient = google.accounts.oauth2.initTokenClient({
+            client_id: '150422947747-s4c2ral5mtlbrk79rfa2i6jo70q790p5.apps.googleusercontent.com',
+            scope: 'email profile',
+            callback: async (response) => {
+                if (response.error) return; // L'utente ha chiuso il popup
+                
+                try {
+                    const res = await fetch('/api/auth/google', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ access_token: response.access_token })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        localStorage.setItem('candle_token', data.token);
+                        localStorage.setItem('candle_user', JSON.stringify(data.user));
+                        window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+                    } else alert('Errore Google Auth: ' + data.error);
+                } catch (err) {
+                    console.error('Errore di rete Google Auth:', err);
+                    alert('Errore di connessione durante l\'accesso con Google.');
+                }
             }
-        } catch (err) {
-            console.error('Errore di rete Google Auth:', err);
-            alert('Errore di connessione durante l\'accesso con Google.');
-        }
+        });
     };
 
     const loadGoogleScript = () => {
         if (document.getElementById('google-gsi-script')) {
-            renderGoogleButton();
+            initGoogleClient();
             return;
         }
         const script = document.createElement('script');
@@ -182,22 +180,19 @@ export function renderRegister(container) {
         script.id = 'google-gsi-script';
         script.async = true;
         script.defer = true;
-        script.onload = renderGoogleButton;
+        script.onload = initGoogleClient;
         document.body.appendChild(script);
     };
 
-    const renderGoogleButton = () => {
-        google.accounts.id.initialize({
-            client_id: '150422947747-s4c2ral5mtlbrk79rfa2i6jo70q790p5.apps.googleusercontent.com',
-            callback: window.handleGoogleRegisterResponse
-        });
-        google.accounts.id.renderButton(
-            document.getElementById('google-register-btn-container'),
-            { theme: 'outline', size: 'large', type: 'standard', text: 'signup_with' }
-        );
-    };
-
     loadGoogleScript();
+
+    // Il bottone personalizzato che lancia il popup
+    const btnGoogle = createButton('Continua con Google', '', 'btn-google btn-compact');
+    btnGoogle.onclick = () => {
+        if (googleClient) googleClient.requestAccessToken();
+        else alert('Caricamento in corso, riprova tra un secondo...');
+    };
+    wrapper.appendChild(btnGoogle);
 
     container.appendChild(wrapper);
 }

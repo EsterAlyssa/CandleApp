@@ -125,42 +125,37 @@ export function renderLogin(container) {
         separator.textContent = 'oppure';
         wrapper.appendChild(separator);
 
-        // --- INTEGRAZIONE GOOGLE LOGIN NATIVO ---
-        const googleBtnContainer = document.createElement('div');
-        googleBtnContainer.id = 'google-btn-container';
-        googleBtnContainer.style.display = 'flex';
-        googleBtnContainer.style.justifyContent = 'center';
-        googleBtnContainer.style.marginTop = '10px';
-        wrapper.appendChild(googleBtnContainer);
-
-        // Funzione di callback quando Google ci restituisce il gettone
-        window.handleGoogleCredentialResponse = async (response) => {
-            try {
-                const res = await fetch('/api/auth/google', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ credential: response.credential })
-                });
-                
-                const data = await res.json();
-                
-                if (res.ok) {
-                    localStorage.setItem('candle_token', data.token);
-                    localStorage.setItem('candle_user', JSON.stringify(data.user));
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-                } else {
-                    alert('Errore Google Login: ' + data.error);
+        // --- INTEGRAZIONE GOOGLE CUSTOM BUTTON ---
+        let googleClient;
+        const initGoogleClient = () => {
+            googleClient = google.accounts.oauth2.initTokenClient({
+                client_id: '150422947747-s4c2ral5mtlbrk79rfa2i6jo70q790p5.apps.googleusercontent.com',
+                scope: 'email profile',
+                callback: async (response) => {
+                    if (response.error) return; // L'utente ha chiuso il popup
+                    
+                    try {
+                        const res = await fetch('/api/auth/google', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ access_token: response.access_token })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            localStorage.setItem('candle_token', data.token);
+                            localStorage.setItem('candle_user', JSON.stringify(data.user));
+                            window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+                        } else alert('Errore Google: ' + data.error);
+                    } catch (err) {
+                        alert('Errore di connessione.');
+                    }
                 }
-            } catch (err) {
-                console.error('Errore di rete Google Login:', err);
-                alert('Errore di connessione durante il login con Google.');
-            }
+            });
         };
 
-        // Iniezione dinamica dello script di Google
         const loadGoogleScript = () => {
             if (document.getElementById('google-gsi-script')) {
-                renderGoogleButton();
+                initGoogleClient();
                 return;
             }
             const script = document.createElement('script');
@@ -168,24 +163,19 @@ export function renderLogin(container) {
             script.id = 'google-gsi-script';
             script.async = true;
             script.defer = true;
-            script.onload = renderGoogleButton;
+            script.onload = initGoogleClient;
             document.body.appendChild(script);
         };
 
-        const renderGoogleButton = () => {
-            google.accounts.id.initialize({
-                // Inseriamo l'ID pubblico per il frontend
-                client_id: '150422947747-s4c2ral5mtlbrk79rfa2i6jo70q790p5.apps.googleusercontent.com',
-                callback: window.handleGoogleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById('google-btn-container'),
-                { theme: 'outline', size: 'large', type: 'standard' }
-            );
-        };
-
-        // Avviamo il caricamento del bottone Google
         loadGoogleScript();
+
+        // Bentornato bottone personalizzato!
+        const btnGoogle = createButton('Continua con Google', '', 'btn-google btn-compact');
+        btnGoogle.onclick = () => {
+            if (googleClient) googleClient.requestAccessToken();
+            else alert('Caricamento in corso, riprova tra un secondo...');
+        };
+        wrapper.appendChild(btnGoogle);
 
         container.appendChild(wrapper);
     } catch (error) {
