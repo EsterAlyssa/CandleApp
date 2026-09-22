@@ -176,22 +176,22 @@ export async function renderCandleDetail(container, logId) {
     const btns = document.createElement('div');
     btns.className = 'btn-container';
     btns.style.display = 'flex';
+    btns.style.flexWrap = 'wrap'; 
     btns.style.gap = '8px';
 
-    const editBtn = createButton('Modifica', 'edit', 'btn-secondary');
+    const editBtn = createButton('Modifica', 'edit', 'btn-secondary btn-compact');
     editBtn.style.flex = '1';
     editBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
     btns.appendChild(editBtn);
 
-    const guideBtn = createButton('Guida di colata', 'menu_book', 'btn-secondary');
+    const guideBtn = createButton('Guida colata', 'menu_book', 'btn-secondary btn-compact');
     guideBtn.style.flex = '1';
     guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
     btns.appendChild(guideBtn);
 
-    const deleteBtn = createButton('Elimina', 'delete', 'btn-primary');
+    // Usa la vera classe "btn-danger" definita in components.js
+    const deleteBtn = createButton('Elimina', 'delete', 'btn-danger btn-compact');
     deleteBtn.style.flex = '1';
-    deleteBtn.style.setProperty('--md-sys-color-primary', 'var(--md-sys-color-error, #b3261e)');
-    deleteBtn.style.setProperty('--md-sys-color-on-primary', 'var(--md-sys-color-on-error, #ffffff)');
     deleteBtn.onclick = async () => {
         if (!confirm('Eliminare questa candela?')) return;
         try {

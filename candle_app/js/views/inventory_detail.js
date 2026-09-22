@@ -106,8 +106,21 @@ export async function renderInventoryDetail(container, id) {
         const btnEdit = createButton('Modifica', 'edit', 'btn-secondary btn-compact');
         btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${uiCategory}&id=${id}` }));
 
+        const btnDelete = createButton('Elimina', 'delete', 'btn-danger btn-compact');
+        btnDelete.onclick = async () => {
+            if (!confirm(`Sei sicura di voler eliminare "${item.name}" dal magazzino?`)) return;
+            try {
+                const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
+            } catch (err) {
+                alert('Errore: ' + err.message);
+            }
+        };
+
         const actions = document.createElement('div');
         actions.style.display = 'flex';
+        actions.style.flexWrap = 'wrap'; // Permette ai bottoni di andare a capo se non c'è spazio
         actions.style.gap = '8px';
         if (btnStock) {
             btnStock.style.flex = '1';
@@ -120,6 +133,7 @@ export async function renderInventoryDetail(container, id) {
             actions.appendChild(btnPairings);
         }
         actions.appendChild(btnEdit);
+        actions.appendChild(btnDelete);
         wrapper.appendChild(actions);
 
         container.appendChild(wrapper);

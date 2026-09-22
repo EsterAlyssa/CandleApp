@@ -135,7 +135,7 @@ export async function renderInfo(container) {
             hDiv.style.flexWrap = 'wrap';
             hDiv.style.gap = '8px';
             hDiv.style.marginBottom = '12px';
-            hDiv.innerHTML = `<p style="width: 100%; margin-bottom: 4px;"><strong>Per armonia:</strong></p>`;
+            hDiv.innerHTML = `<p style="width: 100%; margin-bottom: 4px; text-align: center;"><strong>Per armonia</strong></p>`;
             harmony.map(p => findName(p.other_family_id)).filter((v, i, a) => a.indexOf(v) === i).forEach(name => {
                 const badge = document.createElement('span');
                 badge.className = 'status-badge badge-opened'; // For green styling
@@ -153,7 +153,7 @@ export async function renderInfo(container) {
             cDiv.style.flexWrap = 'wrap';
             cDiv.style.gap = '8px';
             cDiv.style.marginBottom = '12px';
-            cDiv.innerHTML = `<p style="width: 100%; margin-bottom: 4px;"><strong>Per contrasto:</strong></p>`;
+            cDiv.innerHTML = `<p style="width: 100%; margin-bottom: 4px; text-align: center;"><strong>Per contrasto</strong></p>`;
             contrast.map(p => findName(p.other_family_id)).filter((v, i, a) => a.indexOf(v) === i).forEach(name => {
                 const badge = document.createElement('span');
                 badge.className = 'status-badge badge-opened'; // For green styling
