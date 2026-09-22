@@ -204,4 +204,5 @@ export async function renderCandleDetail(container, logId) {
     btns.appendChild(deleteBtn);
 
     wrapper.appendChild(btns);
+    container.appendChild(wrapper);
 }

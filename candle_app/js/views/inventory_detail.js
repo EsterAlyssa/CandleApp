@@ -87,10 +87,18 @@ export async function renderInventoryDetail(container, id) {
                 } else if(k==='material') {
                     keyStr = 'Materiale';
                 }
-                return `<p><strong>${keyStr}:</strong>${val}</p>`;
+                return `<p><strong>${keyStr}:</strong> ${val}</p>`;
             }).join('') : ''}
         `;
-        wrapper.appendChild(createCard('Dettagli', html));
+        const detailsCard = createCard('Dettagli', html);
+        // Personalizziamo il titolo della card (grassetto, più grande e centrato)
+        const cardTitle = detailsCard.querySelector('.card-title');
+        if (cardTitle) {
+            cardTitle.style.textAlign = 'center';
+            cardTitle.style.fontSize = '1.25rem';
+            cardTitle.style.fontWeight = 'bold';
+        }
+        wrapper.appendChild(detailsCard);
 
         // Buttons: stock (non necessario per stampi), abbinamenti (solo essenze), edit, back
         const btnStock = item.category !== 'mold' ? createButton('Stock', 'inventory', 'btn-primary btn-compact') : null;
