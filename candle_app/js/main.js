@@ -1,9 +1,8 @@
 // ===================================================
-// MAIN.JS - Router e Inizializzazione App
+// MAIN.JS - Router e Inizializzazione App (Custom Vercel Auth)
 // ===================================================
 
 import { loadEnv } from './env.js';
-import { supabase } from './supabase.js';
 import { renderLanding } from './views/landing.js';
 import { renderLogin } from './views/login.js';
 import { renderRegister } from './views/register.js';
@@ -22,52 +21,30 @@ import { renderCandlesByEssence } from './views/candles_by_essence.js';
 import { renderEditBlend } from './views/edit_blend.js?v=4';
 import * as Store from './store.js';
 
-// Load environment variables (if .env is served) before rendering.
 await loadEnv();
 
-// Riferimenti UI
 const container = document.getElementById('app-container');
 const topBar = document.getElementById('top-bar');
 const bottomNav = document.querySelector('.bottom-nav');
 
-// Helper sicuro per mostrare messaggi di errore in pagina
 function escapeHtml(unsafe) {
-    return String(unsafe)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+    return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 // ===== THEME MANAGEMENT =====
 const THEME_STORAGE_KEY = 'candleapp_theme';
 
-function getStoredTheme() {
-    return localStorage.getItem(THEME_STORAGE_KEY);
-}
-
+function getStoredTheme() { return localStorage.getItem(THEME_STORAGE_KEY); }
 function setStoredTheme(value) {
-    if (value === null) {
-        localStorage.removeItem(THEME_STORAGE_KEY);
-    } else {
-        localStorage.setItem(THEME_STORAGE_KEY, value);
-    }
+    if (value === null) localStorage.removeItem(THEME_STORAGE_KEY);
+    else localStorage.setItem(THEME_STORAGE_KEY, value);
 }
-
-function getSystemTheme() {
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
+function getSystemTheme() { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
 function getPreferredTheme() {
     const stored = getStoredTheme();
     return stored === 'light' || stored === 'dark' ? stored : null;
 }
-
-function getEffectiveTheme() {
-    return getPreferredTheme() || getSystemTheme();
-}
-
+function getEffectiveTheme() { return getPreferredTheme() || getSystemTheme(); }
 function applyTheme(theme) {
     const isDark = theme === 'dark';
     document.documentElement.classList.toggle('dark', isDark);
@@ -75,7 +52,6 @@ function applyTheme(theme) {
     document.body.classList.toggle('dark', isDark);
     document.body.classList.toggle('light', !isDark);
 
-    // Update PWA theme color
     requestAnimationFrame(() => {
         const themeMeta = document.querySelector('meta[name="theme-color"]');
         if (themeMeta) {
@@ -84,36 +60,15 @@ function applyTheme(theme) {
         }
     });
 }
+function applySystemTheme() { applyTheme(getEffectiveTheme()); }
 
-function applySystemTheme() {
-    applyTheme(getEffectiveTheme());
-}
+function showToast(message, duration = 3200) {}
 
-// Toast helper (global) --------------------------------------------------
-function ensureToastContainer() {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        document.body.appendChild(container);
-    }
-    return container;
-}
-
-function showToast(message, duration = 3200) {
-    // Toast rimosso su richiesta
-}
-
-// Expose helpers so other views (e.g. profile) can let users toggle theme.
 window.CandleApp = {
-    getStoredTheme,
-    getEffectiveTheme,
+    getStoredTheme, getEffectiveTheme,
     setTheme: (theme) => {
-        if (theme === 'light' || theme === 'dark') {
-            setStoredTheme(theme);
-        } else {
-            setStoredTheme(null);
-        }
+        if (theme === 'light' || theme === 'dark') setStoredTheme(theme);
+        else setStoredTheme(null);
         applySystemTheme();
     },
     resetToSystem: () => {
@@ -126,55 +81,15 @@ window.CandleApp = {
 if (window.matchMedia) {
     applySystemTheme();
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        // Only update if the user is not overriding theme.
         if (!getPreferredTheme()) applySystemTheme();
     });
 }
 
 // ===== ROUTER =====
-// Mappa delle pagine con le loro "pagine parent" per la navigazione indietro
-const pageParentMap = {
-    'landing': null,
-    'login': 'landing',
-    'register': 'landing',
-    'dashboard': 'landing',
-    'inventory': 'dashboard',
-    'inventory-detail': 'inventory',
-    'add-essence': 'inventory',
-    'pairings': 'inventory',
-    'stock': 'inventory',
-    'candles-by-essence': 'inventory',
-    'lab': 'dashboard',
-    'info': 'dashboard',
-    'profile': 'dashboard',
-    'candle-detail': 'dashboard',
-    'edit-blend': 'inventory',
-    'guide': 'dashboard'
-};
-
-// Funzione per ottenere la pagina precedente
-function getPreviousPage(currentPage) {
-    // Prima prova con lo history stack
-    const history = Store.getNavigationHistory();
-    if (history.length > 1) {
-        // Trova la pagina corrente nella history e ritorna quella precedente
-        const currentIndex = history.lastIndexOf(currentPage);
-        if (currentIndex > 0) {
-            return history[currentIndex - 1];
-        }
-    }
-    // Fallback alla mappa statica
-    return pageParentMap[currentPage] || 'dashboard';
-}
-
-// Funzione per navigare indietro
 function navigateBack() {
     const prev = Store.popNavigation();
-    if (prev) {
-        navigateTo(prev, { skipHistoryPush: true });
-    } else {
-        navigateTo('dashboard', { skipHistoryPush: true });
-    }
+    if (prev) navigateTo(prev, { skipHistoryPush: true });
+    else navigateTo('dashboard', { skipHistoryPush: true });
 }
 
 async function navigateTo(rawInput, options = {}) {
@@ -182,142 +97,89 @@ async function navigateTo(rawInput, options = {}) {
     const _parts = String(rawInput).split(':');
     const pageId = _parts[0];
     const param = _parts.slice(1).join(':') || null;
-    console.log(`[ROUTER] Navigating to: ${pageId}, param: ${param}`);
+    console.log(`[ROUTER] Navigating to: ${pageId}`);
     
-    // Salva nella history se non stiamo tornando indietro
-    if (!options.skipHistoryPush) {
-        Store.pushNavigation(rawInput);
-    }
+    if (!options.skipHistoryPush) Store.pushNavigation(rawInput);
     Store.setCurrentPage(rawInput);
 
-    // Controlla sessione per decidere visibilità barre
-    const { data: { session } } = await supabase.auth.getSession();
+    // CUSTOM AUTH: Controllo sessione sincrono
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
+    
     const publicPages = ['landing', 'login', 'register'];
-    if (!session && publicPages.includes(pageId)) {
-        // Public pages when logged out: hide bars
+    if (!user && publicPages.includes(pageId)) {
         topBar.classList.add('hidden');
         bottomNav.classList.add('hidden');
         document.body.classList.remove('with-bars');
     } else {
-        // Logged in or non-public page: show bars
         topBar.classList.remove('hidden');
         bottomNav.classList.remove('hidden');
         document.body.classList.add('with-bars');
     }
 
-    // Update top bar content dynamically based on session & page
-    async function updateTopBarFor(pageId, session) {
+    async function updateTopBarFor(pageId, currentUser) {
         try {
             const topBarEl = document.getElementById('top-bar');
-            // No session and public landing -> clear header
-            if (!session && pageId === 'landing') { topBarEl.innerHTML = ''; return; }
+            if (!currentUser && pageId === 'landing') { topBarEl.innerHTML = ''; return; }
 
-            // Get user display name when logged in
-            const user = session?.user;
-            const rawName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'CandleApp';
+            const rawName = currentUser?.name || currentUser?.email?.split('@')[0] || 'CandleApp';
             const userName = String(rawName).split(' ').map(p => p ? (p[0].toUpperCase() + p.slice(1)) : '').join(' ');
 
-            // Helper per creare il back button con logica corretta
             const createBackButton = (targetPage) => {
                 return () => {
-                    if (typeof window.onTopBackClicked === 'function') {
-                        window.onTopBackClicked();
-                    } else if (targetPage) {
-                        window.dispatchEvent(new CustomEvent('navigate', { detail: targetPage }));
-                    } else {
-                        navigateBack();
-                    }
+                    if (typeof window.onTopBackClicked === 'function') window.onTopBackClicked();
+                    else if (targetPage) window.dispatchEvent(new CustomEvent('navigate', { detail: targetPage }));
+                    else navigateBack();
                 };
             };
 
+            const handleLogout = () => {
+                Store.resetAllState();
+                localStorage.removeItem('candle_token');
+                localStorage.removeItem('candle_user');
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' }));
+            };
+
+            const buildTopBar = (leftIcon, showLeft = true) => {
+                return `
+                    <div class="left-slot">${showLeft ? `<button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">${leftIcon}</span></button>` : ''}</div>
+                    <div class="top-title">${userName}</div>
+                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
+                `;
+            };
+
             if (pageId === 'dashboard') {
-                topBarEl.innerHTML = `
-                    <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
-                    <div class="top-title">${userName}</div>
-                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
-                `;
-                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = createBackButton('landing');
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
-                return;
+                topBarEl.innerHTML = buildTopBar('reply');
+                document.getElementById('top-back').onclick = createBackButton('landing');
+            } else if (['inventory','lab','info','profile'].includes(pageId)) {
+                topBarEl.innerHTML = buildTopBar('reply');
+                document.getElementById('top-back').onclick = createBackButton('dashboard');
+            } else if (['inventory-detail','pairings','stock','add-essence','candles-by-essence', 'edit-blend'].includes(pageId)) {
+                topBarEl.innerHTML = buildTopBar('reply');
+                document.getElementById('top-back').onclick = createBackButton('inventory');
+            } else if (pageId === 'candle-detail' || pageId === 'guide') {
+                topBarEl.innerHTML = buildTopBar('reply');
+                document.getElementById('top-back').onclick = createBackButton('dashboard');
+            } else if (pageId === 'landing') {
+                topBarEl.innerHTML = buildTopBar('', false);
+            } else {
+                topBarEl.innerHTML = buildTopBar('reply');
+                document.getElementById('top-back').onclick = createBackButton(null);
             }
 
-            if (['inventory','lab','info','profile'].includes(pageId)) {
-                topBarEl.innerHTML = `
-                    <div class="left-slot"><button id="top-home" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
-                    <div class="top-title">${userName}</div>
-                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
-                `;
-                const homeBtn = document.getElementById('top-home'); 
-                if (homeBtn) {
-                    homeBtn.onclick = createBackButton('dashboard');
-                }
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
-                return;
-            }
-
-            if (['inventory-detail','pairings','stock','add-essence','candles-by-essence'].includes(pageId)) {
-                topBarEl.innerHTML = `
-                    <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
-                    <div class="top-title">${userName}</div>
-                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
-                `;
-                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = createBackButton('inventory');
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
-                return;
-            }
-
-            if (pageId === 'candle-detail') {
-                topBarEl.innerHTML = `
-                    <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
-                    <div class="top-title">${userName}</div>
-                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
-                `;
-                const backBtn = document.getElementById('top-back'); if (backBtn) backBtn.onclick = createBackButton('dashboard');
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
-                return;
-            }
-
-            if (pageId === 'landing') {
-                // Landing while logged-in: show name + logout, no left home icon
-                topBarEl.innerHTML = `
-                    <div class="left-slot"></div>
-                    <div class="top-title">${userName}</div>
-                    <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
-                `;
-                const logoutBtn = document.getElementById('top-logout'); if (logoutBtn) logoutBtn.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
-                return;
-            }
-
-            // Default: show back + user + logout
-            topBarEl.innerHTML = `
-                <div class="left-slot"><button id="top-back" class="icon-btn square"><span class="material-symbols-outlined">reply</span></button></div>
-                <div class="top-title">${userName}</div>
-                <div class="right-slot"><button id="top-logout" class="btn-link">LogOut</button></div>
-            `;
-            const backBtn2 = document.getElementById('top-back'); if (backBtn2) backBtn2.onclick = createBackButton(null);
-            const logoutBtn2 = document.getElementById('top-logout'); if (logoutBtn2) logoutBtn2.onclick = async () => { Store.resetAllState(); await supabase.auth.signOut(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'landing' })); };
-        } catch (e) {
-            console.warn('[ROUTER] updateTopBarFor failed', e);
-        }
+            const logoutBtn = document.getElementById('top-logout');
+            if (logoutBtn) logoutBtn.onclick = handleLogout;
+        } catch (e) { console.warn('[ROUTER] updateTopBarFor failed', e); }
     }
 
-    await updateTopBarFor(pageId, session);
+    await updateTopBarFor(pageId, user);
 
-    // Show/hide bottom navigation based on page
     if (bottomNav) {
-        if (pageId === 'landing' || pageId === 'login' || pageId === 'register') {
-            bottomNav.style.display = 'none';
-        } else {
-            bottomNav.style.display = '';
-        }
+        if (pageId === 'landing' || pageId === 'login' || pageId === 'register') bottomNav.style.display = 'none';
+        else bottomNav.style.display = '';
     }
 
-    // Routing delle viste
     try {
-        // Mostra loading nella UI (ad es. sulla top bar)
         topBar.classList.add('loading');
-
-        // Crea un contenitore temporaneo per non svuotare subito la pagina attuale
         const frame = document.createElement('div');
         frame.className = 'view-frame fade-in';
         
@@ -338,16 +200,11 @@ async function navigateTo(rawInput, options = {}) {
             case 'candles-by-essence': await renderCandlesByEssence(frame, param); break;
             case 'edit-blend': await renderEditBlend(frame, param); break;
             case 'profile': await renderProfile(frame); break;
-            default:
-                frame.innerHTML = '<h1>Pagina non trovata</h1>';
+            default: frame.innerHTML = '<h1>Pagina non trovata</h1>';
         }
         
-        // Sostituisce il contenuto solo quando il rendering (e le chiamate di rete) è finito
-        // Smooth cross-fade transition (fade out old frame, then show new frame)
         const oldFrames = Array.from(container.children);
-
         if (oldFrames.length > 0) {
-            // Fade out the old frames first so they don't overlap the new frame.
             oldFrames.forEach(f => f.classList.add('fade-out'));
             container.style.position = 'relative';
             await new Promise(resolve => setTimeout(resolve, 180));
@@ -367,70 +224,50 @@ async function navigateTo(rawInput, options = {}) {
     }
 }
 
-// ===== AGGIORNAMENTO ICONE NAVBAR =====
 function updateActiveIcon(pageIdRaw) {
     const pageId = String(pageIdRaw || '').split(':')[0];
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-    // map fragment pages to top-level nav targets
     const mapping = {
-        'inventory-detail': 'inventory',
-        'add-essence': 'inventory',
-        'pairings': 'inventory',
-        'stock': 'inventory',
-        'lab': 'lab',
-        'info': 'info',
-        'profile': 'profile',
-        'dashboard': null
+        'inventory-detail': 'inventory', 'add-essence': 'inventory', 'pairings': 'inventory',
+        'stock': 'inventory', 'edit-blend': 'inventory', 'lab': 'lab', 'info': 'info',
+        'profile': 'profile', 'dashboard': null
     };
     const target = mapping[pageId] || pageId;
     const activeBtn = target ? document.querySelector(`[data-target="${target}"]`) : null;
     if (activeBtn) activeBtn.classList.add('active');
 }
 
-// ===== INIZIALIZZAZIONE NAVBAR =====
 function initNavbar() {
     if (!bottomNav) return;
     bottomNav.innerHTML = '';
-    
     const navItems = [
-        // Dashboard moved to top-left / header - not included in bottom nav
         { id: 'inventory', icon: 'stock.png', label: 'Magazzino' },
         { id: 'lab', icon: 'lab.png', label: 'Laboratorio' },
         { id: 'info', icon: 'fiore.png', label: 'Info' },
         { id: 'profile', icon: 'user.png', label: 'Profilo' }
     ];
-    
     navItems.forEach(item => {
         const btn = document.createElement('button');
         btn.className = 'nav-item';
         btn.setAttribute('data-target', item.id);
         btn.onclick = () => navigateTo(item.id);
-        
         const img = document.createElement('img');
         img.src = `/assets/${item.icon}`;
         img.alt = item.label;
         img.className = 'navbar-icon';
-        
         btn.appendChild(img);
         bottomNav.appendChild(btn);
     });
 }
 
-// ===== EVENTI GLOBALI =====
 window.addEventListener('navigate', (e) => { navigateTo(e.detail).catch(err => console.error('[ROUTER] navigate failed', err)); });
-
-// Supporto per il back button del browser
 window.addEventListener('popstate', (e) => {
-    if (e.state && e.state.page) {
-        navigateTo(e.state.page, { skipHistoryPush: true }).catch(err => console.error('[ROUTER] popstate navigate failed', err));
-    }
+    if (e.state && e.state.page) navigateTo(e.state.page, { skipHistoryPush: true }).catch(err => console.error('[ROUTER] popstate navigate failed', err));
 });
 
 // ===== INIZIALIZZAZIONE APP =====
 async function init() {
     console.log('[APP] Initializing...');
-
-    // Global error captures
     window.addEventListener('error', (e) => {
         console.error('[GLOBAL ERROR]', e.error || e.message || e);
         const overlay = document.getElementById('error-overlay') || document.createElement('div');
@@ -439,43 +276,24 @@ async function init() {
         overlay.textContent = 'Errore: ' + (e.error?.message || e.message || 'Sconosciuto');
         document.body.appendChild(overlay);
     });
-    window.addEventListener('unhandledrejection', (e) => {
-        console.error('[UNHANDLED REJECTION]', e.reason || e);
-    });
+    window.addEventListener('unhandledrejection', (e) => { console.error('[UNHANDLED REJECTION]', e.reason || e); });
 
     initNavbar();
     
-    // Listen to auth changes to update header/nav dynamically
-    supabase.auth.onAuthStateChange((event, session) => {
-        console.log('[AUTH] state changed', event, session);
-        if (event === 'SIGNED_OUT') { 
-            Store.resetAllState();
-            navigateTo('landing').catch(err => console.error(err)); 
-        }
-        // Salva userId per rapido accesso
-        if (session?.user?.id) {
-            Store.setAuthUserId(session.user.id);
-        } else {
-            Store.setAuthUserId(null);
-        }
-    });
-
-    // Controlla autenticazione alla partenza
-    const { data: { session } } = await supabase.auth.getSession();
+    // Custom Auth Init
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
     
-    // Salva userId se autenticato
-    if (session?.user?.id) {
-        Store.setAuthUserId(session.user.id);
+    if (user?.id) {
+        Store.setAuthUserId(user.id);
+    } else {
+        Store.setAuthUserId(null);
     }
     
-    // Controlla se c'è una pagina salvata nello store (per resume dopo background)
     const savedPage = Store.getCurrentPage();
-    if (savedPage && savedPage !== 'landing' && session) {
-        // Ripristina la pagina precedente se l'utente era loggato
+    if (savedPage && savedPage !== 'landing' && user) {
         console.log('[APP] Resuming to saved page:', savedPage);
         await navigateTo(savedPage, { skipHistoryPush: true });
     } else {
-        // Vai sempre alla home all'apertura della PWA
         await navigateTo('landing');
     }
 }
