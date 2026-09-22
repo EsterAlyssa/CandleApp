@@ -1,8 +1,6 @@
 // ===================================================
 // EDIT_BLEND.JS - Vista per modificare un mix/blend esistente
 // ===================================================
-
-import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
 import * as Store from '../store.js';
@@ -21,9 +19,9 @@ export async function renderEditBlend(container, blendId) {
     wrapper.appendChild(title);
 
     // --- Current user ---
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
     const userId = user?.id;
-
+    
     if (!userId) {
         wrapper.innerHTML = '<p class="error-text">Devi essere loggato per creare/modificare un mix.</p>';
         container.appendChild(wrapper);

@@ -2,7 +2,6 @@
 // CANDLES_BY_ESSENCE.JS - Mostra candele che contengono una certa essenza
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createTitle, createCard, createButton } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
 
@@ -17,7 +16,8 @@ export async function renderCandlesByEssence(container, essenceId) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
+            
     if (!user) {
         wrapper.appendChild(createCard('Accesso richiesto', '<p>Effettua il login per vedere le tue candele.</p>'));
         container.appendChild(wrapper);

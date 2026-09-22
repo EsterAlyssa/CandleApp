@@ -1,8 +1,6 @@
 // ===================================================
 // PROFILE.JS - Profilo Utente
 // ===================================================
-
-import { supabase } from '../supabase.js';
 import { createTitle } from '../components.js?v=3';
 
 export async function renderProfile(container) {
@@ -16,8 +14,8 @@ export async function renderProfile(container) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    // Get user info (Auth su Supabase)
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get user info (Auth su vercel)
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
     const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utente';
     const userId = user?.id;
 

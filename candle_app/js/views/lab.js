@@ -1,8 +1,6 @@
 // ===================================================
 // LAB.JS - Wizard Creazione Candela (multi-step)
 // ===================================================
-
-import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
 import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
@@ -31,9 +29,10 @@ export async function renderLab(container, param) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    // --- Current user (Resto su Supabase) ---
-    const { data: { user } } = await supabase.auth.getUser();
+    // --- Current user (vercel) ---
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
     const userId = user?.id;
+    
 
     // --- State: Carica dallo store o inizializza ---
     const savedWizard = Store.getWizardState();

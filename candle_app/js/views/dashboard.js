@@ -1,8 +1,6 @@
 // ===================================================
 // DASHBOARD.JS - Home 2 (Quartier Generale)
 // ===================================================
-
-import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle, createAlert } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js?v=5';
 
@@ -62,10 +60,10 @@ export async function renderDashboard(container) {
     subtitle.textContent = 'Candele recenti';
     wrapper.appendChild(subtitle);
 
-    // Auth remains on Supabase
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
-
+    // Auth su vercel
+    const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
+    const userId = user?.id;
+            
     if (!userId) {
         wrapper.appendChild(createCard('Accesso richiesto', '<p>Effettua il login per visualizzare le tue candele.</p>', [createButton('Vai al login', '', 'btn-primary btn-compact')]));
         container.appendChild(wrapper);

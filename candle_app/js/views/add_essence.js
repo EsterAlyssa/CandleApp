@@ -2,7 +2,6 @@
 // ADD_ESSENCE.JS - Aggiungi elemento al magazzino
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle } from '../components.js?v=3';
 import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary, deleteImageByPublicId } from '../image.js?v=5';
 import { WAX_PRESETS, SCENT_PRESETS, findWaxPreset, findScentPreset } from '../presets.js';
@@ -258,8 +257,8 @@ export async function renderAddEssence(container, categoryParam) {
         const btn = createButton('Salva', 'save', 'btn-primary');
         btn.style.flex = '1';
         btn.onclick = async () => {
-            // AUTH rimane su Supabase
-            const { data: { user } } = await supabase.auth.getUser();
+            // AUTH su vercel
+            const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
             const userId = user?.id;
             if (!userId) { alert('Devi essere loggato!'); return; }
 

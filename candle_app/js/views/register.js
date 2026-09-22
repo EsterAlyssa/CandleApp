@@ -1,8 +1,7 @@
 // ===================================================
-// REGISTER.JS - Schermata di registrazione
+// REGISTER.JS - Schermata di registrazione (Custom Vercel Auth)
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createButton, createInput, createTitle, createIconButton } from '../components.js?v=3';
 
 export function renderRegister(container) {
@@ -94,7 +93,7 @@ export function renderRegister(container) {
     confirmGroup.appendChild(toggleIcon2);
     wrapper.appendChild(confirmGroup);
 
-    // Bottone conferma
+    // --- FUNZIONE DI REGISTRAZIONE ---
     const btnConfirm = createButton('Conferma', '', 'btn-primary btn-compact');
     btnConfirm.onclick = async () => {
         const name = nameInput.querySelector('.input-field').value;
@@ -111,17 +110,27 @@ export function renderRegister(container) {
             return;
         }
         
-        const { error } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { full_name: name } }
-        });
-        
-        if (error) {
-            alert('Errore: ' + error.message);
-        } else {
-            alert('Registrazione avvenuta!');
-            window.dispatchEvent(new CustomEvent('navigate', { detail: 'login' }));
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, name })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('Registrazione avvenuta con successo!');
+                // Auto-login: salviamo subito il token e andiamo alla dashboard
+                localStorage.setItem('candle_token', data.token);
+                localStorage.setItem('candle_user', JSON.stringify(data.user));
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        } catch (err) {
+            console.error('Errore di rete:', err);
+            alert('Impossibile connettersi al server.');
         }
     };
     wrapper.appendChild(btnConfirm);
@@ -132,13 +141,63 @@ export function renderRegister(container) {
     separator.innerHTML = 'Oppure registrati con il tuo<br>account Google!';
     wrapper.appendChild(separator);
 
-    // Bottone Google
-    const btnGoogle = createButton('Google', '', 'btn-google btn-compact');
-    btnGoogle.onclick = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-        if (error) alert('Errore: ' + error.message);
+    // --- INTEGRAZIONE GOOGLE LOGIN NATIVO ---
+    const googleBtnContainer = document.createElement('div');
+    googleBtnContainer.id = 'google-register-btn-container';
+    googleBtnContainer.style.display = 'flex';
+    googleBtnContainer.style.justifyContent = 'center';
+    googleBtnContainer.style.marginTop = '10px';
+    wrapper.appendChild(googleBtnContainer);
+
+    window.handleGoogleRegisterResponse = async (response) => {
+        try {
+            const res = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: response.credential })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                localStorage.setItem('candle_token', data.token);
+                localStorage.setItem('candle_user', JSON.stringify(data.user));
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+            } else {
+                alert('Errore Google Auth: ' + data.error);
+            }
+        } catch (err) {
+            console.error('Errore di rete Google Auth:', err);
+            alert('Errore di connessione durante l\'accesso con Google.');
+        }
     };
-    wrapper.appendChild(btnGoogle);
+
+    const loadGoogleScript = () => {
+        if (document.getElementById('google-gsi-script')) {
+            renderGoogleButton();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.id = 'google-gsi-script';
+        script.async = true;
+        script.defer = true;
+        script.onload = renderGoogleButton;
+        document.body.appendChild(script);
+    };
+
+    const renderGoogleButton = () => {
+        google.accounts.id.initialize({
+            client_id: '150422947747-s4c2ral5mtlbrk79rfa2i6jo70q790p5.apps.googleusercontent.com',
+            callback: window.handleGoogleRegisterResponse
+        });
+        google.accounts.id.renderButton(
+            document.getElementById('google-register-btn-container'),
+            { theme: 'outline', size: 'large', type: 'standard', text: 'signup_with' }
+        );
+    };
+
+    loadGoogleScript();
 
     container.appendChild(wrapper);
 }

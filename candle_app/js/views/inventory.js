@@ -1,8 +1,7 @@
 // ===================================================
-// INVENTORY.JS - Gestione Magazzino (con 5 tab)
+// INVENTORY.JS - Gestione Magazzino (Custom Vercel Auth)
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord, deleteImageFromCloudinary, deleteImageByPublicId } from '../image.js?v=5';
 import * as Store from '../store.js';
@@ -109,11 +108,11 @@ export async function renderInventory(container) {
         resizeObserver.observe(listContainer);
         window.addEventListener('resize', requestCardLayout);
 
-        // AUTH rimane con Supabase
-        const { data: { user } } = await supabase.auth.getUser();
+        // AUTH: Lettura dal LocalStorage
+        const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
         const userId = user?.id;
 
-        // Families cache for essences (PONTE API)
+        // Families cache for essences
         let familiesMap = {};
         try {
             const famRes = await fetch('/api/families');
@@ -138,15 +137,16 @@ export async function renderInventory(container) {
             let data, error;
             try {
                 if (category === 'Fragranze') {
-                    // Da migrare
-                    const res = await supabase.from('blends').select('*').eq('user_id', userId).order('name');
-                    data = res.data; error = res.error;
+                    // Migrato: Fetch API Vercel
+                    const res = await fetch(`/api/blends?user_id=${userId}`);
+                    if (!res.ok) throw new Error('Errore caricamento mix');
+                    data = await res.json();
                 } else if (category === 'Candele') {
-                    // Da migrare
-                    const res = await supabase.from('candle_log').select('*, blends(name, resulting_family_id)').eq('user_id', userId).order('created_at', { ascending: false });
-                    data = res.data; error = res.error;
+                    // Migrato: Fetch API Vercel
+                    const res = await fetch(`/api/candles?user_id=${userId}`);
+                    if (!res.ok) throw new Error('Errore caricamento candele');
+                    data = await res.json();
                 } else {
-                    // PONTE API: Fetch Vercel Postgres
                     const dbCategory = categoryMap[category] || category;
                     let url = `/api/inventory?category=${dbCategory}`;
                     if (userId) url += `&user_id=${userId}`;
@@ -261,7 +261,6 @@ export async function renderInventory(container) {
                         catch (err) { cloudError = err; }
                     }
 
-                    // PONTE API: Delete
                     try {
                         const res = await fetch(`/api/inventory?id=${item.id}`, { method: 'DELETE' });
                         if (!res.ok) throw new Error('Errore durante l\'eliminazione');
@@ -390,7 +389,6 @@ export async function renderInventory(container) {
                                 const newRating = i;
                                 const newTechData = { ...item.tech_data, rating: newRating };
                                 
-                                // PONTE API: Update (PUT) per il rating
                                 const updatedItem = { ...item, tech_data: newTechData };
                                 try {
                                     const res = await fetch('/api/inventory', {
@@ -440,7 +438,6 @@ export async function renderInventory(container) {
                             catch (err) { cloudError = err; }
                         }
 
-                        // PONTE API: Delete
                         try {
                             const res = await fetch(`/api/inventory?id=${item.id}`, { method: 'DELETE' });
                             if (!res.ok) throw new Error('Errore durante l\'eliminazione');
@@ -491,7 +488,7 @@ export async function renderInventory(container) {
             renderFiltered();
         }
 
-        // ===== MIX E CANDELE (DA MIGRARE SUCCESSIVAMENTE) =====
+        // ===== MIX =====
         function renderFragranzeList(items) {
             listContainer.style.marginTop = '20px';
             const grid = document.createElement('div');
@@ -542,26 +539,35 @@ export async function renderInventory(container) {
                     if(item.base_scent_id) idsToFetch.push(item.base_scent_id);
 
                     if(idsToFetch.length > 0) {
-                        const { data: scents } = await supabase.from('inventory').select('id, name').in('id', idsToFetch);
-                        const scentMap = {};
-                        (scents || []).forEach(s => scentMap[s.id] = s.name);
+                        try {
+                            const res = await fetch(`/api/inventory?ids=${idsToFetch.join(',')}`);
+                            if(res.ok) {
+                                const scents = await res.json();
+                                const scentMap = {};
+                                (scents || []).forEach(s => scentMap[s.id] = s.name);
 
-                        if(item.head_scent_id) notes.push(`Testa: ${scentMap[item.head_scent_id] || 'Sconosciuta'}`);
-                        if(item.heart_scent_id) notes.push(`Cuore: ${scentMap[item.heart_scent_id] || 'Sconosciuta'}`);
-                        if(item.base_scent_id) notes.push(`Fondo: ${scentMap[item.base_scent_id] || 'Sconosciuta'}`);
+                                if(item.head_scent_id) notes.push(`Testa: ${scentMap[item.head_scent_id] || 'Sconosciuta'}`);
+                                if(item.heart_scent_id) notes.push(`Cuore: ${scentMap[item.heart_scent_id] || 'Sconosciuta'}`);
+                                if(item.base_scent_id) notes.push(`Fondo: ${scentMap[item.base_scent_id] || 'Sconosciuta'}`);
+                            }
+                        } catch(err) { console.warn('Errore fetch nomi essenze', err); }
                     }
 
                     infoText += notes.length > 0 ? '\nNote olfattive:\n' + notes.join('\n') : '\nNote olfattive: Nessuna specificata';
 
-                    const userId = (await supabase.auth.getUser()).data.user?.id;
-                    const { data: candles } = await supabase.from('candle_log').select('id, batch_number, created_at').eq('blend_id', item.id).eq('user_id', userId).order('created_at', { ascending: false });
+                    try {
+                        const cRes = await fetch(`/api/candles?blend_id=${item.id}&user_id=${userId}`);
+                        if (cRes.ok) {
+                            const candles = await cRes.json();
+                            if (candles && candles.length > 0) {
+                                const candleNames = candles.map((c, idx) => c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`);
+                                infoText += `\n\nCandele in cui è presente:\n${candleNames.join('\n')}`;
+                            } else {
+                                infoText += '\n\nCandele in cui è presente: nessuna';
+                            }
+                        }
+                    } catch(err) { infoText += '\n\nErrore nel recupero candele associate.'; }
 
-                    if (candles && candles.length > 0) {
-                        const candleNames = candles.map((c, idx) => c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`);
-                        infoText += `\n\nCandele in cui è presente:\n${candleNames.join('\n')}`;
-                    } else {
-                        infoText += '\n\nCandele in cui è presente: nessuna';
-                    }
                     alert(infoText);
                 };
 
@@ -576,9 +582,11 @@ export async function renderInventory(container) {
                 btnElimina.onclick = async (e) => {
                     e.stopPropagation();
                     if (!confirm(`Eliminare "${item.name}"?`)) return;
-                    const { error } = await supabase.from('blends').delete().eq('id', item.id);
-                    if (error) alert('Errore: ' + error.message);
-                    else loadList(activeTab);
+                    try {
+                        const res = await fetch(`/api/blends?id=${item.id}`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                        loadList(activeTab);
+                    } catch(err) { alert('Errore: ' + err.message); }
                 };
 
                 bottomActions.appendChild(btnInfo);
@@ -591,26 +599,43 @@ export async function renderInventory(container) {
             listContainer.appendChild(grid);
         }
 
+        // ===== CANDELE =====
         async function renderCandeleList(items) {
             listContainer.style.marginTop = '20px';
             const grid = document.createElement('div');
             grid.className = 'items-grid';
 
             const moldIds = Array.from(new Set(items.map(i => i.mold_id).filter(Boolean)));
+            const blendIds = Array.from(new Set(items.map(i => i.blend_id).filter(Boolean)));
+            
             let moldMap = {};
-            if (moldIds.length > 0) {
-                // Modificato con Supabase dato che inventory usa ids multipli (o crea endpoint in futuro)
-                const moldResp = await supabase.from('inventory').select('id, name, quantity_g, image_ref').in('id', moldIds);
-                (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
-            }
+            let blendMap = {};
+
+            try {
+                if (moldIds.length > 0) {
+                    const mRes = await fetch(`/api/inventory?ids=${moldIds.join(',')}`);
+                    if(mRes.ok) {
+                        const mData = await mRes.json();
+                        mData.forEach(m => moldMap[m.id] = m);
+                    }
+                }
+                if (blendIds.length > 0) {
+                    const bRes = await fetch(`/api/blends?ids=${blendIds.join(',')}`);
+                    if(bRes.ok) {
+                        const bData = await bRes.json();
+                        bData.forEach(b => blendMap[b.id] = b);
+                    }
+                }
+            } catch(e) { console.warn("Errore caricamento dettagli candele", e); }
 
             items.forEach(log => {
                 const card = document.createElement('div');
                 card.className = 'essence-card fluid-essence-card';
 
                 const mold = moldMap[log.mold_id];
-                const candleName = log.blends?.name || `Candela ${log.batch_number || '—'}`;
-                const familyName = log.blends?.resulting_family_id ? (familiesMap[log.blends.resulting_family_id] || '—') : '—';
+                const blend = blendMap[log.blend_id];
+                const candleName = blend?.name || `Candela ${log.batch_number || '—'}`;
+                const familyName = blend?.resulting_family_id ? (familiesMap[blend.resulting_family_id] || '—') : '—';
 
                 const topSection = document.createElement('div');
                 topSection.className = 'candle-top-section';
@@ -625,7 +650,7 @@ export async function renderInventory(container) {
                 const details = [
                     { label: 'Stampo', value: mold?.name || '—' },
                     { label: 'Capacità stampo', value: mold?.quantity_g ? `${mold.quantity_g} g` : '—' },
-                    { label: 'Composizione', value: log.blends?.name || '—' },
+                    { label: 'Composizione', value: blend?.name || '—' },
                     { label: 'Famiglia', value: familyName }
                 ];
 
@@ -689,9 +714,11 @@ export async function renderInventory(container) {
                 btnDelete.onclick = async (e) => {
                     e.stopPropagation();
                     if (!confirm(`Eliminare la candela "${candleName}"?`)) return;
-                    const { error } = await supabase.from('candle_log').delete().eq('id', log.id);
-                    if (error) alert('Errore: ' + error.message);
-                    else loadList(activeTab);
+                    try {
+                        const res = await fetch(`/api/candles?id=${log.id}`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                        loadList(activeTab);
+                    } catch(err) { alert('Errore: ' + err.message); }
                 };
 
                 bottomActions.appendChild(btnInfo);
