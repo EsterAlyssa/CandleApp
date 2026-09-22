@@ -15,7 +15,6 @@ export async function renderAddEssence(container, categoryParam) {
         const wrapper = document.createElement('div');
         wrapper.className = 'register-wrapper';
 
-        // Parse category + optional edit id (e.g. "Essenze&id=<uuid>")
         let rawCategory = categoryParam || 'Essenze';
         let editId = null;
         if (rawCategory.includes('&')) {
@@ -42,12 +41,10 @@ export async function renderAddEssence(container, categoryParam) {
         title.classList.add('register-title');
         wrapper.appendChild(title);
 
-        // Name
         const nameInput = createInput('Nome', 'text', 'add-name', 'Inserisci il nome');
         wrapper.appendChild(nameInput);
         const nameField = nameInput.querySelector('.input-field');
 
-        // Datalist con suggerimenti preimpostati (cere o essenze)
         const presetList = dbCategory === 'wax' ? WAX_PRESETS : dbCategory === 'scent' ? SCENT_PRESETS : [];
         if (presetList.length > 0 && nameField) {
             const datalistId = 'preset-suggestions';
@@ -68,7 +65,6 @@ export async function renderAddEssence(container, categoryParam) {
             nameInput.appendChild(presetHint);
         }
 
-        // Nota olfattiva (solo per essenze): testa / cuore / fondo
         let noteTypeSelect = null;
         if (rawCategory.trim().toLowerCase() === 'essenze') {
             const noteGroup = document.createElement('div');
@@ -96,10 +92,11 @@ export async function renderAddEssence(container, categoryParam) {
             wrapper.appendChild(noteGroup);
         }
 
-        // Family (only for essences)
         let familySelect = null;
         if (isEssence) {
-            const { data: families } = await supabase.from('families').select('id, name_it').order('name_it');
+            // PONTE 1: Fetch Families
+            const famRes = await fetch('/api/families');
+            const families = await famRes.json();
 
             const famGroup = document.createElement('div');
             famGroup.className = 'input-group';
@@ -124,18 +121,15 @@ export async function renderAddEssence(container, categoryParam) {
             famGroup.appendChild(familySelect);
             wrapper.appendChild(famGroup);
 
-            // Info note
             const infoNote = document.createElement('p');
             infoNote.className = 'form-note';
             infoNote.textContent = 'La famiglia della essenza è determinata dalla nota olfattiva che dona al prodotto.';
             wrapper.appendChild(infoNote);
         }
 
-        // Quantity
         const qtyInput = createInput('Quantità (g)', 'number', 'add-qty', category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi');
         wrapper.appendChild(qtyInput);
 
-        // Dati tecnici cera (solo per le cere)
         let waxFields = null;
         if (dbCategory === 'wax') {
             const makeNum = (label, id, placeholder, step) => {
@@ -152,13 +146,11 @@ export async function renderAddEssence(container, categoryParam) {
             waxFields = { conversion_factor: cf, melt_temp: mt, pour_temp: pt, max_fragrance: mf };
         }
 
-        // Upload immagine per tutte le categorie (stampi, cere, essenze)
         let selectedImageFile = null;
         let existingImageRef = null;
         let existingTechData = null;
         let imgPreview = null;
 
-        // Aggiungi sezione upload immagine
         const imgGroup = document.createElement('div');
         imgGroup.className = 'input-group';
         const imgLabel = document.createElement('label');
@@ -180,7 +172,6 @@ export async function renderAddEssence(container, categoryParam) {
         imgInput.onchange = (event) => {
             const file = event.target.files?.[0];
             if (!file) return;
-
             selectedImageFile = file;
             imgPreview.src = URL.createObjectURL(file);
             imgPreview.style.display = 'block';
@@ -188,11 +179,9 @@ export async function renderAddEssence(container, categoryParam) {
 
         wrapper.appendChild(imgGroup);
 
-        // Supplier
         const supplierInput = createInput('Venditore / Fornitore', 'text', 'add-supplier', 'Nome fornitore');
         wrapper.appendChild(supplierInput);
 
-        // Precompilazione dai preset quando si sceglie/scrive un nome noto
         if (nameField && (dbCategory === 'wax' || dbCategory === 'scent')) {
             const applyPreset = () => {
                 const val = nameField.value;
@@ -209,7 +198,6 @@ export async function renderAddEssence(container, categoryParam) {
                     if (!preset) return;
                     if (noteTypeSelect && preset.note) noteTypeSelect.value = preset.note;
                     if (familySelect && preset.family_id) {
-                        // Seleziona la famiglia solo se esiste tra quelle dell'utente
                         const hasOption = Array.from(familySelect.options).some(o => o.value === preset.family_id);
                         if (hasOption) familySelect.value = preset.family_id;
                     }
@@ -221,9 +209,20 @@ export async function renderAddEssence(container, categoryParam) {
 
         // Load existing item when in edit mode
         if (isEdit) {
-            const { data: existing, error: existingError } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', editId).maybeSingle();
+            let existing = null;
+            let existingError = null;
+
+            // PONTE 2: Fetch singolo item dall'Inventory
+            try {
+                const exRes = await fetch(`/api/inventory?id=${editId}`);
+                if (!exRes.ok) throw new Error('Errore durante il recupero dei dati');
+                const exData = await exRes.json();
+                existing = exData.length > 0 ? exData[0] : null;
+            } catch (e) {
+                existingError = e;
+            }
+
             if (!existingError && existing) {
-                // Only prefill if category matches expected
                 if (existing.category === dbCategory) {
                     nameInput.querySelector('.input-field').value = existing.name || '';
                     qtyInput.querySelector('.input-field').value = existing.quantity_g != null ? existing.quantity_g : '';
@@ -242,7 +241,6 @@ export async function renderAddEssence(container, categoryParam) {
                         if (td.max_fragrance != null) waxFields.max_fragrance.value = td.max_fragrance;
                     }
 
-                    // Keep existing image ref so we do not lose it when editing
                     existingImageRef = existing.image_ref || existing.image_url || null;
                     existingTechData = existing.tech_data || null;
                     const existingUrl = getImageUrlFromRecord(existing);
@@ -256,10 +254,11 @@ export async function renderAddEssence(container, categoryParam) {
             }
         }
 
-        // Save
+        // Save Button
         const btn = createButton('Salva', 'save', 'btn-primary');
         btn.style.flex = '1';
         btn.onclick = async () => {
+            // AUTH rimane su Supabase
             const { data: { user } } = await supabase.auth.getUser();
             const userId = user?.id;
             if (!userId) { alert('Devi essere loggato!'); return; }
@@ -273,28 +272,18 @@ export async function renderAddEssence(container, categoryParam) {
             const record = { user_id: userId, name, category: dbCategory, quantity_g, supplier };
             if (family_id) record.family_id = family_id;
 
-            // Store only the image reference in Supabase (image_ref = category + '_' + dynamicPart)
-            // The full URL is computed at runtime from the base Cloudinary URL.
-            // Gestisce upload immagini per tutte le categorie (stampi, cere, essenze)
             if (selectedImageFile) {
                 const existingDeleteToken = existingTechData?.cloudinary_delete_token;
                 const existingPublicId = existingTechData?.cloudinary_public_id;
-                console.log('[ADD_ESSENCE] existing image delete check', { existingDeleteToken, existingPublicId });
 
                 if (existingDeleteToken) {
-                    try {
-                        await deleteImageFromCloudinary(existingDeleteToken);
-                    } catch (deleteErr) {
-                        console.warn('[ADD_ESSENCE] Failed to delete previous image via Cloudinary token', deleteErr);
-                    }
+                    try { await deleteImageFromCloudinary(existingDeleteToken); } 
+                    catch (deleteErr) { console.warn('Failed to delete previous image', deleteErr); }
                 } else {
                     const previousPublicId = existingPublicId || existingImageRef;
                     if (previousPublicId) {
-                        try {
-                            await deleteImageByPublicId(previousPublicId);
-                        } catch (deleteErr) {
-                            console.warn('[ADD_ESSENCE] Failed to delete previous image via public_id endpoint', deleteErr);
-                        }
+                        try { await deleteImageByPublicId(previousPublicId); } 
+                        catch (deleteErr) { console.warn('Failed to delete previous image via public_id', deleteErr); }
                     }
                 }
 
@@ -302,23 +291,15 @@ export async function renderAddEssence(container, categoryParam) {
                     const { imageRef, cloudinaryPublicId, deleteToken, version } = await uploadImageToCloudinary(selectedImageFile, dbCategory, name);
                     existingImageRef = imageRef;
                     existingTechData = existingTechData || {};
-                    if (cloudinaryPublicId) {
-                        existingTechData.cloudinary_public_id = cloudinaryPublicId;
-                    }
-                    if (deleteToken) {
-                        existingTechData.cloudinary_delete_token = deleteToken;
-                    }
-                    if (version) {
-                        existingTechData.cloudinary_version = version;
-                    }
+                    if (cloudinaryPublicId) existingTechData.cloudinary_public_id = cloudinaryPublicId;
+                    if (deleteToken) existingTechData.cloudinary_delete_token = deleteToken;
+                    if (version) existingTechData.cloudinary_version = version;
                 } catch (uploadError) {
-                    console.error('[ADD_ESSENCE] uploadImageToCloudinary failed', uploadError);
                     alert(`Upload immagine fallito: ${uploadError?.message || uploadError}`);
                     return;
                 }
             }
             
-            // Nota olfattiva (solo essenze): salvala in tech_data.note_type
             if (noteTypeSelect) {
                 const nt = noteTypeSelect.value || '';
                 existingTechData = existingTechData || {};
@@ -326,7 +307,6 @@ export async function renderAddEssence(container, categoryParam) {
                 else delete existingTechData.note_type;
             }
 
-            // Dati tecnici cera: salvali in tech_data
             if (waxFields) {
                 existingTechData = existingTechData || {};
                 const setNum = (key, field) => {
@@ -342,32 +322,33 @@ export async function renderAddEssence(container, categoryParam) {
                 setNum('max_fragrance', waxFields.max_fragrance);
             }
 
-            // Update record with new image info (or keep existing if no new image chosen).
-            if (existingImageRef) {
-                record.image_ref = existingImageRef;
-            }
-            if (existingTechData && Object.keys(existingTechData).length > 0) {
-                record.tech_data = existingTechData;
+            if (existingImageRef) record.image_ref = existingImageRef;
+            if (existingTechData && Object.keys(existingTechData).length > 0) record.tech_data = existingTechData;
+
+            let error = null;
+
+            // PONTE 3 & 4: Inserimento e Aggiornamento
+            try {
+                const method = (isEdit && editId) ? 'PUT' : 'POST';
+                const payload = (isEdit && editId) ? { id: editId, ...record } : record;
+                
+                const res = await fetch('/api/inventory', {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || 'Errore di salvataggio nel database');
+                }
+            } catch (e) {
+                error = { message: e.message };
             }
 
-            if (!['wax','mold','scent'].includes(dbCategory)) {
-                console.error('[ADD_ESSENCE] Invalid category for inventory:', dbCategory, { category, categoryParam });
-                alert('Categoria non valida: ' + dbCategory);
-                return;
-            }
-
-            console.log('[ADD_ESSENCE] inserting inventory record', record);
-            let error;
-            if (isEdit && editId) {
-                const res = await supabase.from('inventory').update(record).eq('id', editId);
-                error = res.error;
+            if (error) {
+                alert('Errore: ' + error.message);
             } else {
-                const res = await supabase.from('inventory').insert([record]);
-                error = res.error;
-            }
-
-            if (error) alert('Errore: ' + error.message);
-            else {
                 const tabByCategory = { wax: 'Cere', mold: 'Stampi', scent: 'Essenze' };
                 Store.setInventoryTab(tabByCategory[dbCategory] || 'Cere');
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
@@ -377,7 +358,6 @@ export async function renderAddEssence(container, categoryParam) {
         const cancelBtn = createButton('Annulla', 'close', 'btn-secondary');
         cancelBtn.style.flex = '1';
         cancelBtn.onclick = () => {
-            // Always go back to inventory, regardless of edit/create mode
             window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
         };
 
@@ -389,7 +369,6 @@ export async function renderAddEssence(container, categoryParam) {
         btnContainer.appendChild(cancelBtn);
 
         wrapper.appendChild(btnContainer);
-
         container.appendChild(wrapper);
     } catch (e) {
         console.error('[VIEW] renderAddEssence error', e);

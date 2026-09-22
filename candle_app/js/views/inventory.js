@@ -37,7 +37,6 @@ export async function renderInventory(container) {
             'Essenze': 'scent'
         };
 
-        // Usa lo store per mantenere il tab attivo
         let activeTab = Store.getInventoryTab() || 'Cere';
 
         tabs.forEach(tab => {
@@ -59,13 +58,10 @@ export async function renderInventory(container) {
         const addBtn = createButton('Aggiungi un elemento', 'add', 'btn-primary');
         addBtn.onclick = () => {
             if (activeTab === 'Candele') {
-                // Candele: apre il wizard completo
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
             } else if (activeTab === 'Fragranze') {
-                // Mix usati: apre edit-blend senza ID (modalità creazione)
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'edit-blend' }));
             } else {
-                // Cere, Stampi, Essenze: apre add-essence
                 window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${activeTab}` }));
             }
         };
@@ -77,28 +73,19 @@ export async function renderInventory(container) {
         wrapper.appendChild(listContainer);
 
         let cardMinWidth = 320;
-
         let isLayoutPending = false;
+        
         const requestCardLayout = () => {
             if (isLayoutPending) return;
             isLayoutPending = true;
             window.requestAnimationFrame(() => {
                 isLayoutPending = false;
-
                 const containerWidth = listContainer.getBoundingClientRect().width || window.innerWidth;
                 const minWidth = cardMinWidth;
-
-                // Quante card possono starci interamente (senza overflow)
                 const maxCards = Math.max(1, Math.floor(containerWidth / minWidth));
-
-                // Spazio residuo disponibile
                 const usedWidth = maxCards * minWidth;
                 const remaining = Math.max(0, containerWidth - usedWidth);
-
-                // Calcola gap uniforme tra card e ai bordi (cols + 1 spazi)
                 let dynamicGap = remaining / (maxCards + 1);
-
-                // Limita gap per non creare spacing enormi
                 dynamicGap = Math.max(12, Math.min(dynamicGap, 60));
 
                 if (listContainer.classList.contains('items-grid')) {
@@ -118,50 +105,61 @@ export async function renderInventory(container) {
             });
         };
 
-
         const resizeObserver = new ResizeObserver(() => requestCardLayout());
         resizeObserver.observe(listContainer);
-
         window.addEventListener('resize', requestCardLayout);
 
-        // Determine current user (to scope inventory)
+        // AUTH rimane con Supabase
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id;
 
-        // Families cache for essences
+        // Families cache for essences (PONTE API)
         let familiesMap = {};
-        const { data: famData } = await supabase.from('families').select('id, name_it');
-        (famData || []).forEach(f => { familiesMap[f.id] = f.name_it || ''; });
+        try {
+            const famRes = await fetch('/api/families');
+            if (famRes.ok) {
+                const famData = await famRes.json();
+                (famData || []).forEach(f => { familiesMap[f.id] = f.name_it || ''; });
+            }
+        } catch(e) { console.error("Errore caricamento famiglie", e); }
 
         async function loadList(category) {
             listContainer.innerHTML = '';
-            // Adjust container layout for category
+            
             if (category === 'Stampi' || category === 'Fragranze' || category === 'Candele') {
                 listContainer.className = 'items-container items-grid';
                 cardMinWidth = category === 'Stampi' ? 280 : 320;
-            } else if (category === 'Essenze') {
-                listContainer.className = 'items-container items-list';
-                cardMinWidth = 320;
             } else {
                 listContainer.className = 'items-container items-list';
                 cardMinWidth = 320;
             }
-
             requestCardLayout();
 
             let data, error;
-            if (category === 'Fragranze') {
-                const res = await supabase.from('blends').select('*').eq('user_id', userId).order('name');
-                data = res.data; error = res.error;
-            } else if (category === 'Candele') {
-                const res = await supabase.from('candle_log').select('*, blends(name, resulting_family_id)').eq('user_id', userId).order('created_at', { ascending: false });
-                data = res.data; error = res.error;
-            } else {
-                const dbCategory = categoryMap[category] || category;
-                let query = supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('category', dbCategory);
-                if (userId) query = query.eq('user_id', userId);
-                const res = await query.order('name');
-                data = res.data; error = res.error;
+            try {
+                if (category === 'Fragranze') {
+                    // Da migrare
+                    const res = await supabase.from('blends').select('*').eq('user_id', userId).order('name');
+                    data = res.data; error = res.error;
+                } else if (category === 'Candele') {
+                    // Da migrare
+                    const res = await supabase.from('candle_log').select('*, blends(name, resulting_family_id)').eq('user_id', userId).order('created_at', { ascending: false });
+                    data = res.data; error = res.error;
+                } else {
+                    // PONTE API: Fetch Vercel Postgres
+                    const dbCategory = categoryMap[category] || category;
+                    let url = `/api/inventory?category=${dbCategory}`;
+                    if (userId) url += `&user_id=${userId}`;
+                    
+                    const res = await fetch(url);
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        throw new Error(errData.error || 'Errore database');
+                    }
+                    data = await res.json();
+                }
+            } catch (err) {
+                error = err;
             }
 
             if (error) {
@@ -180,20 +178,17 @@ export async function renderInventory(container) {
             else if (category === 'Candele') await renderCandeleList(data);
         }
 
-        // ===== CERE: simple list =====
+        // ===== CERE =====
         function renderWaxList(items) {
-            // Add margin-top to create space between add button and cards
             listContainer.style.marginTop = '20px';
-
             items.forEach(item => {
                 const row = document.createElement('div');
                 row.className = 'wax-row';
                 
-                
-                
                 const name = document.createElement('span');
                 name.className = 'wax-name';
                 name.textContent = item.name;
+                
                 const qty = document.createElement('span');
                 qty.className = 'wax-qty';
                 qty.textContent = formatQty(item.quantity_g);
@@ -206,7 +201,7 @@ export async function renderInventory(container) {
             });
         }
 
-        // ===== STAMPI: card grid with images =====
+        // ===== STAMPI =====
         function renderMoldGrid(items) {
             items.forEach(item => {
                 const card = document.createElement('div');
@@ -257,39 +252,27 @@ export async function renderInventory(container) {
                     const publicId = item?.tech_data?.cloudinary_public_id;
                     const fallbackPublicId = item?.image_ref || item?.image_url || null;
                     let cloudError = null;
-                    console.log('[INVENTORY] deleting item image', { itemId: item.id, deleteToken, publicId, fallbackPublicId });
 
                     if (deleteToken) {
-                        try {
-                            await deleteImageFromCloudinary(deleteToken);
-                        } catch (err) {
-                            console.warn('[INVENTORY] Cloudinary delete failed by token', err);
-                            cloudError = err;
-                        }
-                    } else {
-                        const toDelete = publicId || fallbackPublicId;
-                        if (toDelete) {
-                            try {
-                                await deleteImageByPublicId(toDelete);
-                            } catch (err) {
-                                console.warn('[INVENTORY] Cloudinary delete by public_id failed', err);
-                                cloudError = err;
-                            }
-                        }
+                        try { await deleteImageFromCloudinary(deleteToken); } 
+                        catch (err) { cloudError = err; }
+                    } else if (publicId || fallbackPublicId) {
+                        try { await deleteImageByPublicId(publicId || fallbackPublicId); } 
+                        catch (err) { cloudError = err; }
                     }
 
-                    const { error } = await supabase.from('inventory').delete().eq('id', item.id);
-                    if (error) {
-                        alert('Errore: ' + error.message);
-                    } else {
-                        if (cloudError) {
-                            alert('Elemento eliminato, ma non è stato possibile cancellare l\'immagine da Cloudinary: ' + (cloudError.message || cloudError));
-                        }
+                    // PONTE API: Delete
+                    try {
+                        const res = await fetch(`/api/inventory?id=${item.id}`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                        
+                        if (cloudError) alert('Elemento eliminato, ma errore su Cloudinary: ' + cloudError.message);
                         loadList(activeTab);
+                    } catch (err) {
+                        alert('Errore: ' + err.message);
                     }
                 };
                 actions.appendChild(deleteBtn);
-
                 card.appendChild(actions);
 
                 card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `inventory-detail:${item.id}` }));
@@ -297,9 +280,8 @@ export async function renderInventory(container) {
             });
         }
 
-        // ===== ESSENZE: detailed cards =====
+        // ===== ESSENZE =====
         function renderEssenceList(items) {
-            // Add margin-top to create space between add button and cards
             listContainer.style.marginTop = '20px';
 
             const filterBar = document.createElement('div');
@@ -325,7 +307,7 @@ export async function renderInventory(container) {
             noteOpt0.value = '';
             noteOpt0.textContent = 'Tutte le note';
             noteFilter.appendChild(noteOpt0);
-                        const noteTypes = Array.from(new Set(items.map(i => i.tech_data?.note_type).filter(Boolean)));
+            const noteTypes = Array.from(new Set(items.map(i => i.tech_data?.note_type).filter(Boolean)));
             noteTypes.forEach(nt => {
                 const opt = document.createElement('option');
                 opt.value = nt;
@@ -342,7 +324,6 @@ export async function renderInventory(container) {
             listContainer.appendChild(filterBar);
 
             const renderFiltered = () => {
-                // remove existing cards
                 listContainer.querySelectorAll('.essence-card').forEach(c => c.remove());
                 const familyVal = familyFilter.value;
                 const noteVal = noteFilter.value;
@@ -392,7 +373,6 @@ export async function renderInventory(container) {
                         infoCol.appendChild(noteEl);
                     }
 
-                    // Star rating (click to set)
                     const rating = item.tech_data?.rating || 0;
                     const starsEl = document.createElement('div');
                     starsEl.className = 'essence-stars';
@@ -408,14 +388,21 @@ export async function renderInventory(container) {
                             star.onclick = async (e) => {
                                 e.stopPropagation();
                                 const newRating = i;
-                                // Persist to supabase
                                 const newTechData = { ...item.tech_data, rating: newRating };
-                                const { error } = await supabase.from('inventory').update({ tech_data: newTechData }).eq('id', item.id);
-                                if (error) {
-                                    alert('Errore nel salvataggio del rating: ' + error.message);
-                                } else {
+                                
+                                // PONTE API: Update (PUT) per il rating
+                                const updatedItem = { ...item, tech_data: newTechData };
+                                try {
+                                    const res = await fetch('/api/inventory', {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(updatedItem)
+                                    });
+                                    if (!res.ok) throw new Error('Salvataggio fallito');
                                     item.tech_data = newTechData;
                                     renderStars(newRating);
+                                } catch (err) {
+                                    alert('Errore nel salvataggio del rating: ' + err.message);
                                 }
                             };
                             starsEl.appendChild(star);
@@ -426,7 +413,6 @@ export async function renderInventory(container) {
                     infoCol.appendChild(starsEl);
                     topSection.appendChild(infoCol);
 
-                    // Action buttons (side) - Modifica ed Elimina a destra, verticalmente
                     const sideActions = document.createElement('div');
                     sideActions.className = 'essence-side-actions';
 
@@ -447,44 +433,30 @@ export async function renderInventory(container) {
                         let cloudError = null;
 
                         if (deleteToken) {
-                            try {
-                                await deleteImageFromCloudinary(deleteToken);
-                            } catch (err) {
-                                console.warn('[INVENTORY] Cloudinary delete failed by token', err);
-                                cloudError = err;
-                            }
-                        } else {
-                            const resolvedPublicId = publicId || item?.image_ref || item?.image_url;
-                            if (resolvedPublicId) {
-                                try {
-                                    await deleteImageByPublicId(resolvedPublicId);
-                                } catch (err) {
-                                    console.warn('[INVENTORY] Cloudinary delete by public_id failed', err);
-                                    cloudError = err;
-                                }
-                            } else {
-                                console.warn('[INVENTORY] no public ID found for Cloudinary delete');
-                            }
+                            try { await deleteImageFromCloudinary(deleteToken); } 
+                            catch (err) { cloudError = err; }
+                        } else if (publicId || item?.image_ref || item?.image_url) {
+                            try { await deleteImageByPublicId(publicId || item?.image_ref || item?.image_url); } 
+                            catch (err) { cloudError = err; }
                         }
 
-                        const { error } = await supabase.from('inventory').delete().eq('id', item.id);
-                        if (error) {
-                            alert('Errore: ' + error.message);
-                        } else {
-                            if (cloudError) {
-                                alert('Elemento eliminato, ma non è stato possibile cancellare l\'immagine da Cloudinary. Controlla la console per i dettagli.');
-                            }
+                        // PONTE API: Delete
+                        try {
+                            const res = await fetch(`/api/inventory?id=${item.id}`, { method: 'DELETE' });
+                            if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                            
+                            if (cloudError) alert('Elemento eliminato, ma errore su Cloudinary.');
                             loadList(activeTab);
+                        } catch (err) {
+                            alert('Errore: ' + err.message);
                         }
                     };
 
                     sideActions.appendChild(btnEdit);
                     sideActions.appendChild(btnDelete);
                     topSection.appendChild(sideActions);
-
                     card.appendChild(topSection);
 
-                    // Bottom actions - Stock, Abbinamenti, In candele su una riga, centrati
                     const bottomActions = document.createElement('div');
                     bottomActions.className = 'essence-bottom-actions';
 
@@ -519,10 +491,9 @@ export async function renderInventory(container) {
             renderFiltered();
         }
 
+        // ===== MIX E CANDELE (DA MIGRARE SUCCESSIVAMENTE) =====
         function renderFragranzeList(items) {
-            // Add margin-top to create space between add button and cards
             listContainer.style.marginTop = '20px';
-
             const grid = document.createElement('div');
             grid.className = 'items-grid';
 
@@ -533,7 +504,6 @@ export async function renderInventory(container) {
                 const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString('it-IT') : '—';
                 const familyName = item.resulting_family_id ? (familiesMap[item.resulting_family_id] || '—') : '—';
 
-                // Top section: info
                 const topSection = document.createElement('div');
                 topSection.style.marginBottom = '16px';
 
@@ -554,7 +524,6 @@ export async function renderInventory(container) {
 
                 card.appendChild(topSection);
 
-                // Bottom actions - tutti i bottoni sulla stessa riga come le Candele
                 const bottomActions = document.createElement('div');
                 bottomActions.className = 'essence-side-actions';
                 bottomActions.style.flexDirection = 'row';
@@ -565,9 +534,7 @@ export async function renderInventory(container) {
                 btnInfo.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">info</span>Info';
                 btnInfo.onclick = async (e) => {
                     e.stopPropagation();
-
                     let infoText = `Nome: ${item.name}\n`;
-
                     const notes = [];
                     const idsToFetch = [];
                     if(item.head_scent_id) idsToFetch.push(item.head_scent_id);
@@ -584,39 +551,24 @@ export async function renderInventory(container) {
                         if(item.base_scent_id) notes.push(`Fondo: ${scentMap[item.base_scent_id] || 'Sconosciuta'}`);
                     }
 
-                    if(notes.length > 0) {
-                        infoText += '\nNote olfattive:\n' + notes.join('\n');
-                    } else {
-                        infoText += '\nNote olfattive: Nessuna specificata';
-                    }
+                    infoText += notes.length > 0 ? '\nNote olfattive:\n' + notes.join('\n') : '\nNote olfattive: Nessuna specificata';
 
                     const userId = (await supabase.auth.getUser()).data.user?.id;
-                    const { data: candles } = await supabase.from('candle_log')
-                        .select('id, batch_number, created_at')
-                        .eq('blend_id', item.id)
-                        .eq('user_id', userId)
-                        .order('created_at', { ascending: false });
+                    const { data: candles } = await supabase.from('candle_log').select('id, batch_number, created_at').eq('blend_id', item.id).eq('user_id', userId).order('created_at', { ascending: false });
 
                     if (candles && candles.length > 0) {
-                        const candleNames = candles.map((c, idx) => {
-                            const label = c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`;
-                            return label;
-                        });
+                        const candleNames = candles.map((c, idx) => c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`);
                         infoText += `\n\nCandele in cui è presente:\n${candleNames.join('\n')}`;
                     } else {
                         infoText += '\n\nCandele in cui è presente: nessuna';
                     }
-
                     alert(infoText);
                 };
 
                 const btnModifica = document.createElement('button');
                 btnModifica.className = 'outline';
                 btnModifica.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
-                btnModifica.onclick = (e) => {
-                    e.stopPropagation();
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: `edit-blend:${item.id}` }));
-                };
+                btnModifica.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: `edit-blend:${item.id}` })); };
 
                 const btnElimina = document.createElement('button');
                 btnElimina.className = 'outline-red';
@@ -640,22 +592,21 @@ export async function renderInventory(container) {
         }
 
         async function renderCandeleList(items) {
-            // Add margin-top to create space between add button and cards
             listContainer.style.marginTop = '20px';
-
             const grid = document.createElement('div');
             grid.className = 'items-grid';
 
-            // Fetch mold info to show nome/capacità
             const moldIds = Array.from(new Set(items.map(i => i.mold_id).filter(Boolean)));
-            const moldResp = moldIds.length > 0 ? await supabase.from('inventory').select('id, name, quantity_g, image_ref').in('id', moldIds) : { data: [] };
-            const moldMap = {};
-            (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
+            let moldMap = {};
+            if (moldIds.length > 0) {
+                // Modificato con Supabase dato che inventory usa ids multipli (o crea endpoint in futuro)
+                const moldResp = await supabase.from('inventory').select('id, name, quantity_g, image_ref').in('id', moldIds);
+                (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
+            }
 
             items.forEach(log => {
                 const card = document.createElement('div');
                 card.className = 'essence-card fluid-essence-card';
-                const created = new Date(log.created_at).toLocaleDateString('it-IT');
 
                 const mold = moldMap[log.mold_id];
                 const candleName = log.blends?.name || `Candela ${log.batch_number || '—'}`;
@@ -760,7 +711,6 @@ export async function renderInventory(container) {
             return `${g} g`;
         }
 
-        // Initial load
         await loadList(activeTab);
 
         container.appendChild(wrapper);

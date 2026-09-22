@@ -4,7 +4,6 @@
 // la preparazione usando i dati della ricetta appena salvata.
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
 
@@ -21,23 +20,40 @@ export async function renderGuide(container, logId) {
         return;
     }
 
-    // --- Carica la candela ---
-    const { data: log, error: logError } = await supabase.from('candle_log').select('*').eq('id', logId).single();
-    if (logError || !log) {
+    // PONTE 1: Carica la candela
+    let log = null;
+    try {
+        const res = await fetch(`/api/candles?id=${logId}`);
+        if (!res.ok) throw new Error('Candela non trovata');
+        const data = await res.json();
+        log = data[0];
+    } catch (e) {
         wrapper.innerHTML = '<p class="error-text">Impossibile caricare la candela.</p>';
         container.appendChild(wrapper);
         return;
     }
 
-    // --- Carica stampo, cera, blend ---
-    const [moldResp, waxResp, blendResp] = await Promise.all([
-        log.mold_id ? supabase.from('inventory').select('id, name, quantity_g, tech_data').eq('id', log.mold_id).maybeSingle() : { data: null },
-        log.wax_id ? supabase.from('inventory').select('id, name, tech_data').eq('id', log.wax_id).maybeSingle() : { data: null },
-        log.blend_id ? supabase.from('blends').select('id, name, head_scent_id, heart_scent_id, base_scent_id').eq('id', log.blend_id).maybeSingle() : { data: null }
+    if (!log) {
+        wrapper.innerHTML = '<p class="error-text">Impossibile caricare la candela.</p>';
+        container.appendChild(wrapper);
+        return;
+    }
+
+    // PONTE 2, 3, 4: Carica stampo, cera, blend
+    const fetchItem = async (endpoint, id) => {
+        if (!id) return null;
+        try {
+            const r = await fetch(`/api/${endpoint}?id=${id}`);
+            const d = await r.json();
+            return d[0] || null;
+        } catch(e) { return null; }
+    };
+
+    const [mold, wax, blend] = await Promise.all([
+        fetchItem('inventory', log.mold_id),
+        fetchItem('inventory', log.wax_id),
+        fetchItem('blends', log.blend_id)
     ]);
-    const mold = moldResp.data;
-    const wax = waxResp.data;
-    const blend = blendResp.data;
 
     // --- Essenze del blend (tabella ponte, fallback colonne singole) ---
     let scentRows = blend ? await loadBlendScents(blend.id) : [];
@@ -48,10 +64,19 @@ export async function renderGuide(container, logId) {
             blend.base_scent_id ? { scent_id: blend.base_scent_id, note_type: 'base' } : null
         ].filter(Boolean);
     }
+    
+    // PONTE 5: Nomi delle essenze
     const scentIds = Array.from(new Set(scentRows.map(r => r.scent_id).filter(Boolean)));
-    const scentsResp = await (scentIds.length > 0 ? supabase.from('inventory').select('id, name').in('id', scentIds) : { data: [] });
     const scentMap = {};
-    (scentsResp.data || []).forEach(s => { scentMap[s.id] = s.name; });
+    if (scentIds.length > 0) {
+        try {
+            const res = await fetch(`/api/inventory?ids=${scentIds.join(',')}`);
+            if (res.ok) {
+                const scentsData = await res.json();
+                scentsData.forEach(s => { scentMap[s.id] = s.name; });
+            }
+        } catch(e) { console.warn("Impossibile caricare le essenze", e); }
+    }
 
     // --- Calcolo quantità (stessa formula del wizard) ---
     const cap = mold?.quantity_g || 100;
@@ -210,7 +235,6 @@ export async function renderGuide(container, logId) {
         btns.appendChild(next);
     }
 
-    // Consenti di saltare la guida dalla top-bar (torna al dettaglio)
     window.onTopBackClicked = () => {
         window.dispatchEvent(new CustomEvent('navigate', { detail: `candle-detail:${logId}` }));
     };

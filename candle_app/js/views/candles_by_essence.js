@@ -24,10 +24,12 @@ export async function renderCandlesByEssence(container, essenceId) {
         return;
     }
 
-    // Find all blends containing this essence
-    const { data: blends } = await supabase.from('blends')
-        .select('id, name, head_scent_id, heart_scent_id, base_scent_id, resulting_family_id')
-        .or(`head_scent_id.eq.${essenceId},heart_scent_id.eq.${essenceId},base_scent_id.eq.${essenceId}`);
+    // PONTE 1: Trova tutti i blend che contengono questa essenza (testa, cuore o fondo)
+    let blends = [];
+    try {
+        const blendRes = await fetch(`/api/blends?essence_id=${essenceId}`);
+        if (blendRes.ok) blends = await blendRes.json();
+    } catch(e) { console.warn("Errore caricamento blends", e); }
 
     const blendIds = (blends || []).map(b => b.id).filter(Boolean);
     if (blendIds.length === 0) {
@@ -36,11 +38,16 @@ export async function renderCandlesByEssence(container, essenceId) {
         return;
     }
 
-    const { data: logs, error: logsError } = await supabase.from('candle_log')
-        .select('id, created_at, batch_number, mold_id, wax_id, total_wax_used, rating, notes')
-        .in('blend_id', blendIds)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+    // PONTE 2: Trova tutti i log delle candele associate a questi blend
+    let logs = [];
+    let logsError = null;
+    try {
+        const logsRes = await fetch(`/api/candles?blend_ids=${blendIds.join(',')}&user_id=${user.id}`);
+        if (!logsRes.ok) throw new Error('Errore durante il caricamento delle candele');
+        logs = await logsRes.json();
+    } catch (e) {
+        logsError = e;
+    }
 
     if (logsError) {
         wrapper.appendChild(createCard('Errore', `<p>${logsError.message}</p>`));
@@ -54,19 +61,28 @@ export async function renderCandlesByEssence(container, essenceId) {
         return;
     }
 
-    // Fetch molds and wax data for display
+    // PONTE 3 & 4: Fetch molds e wax data in batch
     const moldIds = Array.from(new Set(logs.map(l => l.mold_id).filter(Boolean)));
     const waxIds = Array.from(new Set(logs.map(l => l.wax_id).filter(Boolean)));
 
-    const [moldResp, waxResp] = await Promise.all([
-        moldIds.length > 0 ? supabase.from('inventory').select('id, name, image_ref').in('id', moldIds) : { data: [] },
-        waxIds.length > 0 ? supabase.from('inventory').select('id, name').in('id', waxIds) : { data: [] }
+    const fetchItems = async (ids) => {
+        if (!ids || ids.length === 0) return [];
+        try {
+            const res = await fetch(`/api/inventory?ids=${ids.join(',')}`);
+            if (!res.ok) return [];
+            return await res.json();
+        } catch(e) { return []; }
+    };
+
+    const [moldData, waxData] = await Promise.all([
+        fetchItems(moldIds),
+        fetchItems(waxIds)
     ]);
 
     const moldMap = {};
-    (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
+    moldData.forEach(m => { moldMap[m.id] = m; });
     const waxMap = {};
-    (waxResp.data || []).forEach(w => { waxMap[w.id] = w; });
+    waxData.forEach(w => { waxMap[w.id] = w; });
 
     logs.forEach(log => {
         const mold = moldMap[log.mold_id];

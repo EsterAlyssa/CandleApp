@@ -5,7 +5,6 @@
 import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle, createAlert } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js?v=5';
-import { resolveResultingFamily } from '../accords.js';
 
 export async function renderDashboard(container) {
     console.log('[VIEW] Rendering Dashboard...');
@@ -22,32 +21,25 @@ export async function renderDashboard(container) {
     const wrapper = document.createElement('div');
     wrapper.className = 'dashboard-wrapper';
 
-    // Titolo
     const title = createTitle('CandleApp', 2);
     title.classList.add('dashboard-title');
     wrapper.appendChild(title);
 
-    // Determine alerts based on DB (e.g., low inventory)
+    // PONTE 1: Alerts (Scorte basse)
     async function getAlerts() {
         try {
-            // Low-stock items (threshold can be tuned)
             const threshold = 150;
-            const { data: lowItems, error } = await supabase
-                .from('inventory')
-                .select('id, name, quantity_g')
-                .filter('quantity_g', 'lt', threshold)
-                .order('quantity_g', { ascending: true })
-                .limit(5);
-            if (error) throw error;
+            const res = await fetch(`/api/inventory?low_stock=true&threshold=${threshold}`);
+            if (!res.ok) throw new Error('Alert error');
+            const lowItems = await res.json();
+
             if (lowItems && lowItems.length > 0) {
                 const itemsText = lowItems.map(i => {
-                const qty = (i.quantity_g !== null && i.quantity_g !== undefined) ? `${i.quantity_g}g` : '—';
-                return `${i.name} (${qty})`;
-            }).join(', ');
-            return { text: `Attenzione: scorte basse per ${itemsText}`, variant: 'warning' };
+                    const qty = (i.quantity_g !== null && i.quantity_g !== undefined) ? `${i.quantity_g}g` : '—';
+                    return `${i.name} (${qty})`;
+                }).join(', ');
+                return { text: `Attenzione: scorte basse per ${itemsText}`, variant: 'warning' };
             }
-
-            // Generic info - no alerts
             return null;
         } catch (e) {
             console.warn('[DASHBOARD] Could not compute alerts', e);
@@ -60,19 +52,17 @@ export async function renderDashboard(container) {
         wrapper.appendChild(createAlert(dbAlert.text, dbAlert.variant));
     }
 
-    // Bottone Crea
     const btnCreate = createButton('Crea una nuova candela', 'add_circle', 'btn-primary btn-compact');
     btnCreate.classList.add('dashboard-create-btn');
     btnCreate.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
     wrapper.appendChild(btnCreate);
 
-    // Sottotitolo
     const subtitle = document.createElement('h3');
     subtitle.className = 'dashboard-subtitle';
     subtitle.textContent = 'Candele recenti';
     wrapper.appendChild(subtitle);
 
-    // Fetch recent candle logs for current user
+    // Auth remains on Supabase
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
 
@@ -82,76 +72,52 @@ export async function renderDashboard(container) {
         return;
     }
 
+    // PONTE 2: Fetch recent candle logs
     let logs = [];
     try {
-        const { data, error } = await supabase
-            .from('candle_log')
-            .select('id, created_at, mold_id, wax_id, blend_id, total_wax_used, rating, notes, batch_number, is_favorite')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(10);
-        if (error) throw error;
-        logs = data || [];
+        const res = await fetch(`/api/candles?user_id=${userId}&limit=10`);
+        if (!res.ok) throw new Error('Impossibile caricare le candele');
+        logs = await res.json();
     } catch (e) {
         console.error('[DASHBOARD] Error fetching candle logs', e);
         wrapper.appendChild(createCard('Errore', `<p>Impossibile caricare le ultime candele: ${e.message || e}</p>`));
         container.appendChild(wrapper);
         return;
     }
+    
     if (logs.length === 0) {
         wrapper.appendChild(createCard('Nessuna candela ancora', '<p>Prova a creare la prima candela!</p>', [createButton('Crea', 'add_circle', 'btn-primary btn-compact')]));
         container.appendChild(wrapper);
         return;
     }
 
-    // Pre-fetch related entities to avoid N+1 query problem
+    // PONTE 3: Pre-fetch related entities in batch
     const blendIds = Array.from(new Set(logs.map(l => l.blend_id).filter(Boolean)));
     const moldIds = Array.from(new Set(logs.map(l => l.mold_id).filter(Boolean)));
 
-    const [blendResp, moldResp, blendScentsResp] = await Promise.all([
-        blendIds.length > 0 ? supabase.from('blends').select('id, name, resulting_family_id, head_scent_id, heart_scent_id, base_scent_id').in('id', blendIds) : { data: [], error: null },
-        moldIds.length > 0 ? supabase.from('inventory').select('id, name, category, image_ref, quantity_g').in('id', moldIds) : { data: [], error: null },
-        blendIds.length > 0 ? supabase.from('blend_scents').select('blend_id, scent_id').in('blend_id', blendIds) : { data: [], error: null }
+    const fetchBatch = async (endpoint, ids) => {
+        if (!ids || ids.length === 0) return [];
+        try {
+            const r = await fetch(`/api/${endpoint}?ids=${ids.join(',')}`);
+            return r.ok ? await r.json() : [];
+        } catch(e) { return []; }
+    };
+
+    const [blendData, moldData] = await Promise.all([
+        fetchBatch('blends', blendIds),
+        fetchBatch('inventory', moldIds)
     ]);
 
     const blendMap = {};
-    (blendResp.data || []).forEach(b => { blendMap[b.id] = b; });
-
+    blendData.forEach(b => { blendMap[b.id] = b; });
     const moldMap = {};
-    (moldResp.data || []).forEach(m => { moldMap[m.id] = m; });
+    moldData.forEach(m => { moldMap[m.id] = m; });
 
-    // Raggruppa le essenze per blend: preferisci blend_scents, altrimenti le colonne singole
-    const scentIdsByBlend = {};
-    (blendScentsResp.data || []).forEach(r => {
-        if (!r.scent_id) return;
-        (scentIdsByBlend[r.blend_id] = scentIdsByBlend[r.blend_id] || []).push(r.scent_id);
-    });
-    (blendResp.data || []).forEach(b => {
-        if (!scentIdsByBlend[b.id]) {
-            scentIdsByBlend[b.id] = [b.head_scent_id, b.heart_scent_id, b.base_scent_id].filter(Boolean);
-        }
-    });
-
-    // Carica la famiglia (family_id) di ogni essenza usata
-    const allScentIds = Array.from(new Set(Object.values(scentIdsByBlend).flat().filter(Boolean)));
-    const scentFamResp = allScentIds.length > 0 ? await supabase.from('inventory').select('id, family_id').in('id', allScentIds) : { data: [] };
-    const scentFamily = {};
-    (scentFamResp.data || []).forEach(s => { scentFamily[s.id] = s.family_id || null; });
-
-    // Famiglia risultante del blend = accordo (se combacia) o famiglia dominante
-    const dominantFamilyByBlend = {};
-    Object.entries(scentIdsByBlend).forEach(([blendId, scentIds]) => {
-        const familyIds = scentIds.map(sid => scentFamily[sid]).filter(Boolean);
-        dominantFamilyByBlend[blendId] = resolveResultingFamily(familyIds) || (blendMap[blendId]?.resulting_family_id || null);
-    });
-
-    const familyIds = Array.from(new Set([
-        ...Object.values(dominantFamilyByBlend).filter(Boolean),
-        ...(blendResp.data || []).map(b => b.resulting_family_id).filter(Boolean)
-    ]));
-    const familyResp = familyIds.length > 0 ? await supabase.from('families').select('id, name_it').in('id', familyIds) : { data: [], error: null };
+    // PONTE 4: Fetch families based on blends
+    const familyIds = Array.from(new Set(blendData.map(b => b.resulting_family_id).filter(Boolean)));
+    const familyData = await fetchBatch('families', familyIds);
     const familyMap = {};
-    (familyResp.data || []).forEach(f => { familyMap[f.id] = f; });
+    familyData.forEach(f => { familyMap[f.id] = f; });
 
     function buildCandleCard(log, mold, blend, family) {
         const candleName = blend?.name || `Candela ${log.batch_number || '—'}`;
@@ -241,9 +207,15 @@ export async function renderDashboard(container) {
         btnDelete.onclick = async (e) => {
             e.stopPropagation();
             if (!confirm(`Eliminare la candela "${candleName}"?`)) return;
-            const { error } = await supabase.from('candle_log').delete().eq('id', log.id);
-            if (error) alert('Errore: ' + error.message);
-            else window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+            
+            // PONTE 5: Cancellazione
+            try {
+                const res = await fetch(`/api/candles?id=${log.id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+            } catch(err) {
+                alert('Errore: ' + err.message);
+            }
         };
 
         bottomActions.appendChild(btnInfo);
@@ -259,8 +231,7 @@ export async function renderDashboard(container) {
     const cardPromises = logs.map(async (log) => {
         const blend = blendMap[log.blend_id] || null;
         const mold = moldMap[log.mold_id] || null;
-        const domFamId = log.blend_id ? dominantFamilyByBlend[log.blend_id] : null;
-        const family = domFamId ? familyMap[domFamId] : (blend?.resulting_family_id ? familyMap[blend.resulting_family_id] : null);
+        const family = blend?.resulting_family_id ? familyMap[blend.resulting_family_id] : null;
 
         return buildCandleCard(log, mold, blend, family);
     });

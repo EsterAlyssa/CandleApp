@@ -2,7 +2,6 @@
 // INVENTORY_DETAIL.JS - Dettaglio elemento inventario
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createButton, createCard, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
 
@@ -13,8 +12,19 @@ export async function renderInventoryDetail(container, id) {
         const wrapper = document.createElement('div');
         wrapper.className = 'inventory-wrapper';
 
-        const { data: item, error } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', id).single();
-        if (error || !item) {
+        // PONTE API: Fetch dell'elemento singolo dal magazzino
+        let item = null;
+        let fetchError = null;
+        try {
+            const res = await fetch(`/api/inventory?id=${id}`);
+            if (!res.ok) throw new Error('Errore di rete');
+            const data = await res.json();
+            if (data && data.length > 0) item = data[0];
+        } catch (e) {
+            fetchError = e;
+        }
+
+        if (fetchError || !item) {
             wrapper.appendChild(createCard('Non trovato', `<p>Elemento non trovato</p>`));
             container.appendChild(wrapper);
             return;
@@ -77,7 +87,7 @@ export async function renderInventoryDetail(container, id) {
                 } else if(k==='material') {
                     keyStr = 'Materiale';
                 }
-                return `<p><strong>${keyStr}:</strong> ${val}</p>`;
+                return `<p><strong>${keyStr}:</strong>${val}</p>`;
             }).join('') : ''}
         `;
         wrapper.appendChild(createCard('Dettagli', html));

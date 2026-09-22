@@ -2,7 +2,6 @@
 // CANDLE_DETAIL.JS - Dettaglio di una candela salvata
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createButton, createTitle, createCard } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
 
@@ -17,25 +16,45 @@ export async function renderCandleDetail(container, logId) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    const { data: log, error: logError } = await supabase.from('candle_log').select('*').eq('id', logId).single();
-    if (logError || !log) {
+    // PONTE 1: Fetch Candle Log
+    let log = null;
+    try {
+        const res = await fetch(`/api/candles?id=${logId}`);
+        if (!res.ok) throw new Error('Candela non trovata');
+        const data = await res.json();
+        log = data[0];
+    } catch (e) {
         wrapper.appendChild(createCard('Non trovato', `<p>Non è stato possibile trovare la candela.</p>`));
         container.appendChild(wrapper);
         return;
     }
 
-    const [moldResp, waxResp, blendResp] = await Promise.all([
-        log.mold_id ? supabase.from('inventory').select('id, name, image_ref').eq('id', log.mold_id).maybeSingle() : { data: null, error: null },
-        log.wax_id ? supabase.from('inventory').select('id, name').eq('id', log.wax_id).maybeSingle() : { data: null, error: null },
-        log.blend_id ? supabase.from('blends').select('id, name, head_scent_id, heart_scent_id, base_scent_id, resulting_family_id').eq('id', log.blend_id).maybeSingle() : { data: null, error: null }
+    // PONTE 2: Fetch relazionali (Inventory e Blends)
+    const fetchItem = async (id) => {
+        if (!id) return null;
+        try {
+            const r = await fetch(`/api/inventory?id=${id}`);
+            const d = await r.json();
+            return d[0] || null;
+        } catch(e) { return null; }
+    };
+
+    const fetchBlend = async (id) => {
+        if (!id) return null;
+        try {
+            const r = await fetch(`/api/blends?id=${id}`);
+            const d = await r.json();
+            return d[0] || null;
+        } catch(e) { return null; }
+    };
+
+    const [mold, wax, blend] = await Promise.all([
+        fetchItem(log.mold_id),
+        fetchItem(log.wax_id),
+        fetchBlend(log.blend_id)
     ]);
 
-    const mold = moldResp.data;
-    const wax = waxResp.data;
-    const blend = blendResp.data;
-
-    // Carica le essenze del blend: preferisci la tabella ponte (più essenze per nota),
-    // con fallback alle colonne singole per i blend non ancora migrati.
+    // Carica le essenze del blend
     let scentRows = blend ? await loadBlendScents(blend.id) : [];
     if (scentRows.length === 0 && blend) {
         scentRows = [
@@ -47,9 +66,17 @@ export async function renderCandleDetail(container, logId) {
 
     // Load names for selected scents
     const scentIds = Array.from(new Set(scentRows.map(r => r.scent_id).filter(Boolean)));
-    const scentsResp = await (scentIds.length > 0 ? supabase.from('inventory').select('id, name').in('id', scentIds) : { data: [] });
     const scentMap = {};
-    (scentsResp.data || []).forEach(s => { scentMap[s.id] = s.name; });
+    if (scentIds.length > 0) {
+        // PONTE 3: Fetch in batch per inventory
+        try {
+            const res = await fetch(`/api/inventory?ids=${scentIds.join(',')}`);
+            if (res.ok) {
+                const scentsData = await res.json();
+                scentsData.forEach(s => { scentMap[s.id] = s.name; });
+            }
+        } catch(e) { console.warn("Impossibile caricare i nomi delle essenze", e); }
+    }
 
     const namesByNote = (nt) => scentRows
         .filter(r => r.note_type === nt)
@@ -63,9 +90,21 @@ export async function renderCandleDetail(container, logId) {
     if (displayNotes.includes('Note: ')) {
         displayNotes = displayNotes.split('Note: ').slice(-1)[0];
     } else if (displayNotes.includes('Famiglia: ') && !displayNotes.includes('Note:')) {
-        // If it only had frag/family but no notes
         displayNotes = '';
     }
+
+    // Update Helper per API (usato per note e rating)
+    const updateLog = async (payload) => {
+        try {
+            const res = await fetch(`/api/candles`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: log.id, ...payload })
+            });
+            if (!res.ok) throw new Error('Errore durante l\'aggiornamento');
+            return null; // No error
+        } catch(e) { return e; }
+    };
 
     const renderRatingStars = (value) => {
         const wrapper = document.createElement('div');
@@ -79,16 +118,15 @@ export async function renderCandleDetail(container, logId) {
             star.style.cursor = 'pointer';
             star.onclick = async () => {
                 const newRating = i;
-                const { error } = await supabase.from('candle_log').update({ rating: newRating }).eq('id', log.id);
-                if (error) {
-                    alert('Errore nel salvataggio del rating: ' + error.message);
+                const err = await updateLog({ rating: newRating });
+                if (err) {
+                    alert('Errore nel salvataggio del rating: ' + err.message);
                     return;
                 }
                 wrapper.replaceWith(renderRatingStars(newRating));
             };
             wrapper.appendChild(star);
         }
-
         return wrapper;
     };
 
@@ -123,8 +161,8 @@ export async function renderCandleDetail(container, logId) {
         notesInput.addEventListener('input', () => {
             clearTimeout(timeout);
             timeout = setTimeout(async () => {
-                const { error } = await supabase.from('candle_log').update({ notes: notesInput.value }).eq('id', log.id);
-                if (error) console.error('Errore salvataggio note', error);
+                const err = await updateLog({ notes: notesInput.value });
+                if (err) console.error('Errore salvataggio note', err);
             }, 1000);
         });
     }
@@ -137,42 +175,34 @@ export async function renderCandleDetail(container, logId) {
 
     const btns = document.createElement('div');
     btns.className = 'btn-container';
-
-    // Prima riga: Modifica + Elimina (affiancati)
-    const rowMain = document.createElement('div');
-    rowMain.style.display = 'flex';
-    rowMain.style.gap = '8px';
-    rowMain.style.width = '100%';
+    btns.style.display = 'flex';
+    btns.style.gap = '8px';
 
     const editBtn = createButton('Modifica', 'edit', 'btn-secondary');
     editBtn.style.flex = '1';
-    editBtn.style.minWidth = '0';
     editBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `lab:logId=${log.id}` }));
-    rowMain.appendChild(editBtn);
+    btns.appendChild(editBtn);
+
+    const guideBtn = createButton('Guida di colata', 'menu_book', 'btn-secondary');
+    guideBtn.style.flex = '1';
+    guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
+    btns.appendChild(guideBtn);
 
     const deleteBtn = createButton('Elimina', 'delete', 'btn-primary');
     deleteBtn.style.flex = '1';
-    deleteBtn.style.minWidth = '0';
     deleteBtn.style.setProperty('--md-sys-color-primary', 'var(--md-sys-color-error, #b3261e)');
     deleteBtn.style.setProperty('--md-sys-color-on-primary', 'var(--md-sys-color-on-error, #ffffff)');
     deleteBtn.onclick = async () => {
         if (!confirm('Eliminare questa candela?')) return;
-        const { error } = await supabase.from('candle_log').delete().eq('id', log.id);
-        if (error) alert('Errore: ' + error.message);
-        else window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+        try {
+            const res = await fetch(`/api/candles?id=${log.id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+            window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
+        } catch(err) {
+            alert('Errore: ' + err.message);
+        }
     };
-    rowMain.appendChild(deleteBtn);
-
-    // Seconda riga: Guida di colata a tutta larghezza (avviabile anche a posteriori)
-    const guideBtn = createButton('Guida di colata', 'menu_book', 'btn-secondary');
-    guideBtn.style.width = '100%';
-    guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
-
-    btns.style.display = 'flex';
-    btns.style.flexDirection = 'column';
-    btns.style.gap = '8px';
-    btns.appendChild(rowMain);
-    btns.appendChild(guideBtn);
+    btns.appendChild(deleteBtn);
 
     wrapper.appendChild(btns);
     container.appendChild(wrapper);

@@ -16,7 +16,7 @@ export async function renderProfile(container) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    // Get user info
+    // Get user info (Auth su Supabase)
     const { data: { user } } = await supabase.auth.getUser();
     const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utente';
     const userId = user?.id;
@@ -27,20 +27,34 @@ export async function renderProfile(container) {
     greeting.textContent = `Ciao ${name}!`;
     wrapper.appendChild(greeting);
 
-    // Stats from DB
+    // Stats from DB (Ponte API)
     let candleCount = 0;
     let lowEssences = 0;
     let emptyEssences = 0;
 
     if (userId) {
-        const [candleRes, lowRes, emptyRes] = await Promise.all([
-            supabase.from('candle_log').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-            supabase.from('inventory').select('id').eq('category', 'scent').lt('quantity_g', 100).gt('quantity_g', 0),
-            supabase.from('inventory').select('id').eq('category', 'scent').lte('quantity_g', 0)
-        ]);
-        candleCount = candleRes.count || 0;
-        lowEssences = lowRes.data?.length || 0;
-        emptyEssences = emptyRes.data?.length || 0;
+        try {
+            const [candleRes, lowRes, emptyRes] = await Promise.all([
+                fetch(`/api/candles?user_id=${userId}&count=true`),
+                fetch(`/api/inventory?user_id=${userId}&status=low`),
+                fetch(`/api/inventory?user_id=${userId}&status=empty`)
+            ]);
+
+            if (candleRes.ok) {
+                const cData = await candleRes.json();
+                candleCount = cData.count || 0;
+            }
+            if (lowRes.ok) {
+                const lData = await lowRes.json();
+                lowEssences = lData.length || 0;
+            }
+            if (emptyRes.ok) {
+                const eData = await emptyRes.json();
+                emptyEssences = eData.length || 0;
+            }
+        } catch (e) {
+            console.warn('[PROFILE] Error fetching stats', e);
+        }
     }
 
     const statsDiv = document.createElement('div');
@@ -147,7 +161,6 @@ export async function renderProfile(container) {
         updateThemeUI();
     };
 
-    // Sync when the system theme changes (only if no manual override)
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const onSystemChange = () => {
         if (!window.CandleApp?.getStoredTheme?.()) {
@@ -158,7 +171,6 @@ export async function renderProfile(container) {
 
     wrapper.appendChild(settingsCard);
 
-    // requestAnimationFrame ensures it's in the DOM before calculating width
     requestAnimationFrame(() => {
         requestAnimationFrame(updateThemeUI);
     });

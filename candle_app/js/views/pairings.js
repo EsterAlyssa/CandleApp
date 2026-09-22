@@ -2,7 +2,6 @@
 // PAIRINGS.JS - Abbinamenti per famiglia/essenza
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createTitle, createButton } from '../components.js?v=3';
 
 export async function renderPairings(container, familyId) {
@@ -16,33 +15,35 @@ export async function renderPairings(container, familyId) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    // Try to resolve family or essence name
     let essenceName = '';
     let resolvedFamilyId = familyId;
 
-    // If familyId matches an inventory item, get its name and family_id
+    // Helper per le fetch API
+    const fetchApi = async (url) => {
+        try { const r = await fetch(url); return r.ok ? await r.json() : []; } 
+        catch (e) { return []; }
+    };
+
+    // PONTE 1: Se familyId è un ID essenza, ricava il nome e la family_id
     if (familyId) {
-        const { data: invItem } = await supabase.from('inventory')
-            .select('name, family_id')
-            .eq('id', familyId)
-            .maybeSingle();
-        if (invItem) {
+        const invData = await fetchApi(`/api/inventory?id=${familyId}`);
+        if (invData && invData.length > 0) {
+            const invItem = invData[0];
             essenceName = invItem.name;
             resolvedFamilyId = invItem.family_id || familyId;
         }
     }
 
-    // Try to get family name
+    // PONTE 2: Nome della famiglia
     let familyName = '';
     if (resolvedFamilyId) {
-        const { data: fam } = await supabase.from('families')
-            .select('id, name_it')
-            .eq('id', resolvedFamilyId)
-            .maybeSingle();
-        if (fam) familyName = fam.name_it || '';
+        const famData = await fetchApi(`/api/families?ids=${resolvedFamilyId}`);
+        if (famData && famData.length > 0) {
+            familyName = famData[0].name_it || '';
+        }
     }
 
-    // Show essence/family header
+    // Header essenza/famiglia
     if (essenceName || familyName) {
         const headerEl = document.createElement('h3');
         headerEl.className = 'pairings-essence-name';
@@ -50,16 +51,8 @@ export async function renderPairings(container, familyId) {
         wrapper.appendChild(headerEl);
     }
 
-    // Fetch pairings
-    const { data: pairings, error } = await supabase.from('family_pairings')
-        .select('id, source_family_id, target_family_id, type')
-        .or(`source_family_id.eq.${resolvedFamilyId},target_family_id.eq.${resolvedFamilyId}`);
-
-    if (error) {
-        wrapper.innerHTML += `<p>Errore: ${error.message}</p>`;
-        container.appendChild(wrapper);
-        return;
-    }
+    // PONTE 3: Fetch pairings
+    const pairings = await fetchApi(`/api/pairings?family_id=${resolvedFamilyId}`);
 
     if (!pairings || pairings.length === 0) {
         const emptyP = document.createElement('p');
@@ -67,26 +60,21 @@ export async function renderPairings(container, familyId) {
         emptyP.textContent = 'Nessun abbinamento trovato per questa famiglia.';
         wrapper.appendChild(emptyP);
     } else {
-        // Resolve family names
         const targetIds = [...new Set(pairings.map(p => p.source_family_id === resolvedFamilyId ? p.target_family_id : p.source_family_id))];
-        const { data: targetFams } = await supabase.from('families')
-            .select('id, name_it')
-            .in('id', targetIds);
+        
+        // PONTE 4: Nomi delle famiglie target
+        const targetFams = await fetchApi(`/api/families?ids=${targetIds.join(',')}`);
         const famMap = {};
         (targetFams || []).forEach(f => { famMap[f.id] = f.name_it || f.id; });
 
-        // Fetch essences for each target family
-        const { data: targetEssences } = await supabase.from('inventory')
-            .select('name, family_id')
-            .eq('category', 'scent')
-            .in('family_id', targetIds);
+        // PONTE 5: Essenze per ogni famiglia target
+        const targetEssences = await fetchApi(`/api/inventory?category=scent&family_ids=${targetIds.join(',')}`);
         const essByFam = {};
         (targetEssences || []).forEach(e => {
             if (!essByFam[e.family_id]) essByFam[e.family_id] = [];
             essByFam[e.family_id].push(e.name);
         });
 
-        // Split by type
         const harmony = pairings.filter(p => p.type === 'armonia');
         const contrast = pairings.filter(p => p.type === 'contrasto');
 
@@ -131,7 +119,6 @@ export async function renderPairings(container, familyId) {
         }
     }
 
-    // Back button
     const backBtn = createButton('Torna al magazzino', 'arrow_back', 'btn-primary');
     backBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
     wrapper.appendChild(backBtn);

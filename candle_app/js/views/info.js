@@ -2,7 +2,6 @@
 // INFO.JS - Informazioni Famiglie Olfattive
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createTitle } from '../components.js?v=3';
 
 export async function renderInfo(container) {
@@ -21,18 +20,30 @@ export async function renderInfo(container) {
     subtitle.textContent = 'Qui sono presenti tutte le famiglie e le relative informazioni';
     wrapper.appendChild(subtitle);
 
-    // Fetch families
-    const { data: families, error } = await supabase.from('families').select('*').order('name_it');
+    // Helper per fetch sicure
+    const fetchApi = async (url) => {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.error(`Fetch error on ${url}:`, e);
+            return null;
+        }
+    };
 
-    if (error) {
+    // PONTE 1: Fetch families
+    const families = await fetchApi('/api/families');
+
+    if (!families) {
         const errP = document.createElement('p');
-        errP.textContent = 'Errore nel caricamento: ' + error.message;
+        errP.textContent = 'Errore nel caricamento delle famiglie.';
         wrapper.appendChild(errP);
         container.appendChild(wrapper);
         return;
     }
 
-    if (!families || families.length === 0) {
+    if (families.length === 0) {
         const emptyP = document.createElement('p');
         emptyP.textContent = 'Nessuna famiglia olfattiva trovata.';
         wrapper.appendChild(emptyP);
@@ -43,22 +54,21 @@ export async function renderInfo(container) {
     const listContainer = document.createElement('div');
     listContainer.className = 'family-list';
 
-    // Fetch all essences once (avoid per-family query)
-    const { data: allEssences } = await supabase.from('inventory')
-        .select('id, name, family_id')
-        .eq('category', 'scent');
+    // PONTE 2: Fetch all essences once (category scent)
+    const allEssences = await fetchApi('/api/inventory?category=scent') || [];
+    
     const essencesByFamily = {};
-    (allEssences || []).forEach(e => {
+    allEssences.forEach(e => {
         if (!e.family_id) return;
         if (!essencesByFamily[e.family_id]) essencesByFamily[e.family_id] = [];
         essencesByFamily[e.family_id].push(e.name);
     });
 
-    // Fetch all pairings once
-    const { data: allPairings } = await supabase.from('family_pairings')
-        .select('source_family_id, target_family_id, type');
+    // PONTE 3: Fetch all pairings once
+    const allPairings = await fetchApi('/api/pairings') || [];
+    
     const pairingsByFamily = {};
-    (allPairings || []).forEach(p => {
+    allPairings.forEach(p => {
         const src = p.source_family_id ? String(p.source_family_id) : null;
         const tgt = p.target_family_id ? String(p.target_family_id) : null;
         if (src) {

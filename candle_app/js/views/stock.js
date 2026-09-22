@@ -2,7 +2,6 @@
 // STOCK.JS - Dettaglio stock di un elemento
 // ===================================================
 
-import { supabase } from '../supabase.js';
 import { createTitle, createButton } from '../components.js?v=3';
 
 export async function renderStock(container, itemId) {
@@ -17,8 +16,19 @@ export async function renderStock(container, itemId) {
         return;
     }
 
-    const { data: item, error } = await supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('id', itemId).maybeSingle();
-    if (error || !item) {
+    // PONTE API: Fetch singolo elemento per lo stock
+    let item = null;
+    try {
+        const res = await fetch(`/api/inventory?id=${itemId}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) item = data[0];
+        }
+    } catch (e) {
+        console.warn('[STOCK] Errore di caricamento stock', e);
+    }
+
+    if (!item) {
         wrapper.innerHTML = '<p>Elemento non trovato.</p>';
         container.appendChild(wrapper);
         return;

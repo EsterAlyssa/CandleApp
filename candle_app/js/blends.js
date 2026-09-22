@@ -4,49 +4,55 @@
 // (superando il limite delle colonne singole head/heart/base_scent_id).
 // ===================================================
 
-import { supabase } from './supabase.js';
-
 const VALID_NOTES = ['head', 'heart', 'base'];
 
 // Sostituisce completamente le essenze associate a un blend.
 export async function saveBlendScents(blendId, essences) {
     if (!blendId) return;
 
-    const { error: delErr } = await supabase.from('blend_scents').delete().eq('blend_id', blendId);
-    if (delErr) {
-        console.warn('[BLENDS] Impossibile ripulire blend_scents', delErr);
-        return; // se non riusciamo a ripulire, non inseriamo per evitare duplicati
+    try {
+        // PONTE API: Delete associazioni esistenti
+        await fetch(`/api/blend-scents?blend_id=${blendId}`, { method: 'DELETE' });
+
+        // Deduplica per (scent_id, note_type) e tiene solo note valide
+        const seen = new Set();
+        const rows = [];
+        (essences || []).forEach(e => {
+            if (!e || !e.id || !VALID_NOTES.includes(e.note_type)) return;
+            const key = `${e.id}:${e.note_type}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            rows.push({ blend_id: blendId, scent_id: e.id, note_type: e.note_type });
+        });
+
+        if (rows.length === 0) return;
+
+        // PONTE API: Insert nuove associazioni in batch
+        const res = await fetch('/api/blend-scents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows })
+        });
+
+        if (!res.ok) throw new Error('Errore inserimento blend_scents');
+    } catch (err) {
+        console.warn('[BLENDS] Impossibile salvare blend_scents', err);
     }
-
-    // Deduplica per (scent_id, note_type) e tiene solo note valide
-    const seen = new Set();
-    const rows = [];
-    (essences || []).forEach(e => {
-        if (!e || !e.id || !VALID_NOTES.includes(e.note_type)) return;
-        const key = `${e.id}:${e.note_type}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        rows.push({ blend_id: blendId, scent_id: e.id, note_type: e.note_type });
-    });
-
-    if (rows.length === 0) return;
-
-    const { error: insErr } = await supabase.from('blend_scents').insert(rows);
-    if (insErr) console.warn('[BLENDS] Impossibile inserire blend_scents', insErr);
 }
 
 // Ritorna le righe grezze { scent_id, note_type } di un blend.
 export async function loadBlendScents(blendId) {
     if (!blendId) return [];
-    const { data, error } = await supabase
-        .from('blend_scents')
-        .select('scent_id, note_type')
-        .eq('blend_id', blendId);
-    if (error) {
+    try {
+        // PONTE API: Fetch blend_scents
+        const res = await fetch(`/api/blend-scents?blend_id=${blendId}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data || [];
+    } catch (error) {
         console.warn('[BLENDS] Impossibile caricare blend_scents', error);
         return [];
     }
-    return data || [];
 }
 
 // Converte righe blend_scents in oggetti selectedEssences pronti per la UI.

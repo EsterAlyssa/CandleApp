@@ -5,7 +5,6 @@
 import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
-import { resolveResultingFamily } from '../accords.js';
 import * as Store from '../store.js';
 
 export async function renderEditBlend(container, blendId) {
@@ -34,31 +33,33 @@ export async function renderEditBlend(container, blendId) {
     // --- Fetch blend data (if editing) ---
     let blend = null;
     if (!isCreating) {
-        const { data: blendData, error: blendError } = await supabase
-            .from('blends')
-            .select('*')
-            .eq('id', blendId)
-            .maybeSingle();
-
-        if (blendError || !blendData) {
+        try {
+            const res = await fetch(`/api/blends?id=${blendId}`);
+            if (!res.ok) throw new Error('Mix non trovato');
+            const data = await res.json();
+            if (data && data.length > 0) blend = data[0];
+            else throw new Error('Mix vuoto');
+        } catch (error) {
             wrapper.innerHTML = '<p class="error-text">Mix non trovato.</p>';
             container.appendChild(wrapper);
             return;
         }
-        blend = blendData;
     }
 
-    // --- Fetch essences and families ---
-    const [essencesRes, familiesRes, pairingsRes] = await Promise.all([
-        supabase.from('inventory').select('id, name, family_id, tech_data').eq('category', 'scent').eq('user_id', userId).order('name'),
-        supabase.from('families').select('*'),
-        supabase.from('family_pairings').select('source_family_id, target_family_id, type')
+    // --- Fetch essences, families, and pairings via API ---
+    const fetchApi = async (url) => {
+        try { const r = await fetch(url); return r.ok ? await r.json() : []; } 
+        catch (e) { return []; }
+    };
+
+    const [essences, familiesData, pairings] = await Promise.all([
+        fetchApi(`/api/inventory?category=scent&user_id=${userId}`),
+        fetchApi('/api/families'),
+        fetchApi('/api/pairings')
     ]);
 
-    const essences = essencesRes.data || [];
     const familiesMap = {};
-    (familiesRes.data || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
-    const pairings = pairingsRes.data || [];
+    (familiesData || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
 
     // --- State ---
     let selectedEssences = [];
@@ -129,6 +130,21 @@ export async function renderEditBlend(container, blendId) {
         });
 
         return { all: false, harmony, contrast };
+    };
+
+    const computeFragranceFamily = () => {
+        const famCounts = {};
+        selectedEssences.forEach(e => {
+            if (e.family_name) {
+                famCounts[e.family_name] = (famCounts[e.family_name] || 0) + 1;
+            }
+        });
+        let maxFam = '';
+        let maxCount = 0;
+        Object.entries(famCounts).forEach(([fam, cnt]) => {
+            if (cnt > maxCount) { maxCount = cnt; maxFam = fam; }
+        });
+        return maxFam;
     };
 
     // --- Selection Summary ---
@@ -321,16 +337,12 @@ export async function renderEditBlend(container, blendId) {
             return;
         }
 
-        // Support multiple head notes - take first one for head_scent_id
         const headEssences = selectedEssences.filter(e => e.note_type === 'head');
         const heartEss = selectedEssences.find(e => e.note_type === 'heart');
         const baseEss = selectedEssences.find(e => e.note_type === 'base');
 
-        const resultingFamilyId = resolveResultingFamily(selectedEssences.map(e => e.family_id));
-
-        // Note: blends table doesn't have tech_data column (only inventory has it)
-        // For multiple head notes, we store only the first one in head_scent_id
-        // Additional head notes can be tracked in a separate junction table if needed
+        const resultingFamily = computeFragranceFamily();
+        const resultingFamilyId = Object.entries(familiesMap).find(([id, name]) => name === resultingFamily)?.[0] || null;
 
         const blendData = {
             name: fragranceName || 'Mix senza nome',
@@ -341,27 +353,31 @@ export async function renderEditBlend(container, blendId) {
             user_id: userId
         };
 
-        let error;
         let savedBlendId = blendId;
-        if (isCreating) {
-            // INSERT new blend
-            const result = await supabase.from('blends').insert([blendData]).select('id').single();
-            error = result.error;
-            savedBlendId = result.data?.id || null;
-        } else {
-            // UPDATE existing blend
-            const result = await supabase.from('blends').update(blendData).eq('id', blendId);
-            error = result.error;
-        }
+        try {
+            const method = isCreating ? 'POST' : 'PUT';
+            const payload = isCreating ? blendData : { id: blendId, ...blendData };
+            
+            const res = await fetch('/api/blends', {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        if (error) {
-            alert('Errore nel salvataggio: ' + error.message);
-        } else {
-            // Salva TUTTE le essenze selezionate (anche più note di testa)
+            if (!res.ok) throw new Error('Errore durante il salvataggio del database');
+            
+            const resultData = await res.json();
+            if (isCreating) savedBlendId = resultData.id;
+
+            // Salva la tabella ponte
             await saveBlendScents(savedBlendId, selectedEssences);
+            
             alert(isCreating ? 'Mix creato con successo!' : 'Mix aggiornato con successo!');
             Store.setInventoryTab('Fragranze');
             window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
+
+        } catch (error) {
+            alert('Errore nel salvataggio: ' + error.message);
         }
     };
     btns.appendChild(saveBtn);

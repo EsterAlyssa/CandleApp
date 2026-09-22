@@ -6,7 +6,6 @@ import { supabase } from '../supabase.js';
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
 import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
-import { resolveResultingFamily } from '../accords.js';
 import * as Store from '../store.js';
 
 export async function renderLab(container, param) {
@@ -16,7 +15,6 @@ export async function renderLab(container, param) {
     const wrapper = document.createElement('div');
     wrapper.className = 'lab-wrapper';
 
-    // Parse optional navigation parameters (e.g., "wax=<id>", "ess=<id>")
     const navParams = {};
     if (param) {
         param.split(/[&;]/g).forEach(pair => {
@@ -33,25 +31,23 @@ export async function renderLab(container, param) {
     title.classList.add('page-title');
     wrapper.appendChild(title);
 
-    // --- Current user ---
+    // --- Current user (Resto su Supabase) ---
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
     // --- State: Carica dallo store o inizializza ---
     const savedWizard = Store.getWizardState();
     
-    // Se stiamo editando una candela esistente, resetta lo stato wizard
     if (editingLogId && editingLogId !== savedWizard.editingLogId) {
         Store.resetWizard();
         Store.setWizardEditingLogId(editingLogId);
     }
     
-    // Usa lo stato salvato se presente e non stiamo iniziando da zero
     let currentStep = editingLogId ? 2 : (savedWizard.currentStep || 0);
     let selectedMold = savedWizard.selectedMold || null;
     let selectedWax = savedWizard.selectedWax || null;
     let selectedEssences = savedWizard.selectedEssences || [];
-    let fragrancePct = savedWizard.fragrancePct || 8; // Default 8%, range 5-12%
+    let fragrancePct = savedWizard.fragrancePct || 8; 
     let candleName = savedWizard.candleName || '';
     let fragranceName = savedWizard.fragranceName || '';
     let fragranceNote = '';
@@ -60,18 +56,8 @@ export async function renderLab(container, param) {
     let defaultCandleName = 'Candela 1';
     let nextBatchNumber = 1;
 
-    // Funzione per salvare lo stato corrente nello store
     const saveStateToStore = () => {
-        Store.setWizardState({
-            currentStep,
-            selectedMold,
-            selectedWax,
-            selectedEssences,
-            fragrancePct,
-            candleName,
-            fragranceName,
-            editingLogId
-        });
+        Store.setWizardState({ currentStep, selectedMold, selectedWax, selectedEssences, fragrancePct, candleName, fragranceName, editingLogId });
     };
 
     const formatNoteType = (noteType) => {
@@ -82,39 +68,32 @@ export async function renderLab(container, param) {
         return noteType;
     };
 
-    const computeFragranceNote = () => {
-        const notes = selectedEssences
-            .map(e => e.note_type)
-            .filter(Boolean);
-        if (notes.length === 0) return '';
-        // Prefer head > heart > base
-        if (notes.includes('head')) return 'di testa';
-        if (notes.includes('heart')) return 'di cuore';
-        if (notes.includes('base')) return 'di fondo';
-        return formatNoteType(notes[0]);
-    };
-
     const computeFragranceFamily = () => {
-        const fid = resolveResultingFamily(selectedEssences.map(e => e.family_id));
-        return fid ? (familiesMap[fid] || '') : '';
+        const familyCounts = {};
+        selectedEssences.forEach(e => {
+            if (e.family_id) familyCounts[e.family_id] = (familyCounts[e.family_id] || 0) + 1;
+        });
+        const topFamilyId = Object.entries(familyCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([fam]) => fam)[0];
+        return topFamilyId ? (familiesMap[topFamilyId] || '') : '';
     };
 
+    // PONTE 1: Batch Number
     const computeDefaultCandleName = async () => {
+        if (!userId) return;
         try {
-            const { data: lastBatch, error: batchError } = await supabase
-                .from('candle_log')
-                .select('batch_number')
-                .eq('user_id', userId)
-                .order('batch_number', { ascending: false })
-                .limit(1);
-
-            if (!batchError && lastBatch && lastBatch.length > 0) {
-                const raw = lastBatch[0].batch_number;
-                const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
-                if (!Number.isNaN(parsed)) {
-                    nextBatchNumber = parsed + 1;
-                } else if (typeof raw === 'number') {
-                    nextBatchNumber = raw + 1;
+            const res = await fetch(`/api/candles?user_id=${userId}&limit=1`);
+            if (res.ok) {
+                const lastBatch = await res.json();
+                if (lastBatch && lastBatch.length > 0) {
+                    const raw = lastBatch[0].batch_number;
+                    const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+                    if (!Number.isNaN(parsed)) {
+                        nextBatchNumber = parsed + 1;
+                    } else if (typeof raw === 'number') {
+                        nextBatchNumber = raw + 1;
+                    }
                 }
             }
         } catch (e) {
@@ -125,55 +104,49 @@ export async function renderLab(container, param) {
         if (!candleName || candleName.startsWith('Candela')) candleName = defaultCandleName;
     };
 
-    // Start loading default name ASAP (does not block UI)
     computeDefaultCandleName();
 
-    // --- Fetch data ---
-    const buildInventoryQuery = (category) => {
-        const q = supabase.from('inventory').select('id, user_id, name, category, quantity_g, supplier, family_id, tech_data, image_ref').eq('category', category);
-        if (userId) q.eq('user_id', userId);
-        return q;
+    // Helper per chiamate API
+    const fetchApi = async (url) => {
+        try { const r = await fetch(url); return r.ok ? await r.json() : []; } 
+        catch (e) { return []; }
     };
 
-    const [moldsRes, waxesRes, essencesRes, familiesRes, pairingsRes] = await Promise.all([
-        buildInventoryQuery('mold').order('name'),
-        buildInventoryQuery('wax').order('name'),
-        buildInventoryQuery('scent').order('name'),
-        supabase.from('families').select('*'),
-        supabase.from('family_pairings').select('source_family_id, target_family_id, type')
+    // PONTE 2: Fetch Molds, Waxes, Essences, Families, Pairings
+    const [molds, waxes, essences, familiesData, pairings] = await Promise.all([
+        fetchApi(`/api/inventory?category=mold${userId ? `&user_id=${userId}` : ''}`),
+        fetchApi(`/api/inventory?category=wax${userId ? `&user_id=${userId}` : ''}`),
+        fetchApi(`/api/inventory?category=scent${userId ? `&user_id=${userId}` : ''}`),
+        fetchApi('/api/families'),
+        fetchApi('/api/pairings')
     ]);
-    const molds = moldsRes.data || [];
-    const waxes = waxesRes.data || [];
-    const essences = essencesRes.data || [];
-    const familiesMap = {};
-    (familiesRes.data || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
-    const pairings = pairingsRes.data || [];
 
-    // Pre-select items from navigation params (e.g. lab:wax=<id>, lab:ess=<id>)
+    const familiesMap = {};
+    (familiesData || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
+
     if (navParams.mold) selectedMold = molds.find(m => m.id === navParams.mold) || null;
     if (navParams.wax) selectedWax = waxes.find(w => w.id === navParams.wax) || null;
     if (navParams.ess) {
         const ids = String(navParams.ess).split(',').map(s => s.trim()).filter(Boolean);
-        selectedEssences = ids
-            .map(id => {
-                const e = essences.find(x => x.id === id);
-                if (!e) return null;
-                return {
-                    id: e.id,
-                    name: e.name,
-                    family_name: familiesMap[e.family_id] || '',
-                    family_id: e.family_id,
-                    note_type: e.tech_data?.note_type || ''
-                };
-            })
-            .filter(Boolean);
+        selectedEssences = ids.map(id => {
+            const e = essences.find(x => x.id === id);
+            if (!e) return null;
+            return {
+                id: e.id,
+                name: e.name,
+                family_name: familiesMap[e.family_id] || '',
+                family_id: e.family_id,
+                note_type: e.tech_data?.note_type || ''
+            };
+        }).filter(Boolean);
     }
 
-    // If we were opened to edit an existing candle, prefill the form
+    // PONTE 3: Fetch per Edit Mode
     if (editingLogId) {
         try {
-            const { data: log, error: logError } = await supabase.from('candle_log').select('*').eq('id', editingLogId).maybeSingle();
-            if (!logError && log) {
+            const logData = await fetchApi(`/api/candles?id=${editingLogId}`);
+            if (logData && logData.length > 0) {
+                const log = logData[0];
                 editingLog = log;
 
                 if (log.batch_number) {
@@ -185,10 +158,10 @@ export async function renderLab(container, param) {
                 if (log.wax_id) selectedWax = waxes.find(w => w.id === log.wax_id) || selectedWax;
                 if (typeof log.fragrance_load_percent === 'number') fragrancePct = log.fragrance_load_percent;
 
-                // Ensure the candle name defaults to the blend name (if present)
                 if (log.blend_id) {
-                    const { data: blend } = await supabase.from('blends').select('*').eq('id', log.blend_id).maybeSingle();
-                    if (blend) {
+                    const blendDataList = await fetchApi(`/api/blends?id=${log.blend_id}`);
+                    if (blendDataList && blendDataList.length > 0) {
+                        const blend = blendDataList[0];
                         fragranceName = blend.name || fragranceName;
                         candleName = blend.name || candleName;
 
@@ -197,11 +170,8 @@ export async function renderLab(container, param) {
                             const e = essences.find(x => x.id === scentId);
                             if (!e) return;
                             selectedEssences.push({
-                                id: e.id,
-                                name: e.name,
-                                family_name: familiesMap[e.family_id] || '',
-                                family_id: e.family_id,
-                                note_type: noteType
+                                id: e.id, name: e.name, family_name: familiesMap[e.family_id] || '',
+                                family_id: e.family_id, note_type: noteType
                             });
                         };
 
@@ -209,7 +179,6 @@ export async function renderLab(container, param) {
                         addNoteScent(blend.heart_scent_id, 'heart');
                         addNoteScent(blend.base_scent_id, 'base');
 
-                        // Preferisci la tabella ponte (supporta più essenze per nota)
                         const rows = await loadBlendScents(blend.id);
                         if (rows.length > 0) {
                             selectedEssences = mapScentRows(rows, essences, familiesMap);
@@ -228,7 +197,6 @@ export async function renderLab(container, param) {
 
     function renderStep() {
         stepContent.innerHTML = '';
-        // Salva stato ad ogni render
         saveStateToStore();
         
         window.onTopBackClicked = () => {
@@ -237,7 +205,6 @@ export async function renderLab(container, param) {
                 saveStateToStore();
                 renderStep();
             } else {
-                // Resetta wizard quando si esce
                 Store.resetWizard();
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
             }
@@ -256,7 +223,6 @@ export async function renderLab(container, param) {
         const step = document.createElement('div');
         step.className = 'lab-step';
 
-        // Mold section
         const moldH = document.createElement('h3');
         moldH.className = 'lab-section-title';
         moldH.textContent = 'Scegli lo stampo';
@@ -277,7 +243,6 @@ export async function renderLab(container, param) {
         });
         step.appendChild(moldGrid);
 
-        // Wax section
         const waxH = document.createElement('h3');
         waxH.className = 'lab-section-title';
         waxH.textContent = 'Scegli la cera';
@@ -294,7 +259,6 @@ export async function renderLab(container, param) {
         });
         step.appendChild(waxGrid);
 
-        // Next
         if (selectedMold && selectedWax) {
             const btn = createButton('Avanti', 'arrow_forward', 'btn-primary');
             btn.onclick = () => { currentStep = 1; saveStateToStore(); renderStep(); };
@@ -306,8 +270,6 @@ export async function renderLab(container, param) {
 
     // ========================
     // STEP 2: Scegli fragranza + percentuale
-    // Logica migliorata: 1 nota testa, 1 cuore, 1 fondo
-    // Colorazione dinamica per abbinamenti armonia/contrasto
     // ========================
     function renderStep2() {
         const step = document.createElement('div');
@@ -318,7 +280,6 @@ export async function renderLab(container, param) {
         fragH.textContent = 'Scegli la fragranza';
         step.appendChild(fragH);
 
-        // Istruzioni per l'utente
         const instructionDiv = document.createElement('div');
         instructionDiv.className = 'lab-instruction';
         instructionDiv.innerHTML = `<p>Seleziona le essenze per creare la tua fragranza. Puoi scegliere:</p>
@@ -330,7 +291,7 @@ export async function renderLab(container, param) {
             <p>Le essenze compatibili saranno evidenziate in base agli abbinamenti.</p>`;
         step.appendChild(instructionDiv);
 
-        // --- MIX GIA USATI ---
+        // --- MIX GIA USATI (PONTE API) ---
         const mixContainer = document.createElement('div');
         mixContainer.className = 'input-group';
         mixContainer.style.marginBottom = '16px';
@@ -338,7 +299,8 @@ export async function renderLab(container, param) {
         const mixSelect = document.createElement('select');
         mixSelect.className = 'input-field';
         mixSelect.innerHTML = '<option value="">-- Seleziona un mix --</option>';
-        supabase.from('blends').select('*').eq('user_id', userId).order('name').then(({data}) => {
+        
+        fetchApi(`/api/blends?user_id=${userId}`).then(data => {
             if (data) {
                 data.forEach(b => {
                     const opt = document.createElement('option');
@@ -348,6 +310,7 @@ export async function renderLab(container, param) {
                 });
             }
         });
+
         mixSelect.onchange = async () => {
             const bId = mixSelect.value;
             if(!bId) {
@@ -357,51 +320,23 @@ export async function renderLab(container, param) {
                 updateUIAfterSelection();
                 return;
             }
-            const {data: blend} = await supabase.from('blends').select('*').eq('id', bId).maybeSingle();
-            if(!blend) return;
+            const blendList = await fetchApi(`/api/blends?id=${bId}`);
+            if(!blendList || blendList.length === 0) return;
+            const blend = blendList[0];
             
-            // Mappa le essenze del blend con i loro tipi di nota corretti
             selectedEssences = [];
             if (blend.head_scent_id) {
                 const ess = essences.find(e => e.id === blend.head_scent_id);
-                if (ess) {
-                    const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
-                    selectedEssences.push({ 
-                        id: ess.id, 
-                        name: ess.name, 
-                        family_name: famName, 
-                        family_id: ess.family_id, 
-                        note_type: 'head' 
-                    });
-                }
+                if (ess) selectedEssences.push({ id: ess.id, name: ess.name, family_name: familiesMap[ess.family_id] || '', family_id: ess.family_id, note_type: 'head' });
             }
             if (blend.heart_scent_id) {
                 const ess = essences.find(e => e.id === blend.heart_scent_id);
-                if (ess) {
-                    const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
-                    selectedEssences.push({ 
-                        id: ess.id, 
-                        name: ess.name, 
-                        family_name: famName, 
-                        family_id: ess.family_id, 
-                        note_type: 'heart' 
-                    });
-                }
+                if (ess) selectedEssences.push({ id: ess.id, name: ess.name, family_name: familiesMap[ess.family_id] || '', family_id: ess.family_id, note_type: 'heart' });
             }
             if (blend.base_scent_id) {
                 const ess = essences.find(e => e.id === blend.base_scent_id);
-                if (ess) {
-                    const famName = ess.family_id ? (familiesMap[ess.family_id] || '') : '';
-                    selectedEssences.push({ 
-                        id: ess.id, 
-                        name: ess.name, 
-                        family_name: famName, 
-                        family_id: ess.family_id, 
-                        note_type: 'base' 
-                    });
-                }
+                if (ess) selectedEssences.push({ id: ess.id, name: ess.name, family_name: familiesMap[ess.family_id] || '', family_id: ess.family_id, note_type: 'base' });
             }
-            // Preferisci la tabella ponte (supporta più essenze per nota)
             const rows = await loadBlendScents(blend.id);
             if (rows.length > 0) {
                 selectedEssences = mapScentRows(rows, essences, familiesMap);
@@ -412,9 +347,7 @@ export async function renderLab(container, param) {
         };
         mixContainer.appendChild(mixSelect);
         step.appendChild(mixContainer);
-        // --- FINE MIX GIA USATI ---
 
-        // Filter controls
         const filterBar = document.createElement('div');
         filterBar.className = 'lab-filter-bar';
 
@@ -449,7 +382,6 @@ export async function renderLab(container, param) {
         filterBar.appendChild(noteFilter);
         step.appendChild(filterBar);
 
-        // Helper: calcola famiglie compatibili (armonia/contrasto)
         const getCompatibleFamilies = () => {
             const selectedFamilyIds = selectedEssences.map(e => e.family_id).filter(Boolean);
             if (selectedFamilyIds.length === 0) return { all: true, harmony: new Set(), contrast: new Set() };
@@ -462,42 +394,28 @@ export async function renderLab(container, param) {
                 const isTargetSelected = selectedFamilyIds.includes(p.target_family_id);
                 
                 if (isSourceSelected) {
-                    if (p.type === 'harmony' || p.type === 'armonia') {
-                        harmonyFamilies.add(p.target_family_id);
-                    } else if (p.type === 'contrast' || p.type === 'contrasto') {
-                        contrastFamilies.add(p.target_family_id);
-                    } else {
-                        // Se non specificato, considera come armonia
-                        harmonyFamilies.add(p.target_family_id);
-                    }
+                    if (p.type === 'harmony' || p.type === 'armonia') harmonyFamilies.add(p.target_family_id);
+                    else if (p.type === 'contrast' || p.type === 'contrasto') contrastFamilies.add(p.target_family_id);
+                    else harmonyFamilies.add(p.target_family_id);
                 }
                 if (isTargetSelected) {
-                    if (p.type === 'harmony' || p.type === 'armonia') {
-                        harmonyFamilies.add(p.source_family_id);
-                    } else if (p.type === 'contrast' || p.type === 'contrasto') {
-                        contrastFamilies.add(p.source_family_id);
-                    } else {
-                        harmonyFamilies.add(p.source_family_id);
-                    }
+                    if (p.type === 'harmony' || p.type === 'armonia') harmonyFamilies.add(p.source_family_id);
+                    else if (p.type === 'contrast' || p.type === 'contrasto') contrastFamilies.add(p.source_family_id);
+                    else harmonyFamilies.add(p.source_family_id);
                 }
             });
             
             return { all: false, harmony: harmonyFamilies, contrast: contrastFamilies };
         };
 
-        // Helper: determina quali tipi di nota sono già usati
-        const getUsedNotes = () => {
-            return new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
-        };
+        const getUsedNotes = () => new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
 
-        // Riepilogo selezione corrente
         const selectionSummary = document.createElement('div');
         selectionSummary.className = 'lab-selection-summary';
         step.appendChild(selectionSummary);
 
         const updateSelectionSummary = () => {
             const usedNotes = getUsedNotes();
-            // Permette multiple note di testa
             const headEss = selectedEssences.filter(e => e.note_type === 'head');
             const heartEss = selectedEssences.find(e => e.note_type === 'heart');
             const baseEss = selectedEssences.find(e => e.note_type === 'base');
@@ -524,7 +442,6 @@ export async function renderLab(container, param) {
         const essGrid = document.createElement('div');
         essGrid.className = 'lab-grid';
 
-        // Funzione helper per aggiornare tutta la UI dopo una selezione
         function updateUIAfterSelection() {
             updateSelectionSummary();
             buildEssenceCards();
@@ -544,26 +461,17 @@ export async function renderLab(container, param) {
                 const famId = e.family_id || '';
                 const famName = famId ? (familiesMap[famId] || '') : '';
 
-                // Filtri UI
                 if (familyVal && famId !== familyVal) return;
                 if (noteVal && noteType !== noteVal) return;
 
                 const isSel = selectedEssences.some(se => se.id === e.id);
-                
-                // Verifica se la nota è già usata
-                // NOTA: Le note di testa possono essere multiple, cuore e fondo sono singole
                 const isNoteUsed = noteType && noteType !== 'head' && usedNotes.has(noteType) && !isSel;
                 
-                // Verifica compatibilità famiglia
-                let familyStatus = 'compatible'; // 'compatible', 'harmony', 'contrast', 'incompatible'
+                let familyStatus = 'compatible'; 
                 if (!compatibility.all && famId) {
-                    if (compatibility.harmony.has(famId)) {
-                        familyStatus = 'harmony';
-                    } else if (compatibility.contrast.has(famId)) {
-                        familyStatus = 'contrast';
-                    } else if (selectedEssences.length > 0) {
-                        familyStatus = 'incompatible';
-                    }
+                    if (compatibility.harmony.has(famId)) familyStatus = 'harmony';
+                    else if (compatibility.contrast.has(famId)) familyStatus = 'contrast';
+                    else if (selectedEssences.length > 0) familyStatus = 'incompatible';
                 }
 
                 const isDisabled = isNoteUsed || familyStatus === 'incompatible';
@@ -576,7 +484,6 @@ export async function renderLab(container, param) {
                 if (!isDisabled && familyStatus === 'contrast') cardClass += ' contrast';
                 card.className = cardClass;
                 
-                // Aggiungi badge per tipo di nota
                 const noteBadge = noteType ? `<span class="note-badge note-${noteType}">${formatNoteType(noteType)}</span>` : '';
                 const familyBadge = familyStatus !== 'compatible' && !isSel ? 
                     `<span class="family-badge family-${familyStatus}">${familyStatus === 'harmony' ? '♥ armonia' : familyStatus === 'contrast' ? '⚡ contrasto' : ''}</span>` : '';
@@ -592,13 +499,7 @@ export async function renderLab(container, param) {
                     if (isSel) {
                         selectedEssences = selectedEssences.filter(se => se.id !== e.id);
                     } else {
-                        selectedEssences.push({ 
-                            id: e.id, 
-                            name: e.name, 
-                            family_name: famName, 
-                            family_id: famId, 
-                            note_type: noteType 
-                        });
+                        selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: famId, note_type: noteType });
                     }
                     mixSelect.value = '';
                     fragranceName = '';
@@ -615,7 +516,6 @@ export async function renderLab(container, param) {
         step.appendChild(essGrid);
         buildEssenceCards();
 
-        // Fragrance percentage
         const pctH = document.createElement('h3');
         pctH.className = 'lab-section-title';
         pctH.textContent = 'Percentuale di fragranza';
@@ -626,17 +526,12 @@ export async function renderLab(container, param) {
         pctVal.textContent = `${fragrancePct}%`;
         step.appendChild(pctVal);
 
-        // Info - FORMULA CORRETTA:
-        // x = capacità stampo (in acqua)
-        // y = cera da sciogliere = x × wax_conversion_factor (fisso)
-        // z = fragranza = y × fragrancePct / 100
         const infoDiv = document.createElement('div');
         infoDiv.className = 'lab-calc-info';
         
         const updateInfo = () => {
             if (selectedMold && selectedWax) {
                 const cap = selectedMold.quantity_g || 100;
-                // Costante di conversione della cera (da tech_data o default 0.90)
                 const waxFactor = selectedWax.tech_data?.conversion_factor || 0.90;
                 const waxAmt = Math.round(cap * waxFactor);
                 const fragAmt = Math.round(waxAmt * fragrancePct / 100);
@@ -664,7 +559,6 @@ export async function renderLab(container, param) {
         };
         step.insertBefore(slider, infoDiv);
 
-        // Avviso se meno di 3 essenze
         const warningDiv = document.createElement('div');
         warningDiv.className = 'lab-warning';
         step.appendChild(warningDiv);
@@ -679,7 +573,6 @@ export async function renderLab(container, param) {
             }
         };
 
-        // Nav buttons
         const btns = document.createElement('div');
         btns.className = 'btn-container';
         const backBtn = createButton('Indietro', 'arrow_back', 'btn-secondary');
@@ -687,11 +580,9 @@ export async function renderLab(container, param) {
         btns.appendChild(backBtn);
         
         const updateNavigationButtons = () => {
-            // Rimuovi il bottone Avanti se esiste
             const existingNextBtn = btns.querySelector('[data-btn="next"]');
             if (existingNextBtn) existingNextBtn.remove();
             
-            // Aggiungi il bottone Avanti se ci sono essenze selezionate
             if (selectedEssences.length > 0) {
                 const nextBtn = createButton('Avanti', 'arrow_forward', 'btn-primary');
                 nextBtn.setAttribute('data-btn', 'next');
@@ -718,16 +609,11 @@ export async function renderLab(container, param) {
         resH.textContent = 'Candela risultante';
         step.appendChild(resH);
 
-        // FORMULA CORRETTA:
-        // x = capacità stampo (in acqua)
-        // y = cera da sciogliere = x × wax_conversion_factor (fisso)
-        // z = fragranza = y × fragrancePct / 100
         const cap = selectedMold?.quantity_g || 100;
         const waxFactor = selectedWax?.tech_data?.conversion_factor || 0.90;
         const waxAmt = Math.round(cap * waxFactor);
         const fragAmt = Math.round(waxAmt * fragrancePct / 100);
 
-        // Distribute fragrance grams by note type (head/heart/base) using approx ratios 25/50/25
         const noteRatios = { head: 0.25, heart: 0.5, base: 0.25 };
         const selectedByNote = {
             head: selectedEssences.filter(e => e.note_type === 'head'),
@@ -735,17 +621,11 @@ export async function renderLab(container, param) {
             base: selectedEssences.filter(e => e.note_type === 'base')
         };
 
-        // If some note types are missing, renormalize the ratios so they sum to 1 for the available types.
-        const availableTypes = Object.entries(selectedByNote)
-            .filter(([, arr]) => arr.length > 0)
-            .map(([type]) => type);
+        const availableTypes = Object.entries(selectedByNote).filter(([, arr]) => arr.length > 0).map(([type]) => type);
         let normalizedRatios = { ...noteRatios };
         if (availableTypes.length > 0 && availableTypes.length < 3) {
             const total = availableTypes.reduce((sum, type) => sum + noteRatios[type], 0);
-            normalizedRatios = availableTypes.reduce((acc, type) => {
-                acc[type] = noteRatios[type] / total;
-                return acc;
-            }, {});
+            normalizedRatios = availableTypes.reduce((acc, type) => { acc[type] = noteRatios[type] / total; return acc; }, {});
         }
 
         const ingredientsLines = [];
@@ -753,9 +633,7 @@ export async function renderLab(container, param) {
             const essInType = selectedByNote[type];
             const typeTotal = Math.round(fragAmt * (normalizedRatios[type] || 0));
             const perEssType = essInType.length > 0 ? Math.round((typeTotal / essInType.length) * 10) / 10 : 0;
-            essInType.forEach(e => {
-                ingredientsLines.push(`${e.name} ${perEssType}g`);
-            });
+            essInType.forEach(e => { ingredientsLines.push(`${e.name} ${perEssType}g`); });
         });
 
         const recipe = document.createElement('div');
@@ -771,7 +649,6 @@ export async function renderLab(container, param) {
         `;
         step.appendChild(recipe);
 
-        // Name input
         const nameGrp = document.createElement('div');
         nameGrp.className = 'input-group';
         nameGrp.innerHTML = `<label class="input-label">Nome candela</label><input class="input-field" type="text" placeholder="Candela 1">`;
@@ -780,7 +657,6 @@ export async function renderLab(container, param) {
         nameInput.oninput = (e) => { candleName = e.target.value; };
         step.appendChild(nameGrp);
 
-        // Fragrance name (editable)
         const fragGrp = document.createElement('div');
         fragGrp.className = 'input-group';
         fragGrp.innerHTML = `<label class="input-label">Nome fragranza</label><input class="input-field" type="text" placeholder="Nome della fragranza">`;
@@ -789,7 +665,6 @@ export async function renderLab(container, param) {
         fragInput.oninput = (e) => { fragranceName = e.target.value; };
         step.appendChild(fragGrp);
 
-        // Fragrance family (auto-derived, read-only)
         const noteGrp = document.createElement('div');
         noteGrp.className = 'input-group';
         noteGrp.innerHTML = `<label class="input-label">Famiglia della fragranza</label><input class="input-field" type="text" readonly>`;
@@ -803,7 +678,6 @@ export async function renderLab(container, param) {
         candleNotesGrp.className = 'input-group';
         candleNotesGrp.innerHTML = `<label class="input-label">Note aggiuntive (opzionali)</label><textarea class="input-field" rows="3" placeholder="Es. colata a 60°..."></textarea>`;
         const candleNotesInput = candleNotesGrp.querySelector('textarea');
-        // Let's clean up existing notes if editing log
         let existingNotes = editingLog?.notes || '';
         if (existingNotes) {
             existingNotes = existingNotes.replace(/.*Famiglia: [^-]+ - Note: /g, '');
@@ -812,48 +686,36 @@ export async function renderLab(container, param) {
         candleNotesInput.value = existingNotes.includes(' - ') ? existingNotes.split(' - ').slice(-1)[0].replace('Note: ', '') : existingNotes;
         step.appendChild(candleNotesGrp);
 
-        // Buttons
         const btns = document.createElement('div');
         btns.className = 'btn-container';
         const backBtn = createButton('Indietro', 'arrow_back', 'btn-secondary');
         backBtn.onclick = () => { currentStep = 1; saveStateToStore(); renderStep(); };
         btns.appendChild(backBtn);
+        
         const saveBtn = createButton('Salva candela', 'save', 'btn-primary');
         saveBtn.onclick = async () => {
             const { data: userData } = await supabase.auth.getUser();
             const userId = userData?.user?.id;
             if (!userId) { alert('Devi essere loggato!'); return; }
 
-            // Determine batch number.
-            // When editing, keep the original batch number; otherwise compute a new one.
             let batchNumber = editingLog?.batch_number || 1;
             if (!editingLog) {
                 try {
-                    const { data: lastBatch, error: batchError } = await supabase
-                        .from('candle_log')
-                        .select('batch_number')
-                        .eq('user_id', userId)
-                        .order('batch_number', { ascending: false })
-                        .limit(1);
-
-                    if (!batchError && lastBatch && lastBatch.length > 0) {
-                        const raw = lastBatch[0].batch_number;
-                        const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
-                        if (!Number.isNaN(parsed)) {
-                            batchNumber = parsed + 1;
-                        } else if (typeof raw === 'number') {
-                            batchNumber = raw + 1;
+                    const res = await fetch(`/api/candles?user_id=${userId}&limit=1`);
+                    if (res.ok) {
+                        const lastBatch = await res.json();
+                        if (lastBatch && lastBatch.length > 0) {
+                            const raw = lastBatch[0].batch_number;
+                            const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+                            if (!Number.isNaN(parsed)) batchNumber = parsed + 1;
+                            else if (typeof raw === 'number') batchNumber = raw + 1;
                         }
                     }
-                } catch (e) {
-                    console.warn('[LAB] Unable to compute next batch number, defaulting to 1', e);
-                }
+                } catch (e) { console.warn('[LAB] Unable to compute next batch number'); }
             }
 
-            // Create or update a blend record matching the selected essences
             const blendName = (candleName || '').trim() || `Candela ${batchNumber}`;
             
-            // Assegna correttamente le essenze per tipo di nota
             const headEss = selectedEssences.find(e => e.note_type === 'head');
             const heartEss = selectedEssences.find(e => e.note_type === 'heart');
             const baseEss = selectedEssences.find(e => e.note_type === 'base');
@@ -862,95 +724,99 @@ export async function renderLab(container, param) {
             const heartScentId = heartEss?.id || null;
             const baseScentId = baseEss?.id || null;
 
-            const resultingFamilyId = resolveResultingFamily(selectedEssences.map(e => e.family_id));
+            const familyCounts = {};
+            selectedEssences.forEach(e => {
+                if (e.family_id) familyCounts[e.family_id] = (familyCounts[e.family_id] || 0) + 1;
+            });
+            const resultingFamilyId = Object.entries(familyCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([fam]) => fam)[0] || null;
 
             let blendId = editingLog?.blend_id || null;
-            if (blendId) {
-                const { error: blendError } = await supabase.from('blends').update({
-                    user_id: userId,
-                    name: blendName,
-                    head_scent_id: headScentId,
-                    heart_scent_id: heartScentId,
-                    base_scent_id: baseScentId,
-                    resulting_family_id: resultingFamilyId
-                }).eq('id', blendId);
-                if (blendError) {
-                    alert(`Errore nell${editingLog ? ' aggiornamento' : ' creazione'} del blend: ${blendError.message}`);
-                    return;
-                }
-            } else {
-                const { data: blendData, error: blendError } = await supabase.from('blends').insert([{
-                    user_id: userId,
-                    name: blendName,
-                    head_scent_id: headScentId,
-                    heart_scent_id: heartScentId,
-                    base_scent_id: baseScentId,
-                    resulting_family_id: resultingFamilyId
-                }]).select('id').single();
+            
+            // PONTE 4: Save Blend
+            const blendPayload = {
+                user_id: userId, name: blendName, head_scent_id: headScentId,
+                heart_scent_id: heartScentId, base_scent_id: baseScentId,
+                resulting_family_id: resultingFamilyId
+            };
 
-                if (blendError) {
-                    alert('Errore nella creazione del blend: ' + blendError.message);
-                    return;
+            try {
+                if (blendId) {
+                    const res = await fetch('/api/blends', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: blendId, ...blendPayload })
+                    });
+                    if (!res.ok) throw new Error('Errore aggiornamento blend');
+                } else {
+                    const res = await fetch('/api/blends', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(blendPayload)
+                    });
+                    if (!res.ok) throw new Error('Errore creazione blend');
+                    const data = await res.json();
+                    blendId = data.id;
                 }
-
-                blendId = blendData?.id;
+            } catch(e) {
+                alert(`Errore salvataggio mix: ${e.message}`);
+                return;
             }
 
-            // Salva TUTTE le essenze selezionate (anche più note di testa) nella tabella ponte
             await saveBlendScents(blendId, selectedEssences);
 
             const notes = candleNotesInput ? candleNotesInput.value.trim() : '';
 
+            // PONTE 5: Save Candle Log
             const logPayload = {
-                user_id: userId,
-                mold_id: selectedMold?.id,
-                wax_id: selectedWax?.id,
-                blend_id: blendId,
-                total_wax_used: waxAmt,
-                fragrance_load_percent: fragrancePct,
-                notes,
-                batch_number: batchNumber
+                user_id: userId, mold_id: selectedMold?.id, wax_id: selectedWax?.id,
+                blend_id: blendId, total_wax_used: waxAmt, fragrance_load_percent: fragrancePct,
+                notes, batch_number: batchNumber
             };
 
-            let error;
             let savedLogId = editingLog?.id || null;
-            if (editingLog && editingLog.id) {
-                // Update existing log
-                const res = await supabase.from('candle_log').update(logPayload).eq('id', editingLog.id);
-                error = res.error;
-            } else {
-                // Create new log
-                const res = await supabase.from('candle_log').insert([logPayload]).select('id').single();
-                error = res.error;
-                savedLogId = res.data?.id || null;
+            try {
+                if (editingLog && editingLog.id) {
+                    const res = await fetch('/api/candles', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: editingLog.id, ...logPayload })
+                    });
+                    if (!res.ok) throw new Error('Errore aggiornamento log');
+                } else {
+                    const res = await fetch('/api/candles', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(logPayload)
+                    });
+                    if (!res.ok) throw new Error('Errore creazione log');
+                    const data = await res.json();
+                    savedLogId = data.id;
+                }
+            } catch(e) {
+                alert(`Errore salvataggio candela: ${e.message}`);
+                return;
             }
 
-            if (error) {
-                alert('Errore: ' + error.message);
+            // PONTE 6: Update Wax Inventory
+            if (!editingLog) {
+                try {
+                    const usedWax = waxAmt;
+                    const currentQty = parseFloat(selectedWax?.quantity_g) || 0;
+                    const newQty = Math.max(0, currentQty - usedWax);
+                    await fetch('/api/inventory', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...selectedWax, quantity_g: newQty })
+                    });
+                } catch (e) {
+                    console.warn('[LAB] Could not update wax stock', e);
+                }
+            }
+
+            Store.resetWizard();
+
+            if (!editingLog && savedLogId) {
+                window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${savedLogId}` }));
             } else {
-                // Only decrement wax stock on new creations, not on edits
-                if (!editingLog) {
-                    try {
-                        const usedWax = waxAmt;
-                        const currentQty = parseFloat(selectedWax?.quantity_g) || 0;
-                        const newQty = Math.max(0, currentQty - usedWax);
-                        await supabase.from('inventory').update({ quantity_g: newQty }).eq('id', selectedWax?.id);
-                    } catch (e) {
-                        console.warn('[LAB] Could not update wax stock', e);
-                    }
-                }
-
-                // Reset wizard state dopo il salvataggio
-                Store.resetWizard();
-
-                // Se è una NUOVA candela, avvia la guida di colata passo-passo.
-                // In modifica, torna al dettaglio/dashboard senza guida.
-                if (!editingLog && savedLogId) {
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${savedLogId}` }));
-                } else {
-                    alert('Candela salvata!');
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-                }
+                alert('Candela salvata!');
+                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
             }
         };
         btns.appendChild(saveBtn);
