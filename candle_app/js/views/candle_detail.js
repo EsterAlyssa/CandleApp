@@ -153,7 +153,15 @@ export async function renderCandleDetail(container, logId) {
     `;
 
     const detailsCard = createCard('Dettagli candela', cardHtml);
-    
+    // Personalizziamo il titolo della card (grassetto, più grande e centrato)
+    const cardTitle = detailsCard.querySelector('.card-title');
+    if (cardTitle) {
+        cardTitle.style.textAlign = 'center';
+        cardTitle.style.fontSize = '1.25rem';
+        cardTitle.style.fontWeight = 'bold';
+    }
+    wrapper.appendChild(detailsCard);
+
     // Setup notes auto-save
     const notesInput = detailsCard.querySelector('#candle-notes');
     if (notesInput) {
