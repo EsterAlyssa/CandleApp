@@ -1,6 +1,8 @@
-import { sql } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+
+const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
     // ⚠️ Gestione pre-flight CORS

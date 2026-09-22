@@ -1,7 +1,9 @@
-import { sql } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 
+// Inizializziamo il motore SQL passandogli il link segreto di Vercel/Neon
+const sql = neon(process.env.DATABASE_URL);
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export default async function handler(req, res) {
@@ -32,7 +34,6 @@ export default async function handler(req, res) {
 
         if (users.length === 0) {
             // Se l'utente Google non esiste, lo creiamo in automatico.
-            // Inseriamo una password fittizia poiché il login è delegato a Google.
             const newUser = await sql`
                 INSERT INTO users (email, password_hash, name)
                 VALUES (${email}, 'GOOGLE_OAUTH_USER', ${name})
