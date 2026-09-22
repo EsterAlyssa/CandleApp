@@ -106,15 +106,21 @@ export async function renderInventoryDetail(container, id) {
         const btnEdit = createButton('Modifica', 'edit', 'btn-secondary btn-compact');
         btnEdit.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `add-essence:${uiCategory}&id=${id}` }));
 
-        const btnDelete = createButton('Elimina', 'delete', 'btn-danger btn-compact');
+        const btnDelete = createButton('Elimina', 'delete', 'outline-red btn-compact');
         btnDelete.onclick = async () => {
             if (!confirm(`Sei sicura di voler eliminare "${item.name}" dal magazzino?`)) return;
             try {
                 const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                
+                // Se la risposta non è OK, estraiamo l'errore reale dal database
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || 'Errore interno del database');
+                }
+                
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventory' }));
             } catch (err) {
-                alert('Errore: ' + err.message);
+                alert('Operazione bloccata:\n' + err.message);
             }
         };
 

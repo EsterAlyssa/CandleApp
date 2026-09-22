@@ -189,8 +189,7 @@ export async function renderCandleDetail(container, logId) {
     guideBtn.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${log.id}` }));
     btns.appendChild(guideBtn);
 
-    // Usa la vera classe "btn-danger" definita in components.js
-    const deleteBtn = createButton('Elimina', 'delete', 'btn-danger btn-compact');
+    const deleteBtn = createButton('Elimina', 'delete', 'outline-red btn-compact');
     deleteBtn.style.flex = '1';
     deleteBtn.onclick = async () => {
         if (!confirm('Eliminare questa candela?')) return;
@@ -205,5 +204,4 @@ export async function renderCandleDetail(container, logId) {
     btns.appendChild(deleteBtn);
 
     wrapper.appendChild(btns);
-    container.appendChild(wrapper);
 }
