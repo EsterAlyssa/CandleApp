@@ -34,6 +34,7 @@ export const SCENT_PRESETS = [
     { name: 'Bergamotto',        family_id: 'agrumato',      note: 'head' },
     { name: 'Limone',            family_id: 'agrumato',      note: 'head' },
     { name: 'Arancia dolce',     family_id: 'agrumato',      note: 'head' },
+    { name: 'Arancia Amara',     family_id: 'agrumato',      note: 'head' },
     { name: 'Mandarino',         family_id: 'agrumato',      note: 'head' },
     { name: 'Pompelmo',          family_id: 'agrumato',      note: 'head' },
     { name: 'Lemongrass',        family_id: 'agrumato',      note: 'head' },
@@ -46,6 +47,7 @@ export const SCENT_PRESETS = [
     { name: 'Rosmarino',         family_id: 'aromatico',     note: 'head' },
     { name: 'Salvia',            family_id: 'aromatico',     note: 'heart' },
     { name: 'Lavanda',           family_id: 'aromatico',     note: 'heart' },
+    { name: 'Ginepro',           family_id: 'aromatico',     note: 'head' },
 
     // Floreali (fiorito)
     { name: 'Rosa',              family_id: 'fiorito',       note: 'heart' },
@@ -89,6 +91,7 @@ export const SCENT_PRESETS = [
     // Legni secchi (legni_secchi)
     { name: 'Cedro atlantico',   family_id: 'legni_secchi',  note: 'base' },
     { name: 'Cipresso',          family_id: 'legni_secchi',  note: 'base' },
+    { name: 'Pino',              family_id: 'legni_secchi',  note: 'head' },
 
     // Legni muschiati (mossy_woods)
     { name: 'Muschio di quercia',family_id: 'mossy_woods',   note: 'base' },
