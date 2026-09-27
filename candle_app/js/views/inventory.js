@@ -413,6 +413,8 @@ export async function renderInventory(container) {
 
                     const card = document.createElement('div');
                     card.className = 'essence-card fluid-essence-card';
+                    // Blocca l'altezza della card al suo contenuto reale!
+                    card.style.height = 'max-content';
 
                     const topSection = document.createElement('div');
                     topSection.className = 'essence-top-section';
@@ -497,6 +499,11 @@ export async function renderInventory(container) {
 
                     const sideActions = document.createElement('div');
                     sideActions.className = 'essence-side-actions';
+                    // FORZATURA: Layout a colonna rigido, allineato a destra
+                    sideActions.style.display = 'flex';
+                    sideActions.style.flexDirection = 'column';
+                    sideActions.style.alignItems = 'flex-end';
+                    sideActions.style.gap = '8px';
 
                     const btnEdit = document.createElement('button');
                     btnEdit.className = 'outline';
@@ -538,13 +545,11 @@ export async function renderInventory(container) {
                     sideActions.appendChild(btnEdit);
                     sideActions.appendChild(btnDelete);
 
-                    // --- Gestione Immagine Essenza ---
+                    // --- IMMAGINE rigorosamente sotto i bottoni ---
                     const imageUrl = getImageUrlFromRecord(item);
                     if (imageUrl) {
                         const imgWrapper = document.createElement('div');
-                        imgWrapper.style.marginTop = '12px'; // Spazio dai bottoni
-                        imgWrapper.style.display = 'flex';
-                        imgWrapper.style.justifyContent = 'flex-end'; // Allinea a destra
+                        imgWrapper.style.marginTop = '4px'; // Leggero distacco dal bottone elimina
                         
                         const img = document.createElement('img');
                         img.src = imageUrl;
@@ -555,9 +560,8 @@ export async function renderInventory(container) {
                         img.style.borderRadius = '8px';
                         
                         imgWrapper.appendChild(img);
-                        topSection.appendChild(imgWrapper);
+                        sideActions.appendChild(imgWrapper);
                     }
-
 
                     topSection.appendChild(sideActions);
                     card.appendChild(topSection);
