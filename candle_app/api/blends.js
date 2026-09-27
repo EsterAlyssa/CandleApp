@@ -53,6 +53,10 @@ export default async function handler(req, res) {
         if (req.method === 'DELETE') {
             const { id } = req.query;
             if (!id) return res.status(400).json({ error: 'ID mancante' });
+            // 1. Eliminiamo prima la "ricetta" associata per evitare blocchi del database
+            await sql`DELETE FROM blend_scents WHERE blend_id = ${id}`;
+            
+            // 2. Ora possiamo eliminare il mix in tutta sicurezza
             await sql`DELETE FROM blends WHERE id = ${id}`;
             return res.status(200).json({ success: true });
         }

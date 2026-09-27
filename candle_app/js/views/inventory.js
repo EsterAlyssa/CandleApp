@@ -584,9 +584,17 @@ export async function renderInventory(container) {
                     if (!confirm(`Eliminare "${item.name}"?`)) return;
                     try {
                         const res = await fetch(`/api/blends?id=${item.id}`, { method: 'DELETE' });
-                        if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                        
+                        // Controllo errori esteso
+                        if (!res.ok) {
+                            const errData = await res.json();
+                            throw new Error(errData.error || 'Errore interno del database');
+                        }
+                        
                         loadList(activeTab);
-                    } catch(err) { alert('Errore: ' + err.message); }
+                    } catch(err) { 
+                        alert('Impossibile eliminare:\n' + err.message); 
+                    }
                 };
 
                 bottomActions.appendChild(btnInfo);
