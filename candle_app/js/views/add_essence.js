@@ -93,7 +93,6 @@ export async function renderAddEssence(container, categoryParam) {
 
         let familySelect = null;
         if (isEssence) {
-            // PONTE 1: Fetch Families
             const famRes = await fetch('/api/families');
             const families = await famRes.json();
 
@@ -126,8 +125,34 @@ export async function renderAddEssence(container, categoryParam) {
             wrapper.appendChild(infoNote);
         }
 
-        const qtyInput = createInput('Quantità (g)', 'number', 'add-qty', category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi');
+        // --- NUOVO CAMPO CAPACITÀ ORIGINALE (Solo Essenze) ---
+        let initialQtyInput = null;
+        if (isEssence) {
+            initialQtyInput = createInput('Capacità boccetta originale (g)', 'number', 'add-initial-qty', 'es. 100');
+            wrapper.appendChild(initialQtyInput);
+        }
+
+        // Campo quantità attuale (Etichetta dinamica)
+        const qtyLabel = isEssence ? 'Quantità attuale (g)' : 'Quantità (g)';
+        const qtyPlaceholder = category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi';
+        const qtyInput = createInput(qtyLabel, 'number', 'add-qty', qtyPlaceholder);
         wrapper.appendChild(qtyInput);
+
+        // --- LOGICA DI AUTOCOMPILAZIONE ---
+        if (isEssence && !isEdit) {
+            const initField = initialQtyInput.querySelector('.input-field');
+            const qtyField = qtyInput.querySelector('.input-field');
+            
+            let userModifiedQty = false;
+            // Se l'utente tocca la quantità attuale a mano, fermiamo l'autocompilazione
+            qtyField.addEventListener('input', () => { userModifiedQty = true; });
+            
+            initField.addEventListener('input', () => {
+                if (!userModifiedQty) {
+                    qtyField.value = initField.value;
+                }
+            });
+        }
 
         let waxFields = null;
         if (dbCategory === 'wax') {
@@ -206,12 +231,10 @@ export async function renderAddEssence(container, categoryParam) {
             nameField.addEventListener('input', applyPreset);
         }
 
-        // Load existing item when in edit mode
         if (isEdit) {
             let existing = null;
             let existingError = null;
 
-            // PONTE 2: Fetch singolo item dall'Inventory
             try {
                 const exRes = await fetch(`/api/inventory?id=${editId}`);
                 if (!exRes.ok) throw new Error('Errore durante il recupero dei dati');
@@ -226,12 +249,19 @@ export async function renderAddEssence(container, categoryParam) {
                     nameInput.querySelector('.input-field').value = existing.name || '';
                     qtyInput.querySelector('.input-field').value = existing.quantity_g != null ? existing.quantity_g : '';
                     supplierInput.querySelector('.input-field').value = existing.supplier || '';
+                    
                     if (familySelect && existing.family_id) {
                         familySelect.value = existing.family_id;
                     }
                     if (noteTypeSelect && existing.tech_data?.note_type) {
                         noteTypeSelect.value = existing.tech_data.note_type;
                     }
+                    
+                    // --- CARICAMENTO CAPACITÀ ORIGINALE (Edit Mode) ---
+                    if (isEssence && initialQtyInput && existing.tech_data?.initial_quantity) {
+                        initialQtyInput.querySelector('.input-field').value = existing.tech_data.initial_quantity;
+                    }
+
                     if (waxFields && existing.tech_data) {
                         const td = existing.tech_data;
                         if (td.conversion_factor != null) waxFields.conversion_factor.value = td.conversion_factor;
@@ -253,11 +283,9 @@ export async function renderAddEssence(container, categoryParam) {
             }
         }
 
-        // Save Button
         const btn = createButton('Salva', 'save', 'btn-primary');
         btn.style.flex = '1';
         btn.onclick = async () => {
-            // AUTH su vercel
             const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
             const userId = user?.id;
             if (!userId) { alert('Devi essere loggato!'); return; }
@@ -306,6 +334,17 @@ export async function renderAddEssence(container, categoryParam) {
                 else delete existingTechData.note_type;
             }
 
+            // --- SALVATAGGIO CAPACITÀ ORIGINALE ---
+            if (isEssence && initialQtyInput) {
+                const initVal = parseFloat(initialQtyInput.querySelector('.input-field')?.value);
+                existingTechData = existingTechData || {};
+                if (!isNaN(initVal) && initVal > 0) {
+                    existingTechData.initial_quantity = initVal;
+                } else {
+                    delete existingTechData.initial_quantity;
+                }
+            }
+
             if (waxFields) {
                 existingTechData = existingTechData || {};
                 const setNum = (key, field) => {
@@ -326,7 +365,6 @@ export async function renderAddEssence(container, categoryParam) {
 
             let error = null;
 
-            // PONTE 3 & 4: Inserimento e Aggiornamento
             try {
                 const method = (isEdit && editId) ? 'PUT' : 'POST';
                 const payload = (isEdit && editId) ? { id: editId, ...record } : record;

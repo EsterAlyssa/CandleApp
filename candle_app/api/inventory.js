@@ -8,29 +8,43 @@ export default async function handler(req, res) {
             const { id, category, user_id, ids, low_stock, threshold, family_ids, status } = req.query;
             let result;
 
-            if (status === 'low' && user_id) {
-                result = await sql`SELECT id FROM inventory WHERE user_id = ${user_id} AND category = 'scent' AND quantity_g < 100 AND quantity_g > 0`;
-            } else if (status === 'empty' && user_id) {
-                result = await sql`SELECT id FROM inventory WHERE user_id = ${user_id} AND category = 'scent' AND quantity_g <= 0`;
-            }
-            
             if (id) {
-                // Lettura singolo elemento (usato in add_essence in modalità edit)
+                // Lettura singolo elemento
                 result = await sql`SELECT * FROM inventory WHERE id = ${id}`;
             } else if (ids) {
-                // Modifica Vercel Postgres array: convertiamo stringa "id1,id2" in array
+                // Array di ID
                 const idArray = ids.split(',');
                 result = await sql`SELECT * FROM inventory WHERE id = ANY(${idArray})`;
+            } else if (status === 'low' && user_id) {
+                // Avvisi Profilo: Essenze > 0 e sotto al 30% della capacità originale (se manca la capacità originale, calcola il 30% di 100g, quindi avvisa sotto i 30g)
+                result = await sql`
+                    SELECT id FROM inventory 
+                    WHERE user_id = ${user_id} 
+                      AND category = 'scent' 
+                      AND quantity_g > 0 
+                      AND quantity_g < (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
+                `;
+            } else if (status === 'empty' && user_id) {
+                // Avvisi Profilo: Essenze finite
+                result = await sql`SELECT id FROM inventory WHERE user_id = ${user_id} AND category = 'scent' AND quantity_g <= 0`;
             } else if (family_ids) {
-                // logica per pairings
+                // Abbinamenti
                 const famArray = family_ids.split(',');
                 result = await sql`SELECT name, family_id FROM inventory WHERE category = 'scent' AND family_id = ANY(${famArray})`;
             } else if (low_stock === 'true') {
-                // logica per Dashboard Alerts
+                // Alert in Dashboard: Cere sotto la soglia impostata (es. 150g), Essenze sotto al 30%
                 const t = parseInt(threshold) || 150;
-                result = await sql`SELECT id, name, quantity_g FROM inventory WHERE quantity_g < ${t} ORDER BY quantity_g ASC LIMIT 5`;
+                result = await sql`
+                    SELECT id, name, quantity_g FROM inventory 
+                    WHERE quantity_g > 0 
+                      AND quantity_g < CASE 
+                          WHEN category = 'scent' THEN (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
+                          ELSE ${t}
+                      END
+                    ORDER BY quantity_g ASC LIMIT 5
+                `;
             } else if (category && user_id) {
-                // Lettura magazzino filtrata per utente e categoria
+                // Filtro per utente e categoria
                 result = await sql`SELECT * FROM inventory WHERE category = ${category} AND user_id = ${user_id} ORDER BY name`;
             } else if (category) {
                 // Fallback categoria

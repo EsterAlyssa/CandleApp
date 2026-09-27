@@ -53,24 +53,43 @@ export async function renderStock(container, itemId) {
     `;
     wrapper.appendChild(supplierDiv);
 
-    // Status
+    // Status - Logica Percentuale
     const qty = item.quantity_g || 0;
+    // Se non c'è una capacità iniziale registrata, assumiamo che fosse uguale alla quantità attuale (evita divisioni per zero)
+    const initialQty = item.tech_data?.initial_quantity || qty; 
+    
+    let percentage = 0;
+    if (initialQty > 0) {
+        percentage = (qty / initialQty) * 100;
+    }
+
     let status = 'Nuovo';
     let statusIndex = 0;
-    if (qty <= 0) { status = 'Finita'; statusIndex = 3; }
-    else if (qty < 100) { status = 'Quasi finito'; statusIndex = 2; }
-    else if (qty < 500) { status = 'Aperto'; statusIndex = 1; }
+    
+    if (qty <= 0) { 
+        status = 'Finita'; 
+        statusIndex = 3; 
+    } else if (percentage < 30) { 
+        status = 'Quasi finito'; 
+        statusIndex = 2; 
+    } else if (percentage < 100) { 
+        status = 'Aperto'; 
+        statusIndex = 1; 
+    } 
+    // Se percentage è 100 (o superiore per qualche ricarica), resta 'Nuovo' (0)
 
     const statusDiv = document.createElement('div');
     statusDiv.className = 'stock-section';
     const statusTitle = document.createElement('h4');
-    statusTitle.textContent = 'Status';
+    // Mostriamo anche la percentuale per comodità visiva
+    statusTitle.textContent = `Status (${Math.round(percentage)}%)`; 
     statusDiv.appendChild(statusTitle);
 
     const statuses = ['Nuovo', 'Aperto', 'Quasi finito', 'Finita'];
     const statusColors = ['badge-new', 'badge-opened', 'badge-warning', 'badge-finished'];
     const statusList = document.createElement('div');
     statusList.className = 'stock-status-list';
+    
     statuses.forEach((s, i) => {
         const badge = document.createElement('span');
         badge.className = `status-badge ${statusColors[i]}${i === statusIndex ? ' active-status' : ''}`;
