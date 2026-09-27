@@ -342,6 +342,24 @@ export async function renderInventory(container) {
 
                     const topSection = document.createElement('div');
                     topSection.className = 'essence-top-section';
+                    // --- NUOVO: Gestione Immagine Essenza ---
+                    const imageUrl = getImageUrlFromRecord(item);
+                    if (imageUrl) {
+                        const imgWrapper = document.createElement('div');
+                        imgWrapper.style.marginRight = '14px';
+                        imgWrapper.style.flexShrink = '0';
+                        
+                        const img = document.createElement('img');
+                        img.src = imageUrl;
+                        img.alt = item.name;
+                        img.style.width = '70px';
+                        img.style.height = '70px';
+                        img.style.objectFit = 'cover';
+                        img.style.borderRadius = '8px';
+                        
+                        imgWrapper.appendChild(img);
+                        topSection.appendChild(imgWrapper);
+                    }
 
                     const infoCol = document.createElement('div');
                     infoCol.className = 'essence-info-col';
