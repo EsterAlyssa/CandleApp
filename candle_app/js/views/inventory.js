@@ -280,17 +280,24 @@ export async function renderInventory(container) {
         }
 
         // ===== ESSENZE =====
+        // ===== ESSENZE =====
         function renderEssenceList(items) {
             listContainer.style.marginTop = '20px';
 
             const filterBar = document.createElement('div');
             filterBar.className = 'lab-filter-bar';
+            // Flexbox per disporre i 4 filtri su 2 righe in modo ordinato
+            filterBar.style.display = 'flex';
+            filterBar.style.flexWrap = 'wrap';
+            filterBar.style.gap = '8px';
 
+            // 1. FILTRO FAMIGLIA
             const familyFilter = document.createElement('select');
             familyFilter.className = 'lab-filter-select';
+            familyFilter.style.flex = '1 1 calc(50% - 8px)';
             const famOpt0 = document.createElement('option');
             famOpt0.value = '';
-            famOpt0.textContent = 'Tutte le famiglie';
+            famOpt0.textContent = 'Famiglia (Tutte)';
             familyFilter.appendChild(famOpt0);
             const familyIds = Array.from(new Set(items.map(i => i.family_id).filter(Boolean)));
             familyIds.forEach(fid => {
@@ -300,11 +307,13 @@ export async function renderInventory(container) {
                 familyFilter.appendChild(opt);
             });
 
+            // 2. FILTRO NOTA
             const noteFilter = document.createElement('select');
             noteFilter.className = 'lab-filter-select';
+            noteFilter.style.flex = '1 1 calc(50% - 8px)';
             const noteOpt0 = document.createElement('option');
             noteOpt0.value = '';
-            noteOpt0.textContent = 'Tutte le note';
+            noteOpt0.textContent = 'Nota (Tutte)';
             noteFilter.appendChild(noteOpt0);
             const noteTypes = Array.from(new Set(items.map(i => i.tech_data?.note_type).filter(Boolean)));
             noteTypes.forEach(nt => {
@@ -318,20 +327,85 @@ export async function renderInventory(container) {
                 noteFilter.appendChild(opt);
             });
 
+            // 3. FILTRO STATO
+            const statusFilter = document.createElement('select');
+            statusFilter.className = 'lab-filter-select';
+            statusFilter.style.flex = '1 1 calc(50% - 8px)';
+            [
+                { v: '', t: 'Stato (Tutti)' },
+                { v: 'nuovo', t: 'Nuovo' },
+                { v: 'aperto', t: 'Aperto' },
+                { v: 'quasi_finito', t: 'Quasi finito' },
+                { v: 'finito', t: 'Finita' }
+            ].forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.v;
+                opt.textContent = o.t;
+                statusFilter.appendChild(opt);
+            });
+
+            // 4. ORDINAMENTO
+            const sortFilter = document.createElement('select');
+            sortFilter.className = 'lab-filter-select';
+            sortFilter.style.flex = '1 1 calc(50% - 8px)';
+            [
+                { v: 'name_asc', t: 'Nome (A-Z)' },
+                { v: 'name_desc', t: 'Nome (Z-A)' },
+                { v: 'qty_asc', t: 'Quantità (min-Max)' },
+                { v: 'qty_desc', t: 'Quantità (Max-min)' }
+            ].forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.v;
+                opt.textContent = o.t;
+                sortFilter.appendChild(opt);
+            });
+
             filterBar.appendChild(familyFilter);
             filterBar.appendChild(noteFilter);
+            filterBar.appendChild(statusFilter);
+            filterBar.appendChild(sortFilter);
             listContainer.appendChild(filterBar);
+
+            // Algoritmo di calcolo dello stato (uguale a stock.js)
+            const getStatus = (item) => {
+                const qty = item.quantity_g || 0;
+                const initialQty = item.tech_data?.initial_quantity || qty;
+                if (qty <= 0) return 'finito';
+                let percentage = 0;
+                if (initialQty > 0) percentage = (qty / initialQty) * 100;
+                if (percentage < 30) return 'quasi_finito';
+                if (percentage < 100) return 'aperto';
+                return 'nuovo';
+            };
 
             const renderFiltered = () => {
                 listContainer.querySelectorAll('.essence-card').forEach(c => c.remove());
                 const familyVal = familyFilter.value;
                 const noteVal = noteFilter.value;
+                const statusVal = statusFilter.value;
+                const sortVal = sortFilter.value;
 
-                items.forEach(item => {
+                // FASE 1: Filtro
+                let filteredItems = items.filter(item => {
                     const noteType = item.tech_data?.note_type || '';
-                    if (familyVal && item.family_id !== familyVal) return;
-                    if (noteVal && noteType !== noteVal) return;
+                    if (familyVal && item.family_id !== familyVal) return false;
+                    if (noteVal && noteType !== noteVal) return false;
+                    if (statusVal && getStatus(item) !== statusVal) return false;
+                    return true;
+                });
 
+                // FASE 2: Ordinamento
+                filteredItems.sort((a, b) => {
+                    if (sortVal === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+                    if (sortVal === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+                    if (sortVal === 'qty_asc') return (a.quantity_g || 0) - (b.quantity_g || 0);
+                    if (sortVal === 'qty_desc') return (b.quantity_g || 0) - (a.quantity_g || 0);
+                    return 0;
+                });
+
+                // FASE 3: Rendering
+                filteredItems.forEach(item => {
+                    const noteType = item.tech_data?.note_type || '';
                     let displayNoteType = noteType;
                     if(noteType === 'base') displayNoteType = 'di fondo';
                     if(noteType === 'heart') displayNoteType = 'di cuore';
@@ -342,7 +416,8 @@ export async function renderInventory(container) {
 
                     const topSection = document.createElement('div');
                     topSection.className = 'essence-top-section';
-                    // --- NUOVO: Gestione Immagine Essenza ---
+
+                    // --- Gestione Immagine Essenza ---
                     const imageUrl = getImageUrlFromRecord(item);
                     if (imageUrl) {
                         const imgWrapper = document.createElement('div');
@@ -367,7 +442,17 @@ export async function renderInventory(container) {
                     const nameEl = document.createElement('div');
                     nameEl.className = 'essence-name';
                     nameEl.textContent = item.name;
-                    if (item.quantity_g >= 10) {
+                    
+                    // Mostriamo un badge testuale solo se è esaurita (utile a colpo d'occhio)
+                    const status = getStatus(item);
+                    if (status === 'quasi_finito' || status === 'finito') {
+                        const badge = document.createElement('span');
+                        badge.className = 'essence-new-badge'; // Riusiamo la classe ma cambiamo il colore
+                        badge.style.backgroundColor = status === 'finito' ? '#b3261e' : '#e65100';
+                        badge.textContent = status === 'finito' ? 'Esaurita' : 'In esaurimento';
+                        nameEl.appendChild(badge);
+                    } else if (item.quantity_g >= 10 && status === 'nuovo') {
+                        // Badge originale "Nuovo"
                         const badge = document.createElement('span');
                         badge.className = 'essence-new-badge';
                         badge.textContent = 'Nuovo';
@@ -458,9 +543,11 @@ export async function renderInventory(container) {
 
                         try {
                             const res = await fetch(`/api/inventory?id=${item.id}`, { method: 'DELETE' });
-                            if (!res.ok) throw new Error('Errore durante l\'eliminazione');
-                            
-                            if (cloudError) alert('Elemento eliminato, ma errore su Cloudinary.');
+                            if (!res.ok) {
+                                const errData = await res.json();
+                                throw new Error(errData.error || 'Errore database');
+                            }
+                            if (cloudError) console.warn('Errore Cloudinary ignorato:', cloudError);
                             loadList(activeTab);
                         } catch (err) {
                             alert('Errore: ' + err.message);
@@ -500,8 +587,11 @@ export async function renderInventory(container) {
                 });
             };
 
+            // Agganciamo i listener a tutti e 4 i filtri
             familyFilter.onchange = renderFiltered;
             noteFilter.onchange = renderFiltered;
+            statusFilter.onchange = renderFiltered;
+            sortFilter.onchange = renderFiltered;
 
             renderFiltered();
         }
