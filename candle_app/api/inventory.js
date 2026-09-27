@@ -32,11 +32,12 @@ export default async function handler(req, res) {
                 const famArray = family_ids.split(',');
                 result = await sql`SELECT name, family_id FROM inventory WHERE category = 'scent' AND family_id = ANY(${famArray})`;
             } else if (low_stock === 'true') {
-                // Alert in Dashboard: Cere sotto la soglia impostata (es. 150g), Essenze sotto al 30%
+                // Alert in Dashboard: Escludiamo gli stampi! Cere sotto la soglia impostata (es. 150g), Essenze sotto al 30%
                 const t = parseInt(threshold) || 150;
                 result = await sql`
                     SELECT id, name, quantity_g FROM inventory 
-                    WHERE quantity_g > 0 
+                    WHERE category != 'mold' 
+                      AND quantity_g > 0 
                       AND quantity_g < CASE 
                           WHEN category = 'scent' THEN (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
                           ELSE ${t}
