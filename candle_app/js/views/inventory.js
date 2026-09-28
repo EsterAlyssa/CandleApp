@@ -606,9 +606,7 @@ export async function renderInventory(container) {
         // ===== MIX =====
         function renderFragranzeList(items) {
             listContainer.style.marginTop = '20px';
-            const grid = document.createElement('div');
-            grid.className = 'items-grid';
-
+            
             items.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'essence-card fluid-essence-card';
@@ -717,17 +715,14 @@ export async function renderInventory(container) {
                 bottomActions.appendChild(btnElimina);
                 card.appendChild(bottomActions);
 
-                grid.appendChild(card);
+                listContainer.appendChild(card);
             });
-            listContainer.appendChild(grid);
         }
 
         // ===== CANDELE =====
         async function renderCandeleList(items) {
             listContainer.style.marginTop = '20px';
-            const grid = document.createElement('div');
-            grid.className = 'items-grid';
-
+            
             const moldIds = Array.from(new Set(items.map(i => i.mold_id).filter(Boolean)));
             const blendIds = Array.from(new Set(items.map(i => i.blend_id).filter(Boolean)));
             
@@ -850,9 +845,8 @@ export async function renderInventory(container) {
                 card.appendChild(bottomActions);
 
                 card.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'candle-detail:' + log.id }));
-                grid.appendChild(card);
+                listContainer.appendChild(card);
             });
-            listContainer.appendChild(grid);
         }
 
         function formatQty(g) {
