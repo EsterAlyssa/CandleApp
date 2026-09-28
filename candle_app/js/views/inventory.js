@@ -280,7 +280,6 @@ export async function renderInventory(container) {
         }
 
         // ===== ESSENZE =====
-        // ===== ESSENZE =====
         function renderEssenceList(items) {
             listContainer.style.marginTop = '20px';
 
@@ -291,6 +290,10 @@ export async function renderInventory(container) {
             filterBar.style.flexWrap = 'wrap';
             filterBar.style.gap = '8px';
 
+            // Forziamo i filtri su una riga tutta loro
+            filterBar.style.gridColumn = '1 / -1'; 
+            filterBar.style.marginBottom = '16px'; 
+       
             // 1. FILTRO FAMIGLIA
             const familyFilter = document.createElement('select');
             familyFilter.className = 'lab-filter-select';
