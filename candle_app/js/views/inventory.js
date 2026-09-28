@@ -125,7 +125,7 @@ export async function renderInventory(container) {
         async function loadList(category) {
             listContainer.innerHTML = '';
             
-            if (category === 'Stampi' || category === 'Fragranze' || category === 'Candele') {
+            if (category === 'Stampi' || category === 'Essenze'|| category === 'Fragranze' || category === 'Candele') {
                 listContainer.className = 'items-container items-grid';
                 cardMinWidth = category === 'Stampi' ? 280 : 320;
             } else {
