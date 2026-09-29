@@ -33,9 +33,9 @@ export async function renderDashboard(container) {
 
             if (lowItems && lowItems.length > 0) {
                 const itemsText = lowItems.map(i => {
-                    // Controllo esplicito: se quantity_g non è null/undefined, stampa il numero (anche se è 0)
-                    const qty = (i.quantity_g !== null && i.quantity_g !== undefined) ? `${i.quantity_g}g` : '—';
-                    return `${i.name} (${qty})`;
+                    // Se quantity_g è null o 0, usa 0 matematico
+                    const qtyVal = i.quantity_g || 0; 
+                    return `${i.name} (${qtyVal}g)`;
                 }).join(', ');
                 return { text: `Attenzione: scorte basse per ${itemsText}`, variant: 'warning' };
             }

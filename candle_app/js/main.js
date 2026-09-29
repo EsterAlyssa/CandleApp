@@ -147,20 +147,20 @@ async function navigateTo(rawInput, options = {}) {
                 `;
             };
 
+            // LOGICA DI ROUTING (Casetta vs Freccia)
             const isHomeLevel = ['dashboard', 'inventory', 'lab', 'info', 'profile'].includes(pageId);
             
             if (isHomeLevel) {
-                // Livello principale: Tasto Casetta che riporta sempre alla Dashboard
+                // Livello principale: Casetta 🏠 -> va alla Dashboard
                 topBarEl.innerHTML = buildTopBar('home');
                 document.getElementById('top-back').onclick = createBackButton('dashboard');
             } else if (pageId === 'landing') {
-                // Pagina iniziale pubblica: nessun tasto a sinistra
+                // Landing pubblica: Nessun tasto
                 topBarEl.innerHTML = buildTopBar('', false);
             } else {
-                // Pagine di dettaglio (dettaglio candela, form modifica, stock): Freccia indietro
+                // Pagine interne: Freccia indietro ⬅️ -> va al genitore
                 topBarEl.innerHTML = buildTopBar('arrow_back');
                 
-                // Impostiamo dove deve puntare la freccia in base al contesto
                 if (['inventory-detail','pairings','stock','add-essence','candles-by-essence', 'edit-blend'].includes(pageId)) {
                     document.getElementById('top-back').onclick = createBackButton('inventory');
                 } else if (pageId === 'candle-detail' || pageId === 'guide') {
