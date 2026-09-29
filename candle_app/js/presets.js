@@ -39,6 +39,8 @@ export const SCENT_PRESETS = [
     { name: 'Pompelmo',          family_id: 'agrumato',      note: 'head' },
     { name: 'Lemongrass',        family_id: 'agrumato',      note: 'head' },
     { name: 'Petitgrain',        family_id: 'agrumato',      note: 'head' },
+    { name: 'Lime',              family_id: 'agrumato',      note: 'head' },
+    { name: 'Yuzu',              family_id: 'agrumato',      note: 'head' },
 
     // Erbe aromatiche (aromatico)
     { name: 'Menta piperita',    family_id: 'aromatico',     note: 'head' },
@@ -48,6 +50,7 @@ export const SCENT_PRESETS = [
     { name: 'Salvia',            family_id: 'aromatico',     note: 'heart' },
     { name: 'Lavanda',           family_id: 'aromatico',     note: 'heart' },
     { name: 'Ginepro',           family_id: 'aromatico',     note: 'head' },
+    { name: 'Timo',              family_id: 'aromatico',     note: 'head' },
 
     // Floreali (fiorito)
     { name: 'Rosa',              family_id: 'fiorito',       note: 'heart' },
@@ -57,6 +60,12 @@ export const SCENT_PRESETS = [
     { name: 'Neroli',            family_id: 'fiorito',       note: 'heart' },
     { name: 'Camomilla',         family_id: 'fiorito',       note: 'heart' },
     { name: 'Fiori di tiglio',   family_id: 'fiorito',       note: 'heart' },
+    { name: 'Mughetto',          family_id: 'fiorito',       note: 'heart' },
+    { name: 'Peonia',            family_id: 'fiorito',       note: 'heart' },
+    { name: 'Magnolia',          family_id: 'fiorito',       note: 'heart' },
+    { name: 'Lillà',             family_id: 'fiorito',       note: 'heart' }, // Classico primaverile candele
+    { name: 'Fresia',            family_id: 'fiorito',       note: 'heart' },
+    { name: 'Orchidea',          family_id: 'fiorito',       note: 'heart' },
 
     // Fruttati (fruttato)
     { name: 'Mela',              family_id: 'fruttato',      note: 'heart' },
@@ -64,12 +73,17 @@ export const SCENT_PRESETS = [
     { name: 'Frutti di bosco',   family_id: 'fruttato',      note: 'heart' },
     { name: 'Fico',              family_id: 'fruttato',      note: 'heart' },
     { name: 'Ribes nero',        family_id: 'fruttato',      note: 'head' },
+    { name: 'Pera',              family_id: 'fruttato',      note: 'head' },
+    { name: 'Melograno',         family_id: 'fruttato',      note: 'heart' },
+    { name: 'Amarena',           family_id: 'fruttato',      note: 'head' },  // Stile "Black Cherry"
+    { name: 'Prugna',            family_id: 'fruttato',      note: 'heart' },
+    { name: 'Mango',             family_id: 'fruttato',      note: 'head' },
+    { name: 'Ananas',            family_id: 'fruttato',      note: 'head' },
 
     // Marina / acquatica (acquatico)
     { name: 'Brezza marina',     family_id: 'acquatico',     note: 'head' },
-    { name: 'Note acquatiche',   family_id: 'acquatico',     note: 'head' },
     { name: 'Sale marino',       family_id: 'acquatico',     note: 'head' },
-
+    
     // Verde (verde)
     { name: 'Tè verde',          family_id: 'verde',         note: 'head' },
     { name: 'Foglia di violetta',family_id: 'verde',         note: 'head' },
@@ -81,17 +95,23 @@ export const SCENT_PRESETS = [
     { name: 'Zenzero',           family_id: 'warm_spices',   note: 'heart' },
     { name: 'Noce moscata',      family_id: 'warm_spices',   note: 'heart' },
     { name: 'Cardamomo',         family_id: 'warm_spices',   note: 'heart' },
+    { name: 'Pepe nero',         family_id: 'warm_spices',   note: 'heart' },
+    { name: 'Anice stellato',    family_id: 'warm_spices',   note: 'head' },
+    { name: 'Zafferano',         family_id: 'warm_spices',   note: 'heart' },
 
     // Legnosi (legni)
     { name: 'Sandalo',           family_id: 'legni',         note: 'base' },
     { name: 'Cedro',             family_id: 'legni',         note: 'base' },
     { name: 'Patchouli',         family_id: 'legni',         note: 'base' },
     { name: 'Vetiver',           family_id: 'legni',         note: 'base' },
+    { name: 'Palo Santo',        family_id: 'legni',         note: 'base' },
+    { name: 'Legno di Guaiaco',  family_id: 'legni',         note: 'base' },
 
     // Legni secchi (legni_secchi)
     { name: 'Cedro atlantico',   family_id: 'legni_secchi',  note: 'base' },
     { name: 'Cipresso',          family_id: 'legni_secchi',  note: 'base' },
     { name: 'Pino',              family_id: 'legni_secchi',  note: 'head' },
+    { name: 'Abete balsamico',   family_id: 'legni_secchi',  note: 'heart' }, // Stile "Balsam & Cedar"
 
     // Legni muschiati (mossy_woods)
     { name: 'Muschio di quercia',family_id: 'mossy_woods',   note: 'base' },
@@ -102,6 +122,14 @@ export const SCENT_PRESETS = [
     { name: 'Fava tonka',        family_id: 'gourmand',      note: 'base' },
     { name: 'Caramello',         family_id: 'gourmand',      note: 'base' },
     { name: 'Cacao',             family_id: 'gourmand',      note: 'base' },
+    { name: 'Caffè',             family_id: 'gourmand',      note: 'base' },
+    { name: 'Mandorla',          family_id: 'gourmand',      note: 'heart' },
+    { name: 'Miele',             family_id: 'gourmand',      note: 'base' },
+    { name: 'Cocco',             family_id: 'gourmand',      note: 'heart' },
+    { name: 'Zucca',             family_id: 'gourmand',      note: 'heart' }, // Base per "Pumpkin Spice"
+    { name: 'Zucchero di canna', family_id: 'gourmand',      note: 'base' },
+    { name: 'Marshmallow',       family_id: 'gourmand',      note: 'base' },
+    { name: 'Biscotto',          family_id: 'gourmand',      note: 'base' },
 
     // Orientali / ambrati (orientale, orientale_morbido)
     { name: 'Ambra',             family_id: 'orientale',     note: 'base' },
@@ -112,6 +140,9 @@ export const SCENT_PRESETS = [
     // Orientale legnoso (orientale_legnoso)
     { name: 'Legno di rosa',     family_id: 'orientale_legnoso', note: 'heart' },
     { name: 'Oud',               family_id: 'orientale_legnoso', note: 'base' },
+    { name: 'Cuoio',             family_id: 'legni',         note: 'base' },
+    { name: 'Tabacco',           family_id: 'orientale_legnoso', note: 'base' },
+    { name: 'Legno di Cashmere', family_id: 'legni',         note: 'base' },
 
     // Floreale orientale (floral_oriental)
     { name: 'Tuberosa',          family_id: 'floral_oriental', note: 'heart' },
