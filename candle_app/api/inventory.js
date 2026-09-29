@@ -16,31 +16,38 @@ export default async function handler(req, res) {
                 const idArray = ids.split(',');
                 result = await sql`SELECT * FROM inventory WHERE id = ANY(${idArray})`;
             } else if (status === 'low' && user_id) {
-                // Avvisi Profilo: Essenze > 0 e sotto al 30% della capacità originale (se manca la capacità originale, calcola il 30% di 100g, quindi avvisa sotto i 30g)
+                // 1. IN ESAURIMENTO: Strettamente maggiore di 0 e minore del 30%
                 result = await sql`
                     SELECT id FROM inventory 
                     WHERE user_id = ${user_id} 
                       AND category = 'scent' 
-                      AND quantity_g < (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
+                      AND COALESCE(quantity_g, 0) > 0 
+                      AND COALESCE(quantity_g, 0) < (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
                 `;
             } else if (status === 'empty' && user_id) {
-                // Avvisi Profilo: Essenze finite
-                result = await sql`SELECT id FROM inventory WHERE user_id = ${user_id} AND category = 'scent' AND quantity_g <= 0`;
+                // 2. FINITE: Minore o uguale a 0 (cattura anche i NULL)
+                result = await sql`
+                    SELECT id FROM inventory 
+                    WHERE user_id = ${user_id} 
+                      AND category = 'scent' 
+                      AND COALESCE(quantity_g, 0) <= 0
+                `;
             } else if (family_ids) {
-                // Abbinamenti
                 const famArray = family_ids.split(',');
                 result = await sql`SELECT name, family_id FROM inventory WHERE category = 'scent' AND family_id = ANY(${famArray})`;
             } else if (low_stock === 'true') {
-                // Alert in Dashboard: Cere sotto soglia ed Essenze sotto al 30% (incluse quelle finite)
+                // 3. DASHBOARD: Avviso globale (include sia le esaurite che quelle sotto soglia)
                 const t = parseInt(threshold) || 150;
+                const uid = user_id || null;
                 result = await sql`
                     SELECT id, name, quantity_g FROM inventory 
                     WHERE category != 'mold' 
-                      AND quantity_g < CASE 
+                      AND (user_id = ${uid} OR ${uid} IS NULL)
+                      AND COALESCE(quantity_g, 0) < CASE 
                           WHEN category = 'scent' THEN (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
                           ELSE ${t}
                       END
-                    ORDER BY quantity_g ASC LIMIT 5
+                    ORDER BY COALESCE(quantity_g, 0) ASC LIMIT 5
                 `;
             } else if (category && user_id) {
                 // Filtro per utente e categoria
