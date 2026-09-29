@@ -158,7 +158,8 @@ export async function renderDashboard(container) {
         const familyName = family?.name_it || '—';
 
         const card = document.createElement('div');
-        card.className = 'essence-card fluid-essence-card dashboard-candle-card';
+        card.className = 'essence-card fluid-essence-card';
+        card.style.height = 'max-content';
 
         const topSection = document.createElement('div');
         topSection.className = 'candle-top-section';
@@ -218,8 +219,9 @@ export async function renderDashboard(container) {
         card.appendChild(topSection);
 
         const bottomActions = document.createElement('div');
-        bottomActions.className = 'essence-bottom-actions';
-
+        bottomActions.className = 'essence-side-actions';
+        bottomActions.style.flexDirection = 'row';
+        bottomActions.style.justifyContent = 'center';
 
         const btnInfo = document.createElement('button');
         btnInfo.className = 'outline';
@@ -231,15 +233,17 @@ export async function renderDashboard(container) {
         btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
         btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab:logId=' + log.id })); };
 
-        const btnDelete = createButton('Elimina', 'delete', 'outline-red');
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'outline-red';
+        btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
         btnDelete.onclick = async (e) => {
             e.stopPropagation();
             if (!confirm(`Eliminare la candela "${candleName}"?`)) return;
             
-            // PONTE 5: Cancellazione
             try {
                 const res = await fetch(`/api/candles?id=${log.id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+                // Dopo l'eliminazione ricarichiamo la dashboard
                 window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
             } catch(err) {
                 alert('Errore: ' + err.message);
