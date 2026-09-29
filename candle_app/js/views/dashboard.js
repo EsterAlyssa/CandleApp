@@ -231,7 +231,7 @@ export async function renderDashboard(container) {
         btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
         btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab:logId=' + log.id })); };
 
-        const btnDelete = createButton('Elimina', 'delete', 'outline-red btn-compact');
+        const btnDelete = createButton('Elimina', 'delete', 'outline-red');
         btnDelete.onclick = async (e) => {
             e.stopPropagation();
             if (!confirm(`Eliminare la candela "${candleName}"?`)) return;
