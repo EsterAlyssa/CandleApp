@@ -148,9 +148,14 @@ async function navigateTo(rawInput, options = {}) {
             };
 
             // LOGICA DI ROUTING (Casetta vs Freccia)
-            const isHomeLevel = ['dashboard', 'inventory', 'lab', 'info', 'profile'].includes(pageId);
+            const isHomeLevel = ['inventory', 'lab', 'info', 'profile'].includes(pageId);
             
-            if (isHomeLevel) {
+            if (pageId === 'dashboard') {
+                // Dalla Dashboard: Casetta 🏠 -> porta alla Home (Landing con slider)
+                topBarEl.innerHTML = buildTopBar('home');
+                document.getElementById('top-back').onclick = createBackButton('landing');
+                
+            } else if (isHomeLevel) {
                 // Livello principale: Casetta 🏠 -> va alla Dashboard
                 topBarEl.innerHTML = buildTopBar('home');
                 document.getElementById('top-back').onclick = createBackButton('dashboard');
