@@ -93,13 +93,6 @@ export async function renderDashboard(container) {
         });
     };
 
-    // 3. Attiviamo l'observer che ricalcola gli spazi se giri il telefono o ridimensioni lo schermo
-    const resizeObserver = new ResizeObserver(() => requestCardLayout());
-    resizeObserver.observe(gridContainer);
-    window.addEventListener('resize', requestCardLayout);
-    
-    requestCardLayout(); // Calcolo iniziale
-
     // Auth su vercel
     const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
     const userId = user?.id;
@@ -238,9 +231,7 @@ export async function renderDashboard(container) {
         btnEdit.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">edit</span>Modifica';
         btnEdit.onclick = (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab:logId=' + log.id })); };
 
-        const btnDelete = document.createElement('button');
-        btnDelete.className = 'outline-red';
-        btnDelete.innerHTML = '<span class="material-symbols-outlined btn-icon" style="font-size: 16px;">delete</span>Elimina';
+        const btnDelete = createButton('Elimina', 'delete', 'outline-red btn-compact');
         btnDelete.onclick = async (e) => {
             e.stopPropagation();
             if (!confirm(`Eliminare la candela "${candleName}"?`)) return;
@@ -278,4 +269,10 @@ export async function renderDashboard(container) {
     
     wrapper.appendChild(gridContainer);
     container.appendChild(wrapper);
+
+    // --- Accendiamo l'algoritmo SOLO DOPO aver attaccato la griglia al DOM ---
+    const resizeObserver = new ResizeObserver(() => requestCardLayout());
+    resizeObserver.observe(gridContainer);
+    window.addEventListener('resize', requestCardLayout);
+    requestCardLayout();
 }
