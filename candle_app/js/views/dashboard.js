@@ -88,6 +88,11 @@ export async function renderDashboard(container) {
             gridContainer.style.display = 'grid';
             gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
             gridContainer.style.gap = `${dynamicGap}px`;
+
+            gridContainer.style.paddingLeft = `${dynamicGap}px`;
+            gridContainer.style.paddingRight = `${dynamicGap}px`;
+            gridContainer.style.boxSizing = 'border-box';
+            gridContainer.style.width = '100%';
         });
     };
 
@@ -269,11 +274,9 @@ export async function renderDashboard(container) {
     const cards = await Promise.all(cardPromises);
     cards.forEach(c => gridContainer.appendChild(c));
     
-    // ⚠️ RIMETTIAMO LA GRIGLIA DENTRO AL WRAPPER (Come in inventory.js)
-    wrapper.appendChild(gridContainer);
     container.appendChild(wrapper);
+    container.appendChild(gridContainer); // Libera a tutto schermo con le colonne multiple
 
-    // --- ACCENDIAMO L'ALGORITMO DI LAYOUT ---
     const resizeObserver = new ResizeObserver(() => requestCardLayout());
     resizeObserver.observe(gridContainer);
     window.addEventListener('resize', requestCardLayout);
