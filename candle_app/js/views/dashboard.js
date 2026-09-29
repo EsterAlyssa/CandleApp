@@ -271,10 +271,13 @@ export async function renderDashboard(container) {
     const cards = await Promise.all(cardPromises);
     cards.forEach(c => gridContainer.appendChild(c));
     
-    wrapper.appendChild(gridContainer);
+    // 1. Prima chiudiamo il wrapper principale (titolo, alert, bottone crea)
     container.appendChild(wrapper);
+    
+    // 2. POI attacchiamo la griglia FUORI dal wrapper, libera di occupare tutto lo schermo!
+    container.appendChild(gridContainer);
 
-    // --- Accendiamo l'algoritmo SOLO DOPO aver attaccato la griglia al DOM ---
+    // Accendiamo l'algoritmo
     const resizeObserver = new ResizeObserver(() => requestCardLayout());
     resizeObserver.observe(gridContainer);
     window.addEventListener('resize', requestCardLayout);

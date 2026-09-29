@@ -166,7 +166,7 @@ async function navigateTo(rawInput, options = {}) {
                 // Pagine interne: Freccia indietro ⬅️ -> va al genitore
                 topBarEl.innerHTML = buildTopBar('arrow_back');
                 
-                if (['inventory-detail', 'candle-detail','pairings','stock','add-essence','candles-by-essence', 'edit-blend'].includes(pageId)) {
+                if (['inventory-detail','pairings','stock','add-essence','candles-by-essence', 'edit-blend'].includes(pageId)) {
                     document.getElementById('top-back').onclick = createBackButton('inventory');
                 } else if (pageId === 'guide') {
                     document.getElementById('top-back').onclick = createBackButton('dashboard');
