@@ -36,19 +36,33 @@ export default async function handler(req, res) {
                 const famArray = family_ids.split(',');
                 result = await sql`SELECT name, family_id FROM inventory WHERE category = 'scent' AND family_id = ANY(${famArray})`;
             } else if (low_stock === 'true') {
-                // 3. DASHBOARD: Avviso globale (include sia le esaurite che quelle sotto soglia)
+                // 3. DASHBOARD: Avviso globale senza ambiguità di Type Inference per Neon SQL
                 const t = parseInt(threshold) || 150;
-                const uid = user_id || null;
-                result = await sql`
-                    SELECT id, name, quantity_g FROM inventory 
-                    WHERE category != 'mold' 
-                      AND (user_id = ${uid} OR ${uid} IS NULL)
-                      AND COALESCE(quantity_g, 0) < CASE 
-                          WHEN category = 'scent' THEN (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
-                          ELSE ${t}
-                      END
-                    ORDER BY COALESCE(quantity_g, 0) ASC LIMIT 5
-                `;
+                
+                if (user_id) {
+                    // Esecuzione rigorosa per utente loggato
+                    result = await sql`
+                        SELECT id, name, quantity_g FROM inventory 
+                        WHERE category != 'mold' 
+                          AND user_id = ${user_id}
+                          AND COALESCE(quantity_g, 0) < CASE 
+                              WHEN category = 'scent' THEN (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
+                              ELSE ${t}
+                          END
+                        ORDER BY COALESCE(quantity_g, 0) ASC LIMIT 5
+                    `;
+                } else {
+                    // Fallback di sicurezza (Nessun filtro utente - legacy mode)
+                    result = await sql`
+                        SELECT id, name, quantity_g FROM inventory 
+                        WHERE category != 'mold' 
+                          AND COALESCE(quantity_g, 0) < CASE 
+                              WHEN category = 'scent' THEN (COALESCE((tech_data->>'initial_quantity')::numeric, 100) * 0.3)
+                              ELSE ${t}
+                          END
+                        ORDER BY COALESCE(quantity_g, 0) ASC LIMIT 5
+                    `;
+                }
             } else if (category && user_id) {
                 // Filtro per utente e categoria
                 result = await sql`SELECT * FROM inventory WHERE category = ${category} AND user_id = ${user_id} ORDER BY name`;
