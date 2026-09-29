@@ -274,8 +274,14 @@ export async function renderDashboard(container) {
     const cards = await Promise.all(cardPromises);
     cards.forEach(c => gridContainer.appendChild(c));
     
+    // Stesso contenitore del Magazzino (.inventory-wrapper): a parità di larghezza
+    // disponibile il numero di colonne coincide tra le due pagine
+    const gridWrapper = document.createElement('div');
+    gridWrapper.className = 'inventory-wrapper';
+    gridWrapper.appendChild(gridContainer);
+
     container.appendChild(wrapper);
-    container.appendChild(gridContainer); // Libera a tutto schermo con le colonne multiple
+    container.appendChild(gridWrapper);
 
     const resizeObserver = new ResizeObserver(() => requestCardLayout());
     resizeObserver.observe(gridContainer);
