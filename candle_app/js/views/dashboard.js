@@ -33,6 +33,7 @@ export async function renderDashboard(container) {
 
             if (lowItems && lowItems.length > 0) {
                 const itemsText = lowItems.map(i => {
+                    // Controllo esplicito: se quantity_g non è null/undefined, stampa il numero (anche se è 0)
                     const qty = (i.quantity_g !== null && i.quantity_g !== undefined) ? `${i.quantity_g}g` : '—';
                     return `${i.name} (${qty})`;
                 }).join(', ');
@@ -59,6 +60,11 @@ export async function renderDashboard(container) {
     subtitle.className = 'dashboard-subtitle';
     subtitle.textContent = 'Candele recenti';
     wrapper.appendChild(subtitle);
+
+    // --- Contenitore a Griglia per le Candele Recenti ---
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'items-container items-grid';
+    gridContainer.style.marginTop = '16px';
 
     // Auth su vercel
     const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
@@ -235,7 +241,8 @@ export async function renderDashboard(container) {
     });
 
     const cards = await Promise.all(cardPromises);
-    cards.forEach(c => wrapper.appendChild(c));
-
+    cards.forEach(c => gridContainer.appendChild(c));
+    
+    wrapper.appendChild(gridContainer);
     container.appendChild(wrapper);
 }
