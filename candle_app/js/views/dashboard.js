@@ -61,10 +61,44 @@ export async function renderDashboard(container) {
     subtitle.textContent = 'Candele recenti';
     wrapper.appendChild(subtitle);
 
-    // --- Contenitore a Griglia per le Candele Recenti ---
+    // 1. Creiamo il contenitore base
     const gridContainer = document.createElement('div');
     gridContainer.className = 'items-container items-grid';
     gridContainer.style.marginTop = '16px';
+
+    // 2. Importiamo lo stesso algoritmo di layout perfetto di inventory.js
+    let isLayoutPending = false;
+    const cardMinWidth = 320;
+    
+    const requestCardLayout = () => {
+        if (isLayoutPending) return;
+        isLayoutPending = true;
+        window.requestAnimationFrame(() => {
+            isLayoutPending = false;
+            // Sicurezza: eseguiamo i calcoli solo se il contenitore è ancora nella pagina
+            if (!gridContainer.isConnected) return; 
+            
+            const containerWidth = gridContainer.getBoundingClientRect().width || window.innerWidth;
+            const maxCards = Math.max(1, Math.floor(containerWidth / cardMinWidth));
+            const usedWidth = maxCards * cardMinWidth;
+            const remaining = Math.max(0, containerWidth - usedWidth);
+            let dynamicGap = remaining / (maxCards + 1);
+            dynamicGap = Math.max(12, Math.min(dynamicGap, 60));
+
+            gridContainer.style.display = 'grid';
+            gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
+            gridContainer.style.gap = `${dynamicGap}px`;
+            gridContainer.style.paddingLeft = `${dynamicGap}px`;
+            gridContainer.style.paddingRight = `${dynamicGap}px`;
+        });
+    };
+
+    // 3. Attiviamo l'observer che ricalcola gli spazi se giri il telefono o ridimensioni lo schermo
+    const resizeObserver = new ResizeObserver(() => requestCardLayout());
+    resizeObserver.observe(gridContainer);
+    window.addEventListener('resize', requestCardLayout);
+    
+    requestCardLayout(); // Calcolo iniziale
 
     // Auth su vercel
     const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
@@ -191,9 +225,8 @@ export async function renderDashboard(container) {
         card.appendChild(topSection);
 
         const bottomActions = document.createElement('div');
-        bottomActions.className = 'essence-side-actions';
-        bottomActions.style.flexDirection = 'row';
-        bottomActions.style.justifyContent = 'flex-start';
+        bottomActions.className = 'essence-bottom-actions';
+
 
         const btnInfo = document.createElement('button');
         btnInfo.className = 'outline';
