@@ -88,8 +88,6 @@ export async function renderDashboard(container) {
             gridContainer.style.display = 'grid';
             gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
             gridContainer.style.gap = `${dynamicGap}px`;
-            gridContainer.style.paddingLeft = `${dynamicGap}px`;
-            gridContainer.style.paddingRight = `${dynamicGap}px`;
         });
     };
 
