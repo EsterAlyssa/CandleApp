@@ -6,6 +6,7 @@
 
 import { createButton, createTitle } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
+import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml } from '../fragranza.js';
 
 export async function renderGuide(container, logId) {
     console.log('[VIEW] Rendering Guide...', logId);
@@ -67,49 +68,33 @@ export async function renderGuide(container, logId) {
     
     // PONTE 5: Nomi delle essenze
     const scentIds = Array.from(new Set(scentRows.map(r => r.scent_id).filter(Boolean)));
-    const scentMap = {};
+    const scentsById = {};
     if (scentIds.length > 0) {
         try {
             const res = await fetch(`/api/inventory?ids=${scentIds.join(',')}`);
             if (res.ok) {
                 const scentsData = await res.json();
-                scentsData.forEach(s => { scentMap[s.id] = s.name; });
+                scentsData.forEach(s => { scentsById[s.id] = s; });
             }
         } catch(e) { console.warn("Impossibile caricare le essenze", e); }
     }
 
-    // --- Calcolo quantità (stessa formula del wizard) ---
+    // --- Calcolo quantità (stessa formula del wizard, da fragranza.js) ---
     const cap = mold?.quantity_g || 100;
-    const waxFactor = wax?.tech_data?.conversion_factor || 0.90;
-    const waxAmt = Math.round(cap * waxFactor);
     const fragPct = typeof log.fragrance_load_percent === 'number' ? log.fragrance_load_percent : 8;
-    const fragAmt = log.total_wax_used
-        ? Math.round(log.total_wax_used * fragPct / 100)
-        : Math.round(waxAmt * fragPct / 100);
-    const effectiveWax = log.total_wax_used || waxAmt;
+    const effectiveWax = log.total_wax_used || waxGrams(mold, wax);
+    const fragG = fragranceGrams(effectiveWax, fragPct);
 
     const meltTemp = wax?.tech_data?.melt_temp;
     const pourTemp = wax?.tech_data?.pour_temp;
 
-    // --- Ripartizione fragranza per nota (testa/cuore/fondo) ---
-    const noteRatios = { head: 0.25, heart: 0.5, base: 0.25 };
-    const byNote = { head: [], heart: [], base: [] };
-    scentRows.forEach(r => {
-        if (byNote[r.note_type]) byNote[r.note_type].push(scentMap[r.scent_id] || r.scent_id);
-    });
-    const availableTypes = Object.keys(byNote).filter(t => byNote[t].length > 0);
-    let ratios = { ...noteRatios };
-    if (availableTypes.length > 0 && availableTypes.length < 3) {
-        const tot = availableTypes.reduce((s, t) => s + noteRatios[t], 0);
-        ratios = availableTypes.reduce((acc, t) => { acc[t] = noteRatios[t] / tot; return acc; }, {});
-    }
-    const ingredientLines = [];
-    availableTypes.forEach(t => {
-        const names = byNote[t];
-        const typeTotal = fragAmt * (ratios[t] || 0);
-        const per = names.length > 0 ? Math.round((typeTotal / names.length) * 10) / 10 : 0;
-        names.forEach(n => ingredientLines.push(`${n}: ${per} g`));
-    });
+    // --- Ripartizione fragranza per nota, in gocce ---
+    const doseLines = splitFragrance(fragG, scentRows.map(r => ({
+        id: r.scent_id,
+        name: scentsById[r.scent_id]?.name || r.scent_id,
+        note_type: r.note_type
+    })), scentsById);
+    const fragText = fragranceTotalHtml(fragG, doseLines, fragPct);
 
     // --- Definizione degli step ---
     const li = (arr) => `<ul class="guide-list">${arr.map(x => `<li>${x}</li>`).join('')}</ul>`;
@@ -122,7 +107,8 @@ export async function renderGuide(container, logId) {
                 ${li([
                     `Stampo: <strong>${mold?.name || '—'}</strong> (capacità ${cap} g)`,
                     `Cera: <strong>${wax?.name || '—'}</strong> — <strong>${effectiveWax} g</strong>`,
-                    `Fragranza: <strong>${fragAmt} g</strong> (${fragPct}% della cera)`,
+                    `Fragranza: ${fragText}`,
+                    `Le boccette delle essenze con il loro contagocce`,
                     `Termometro, contenitore per bagnomaria, stoppino, spatola`
                 ])}
             `
@@ -142,8 +128,9 @@ export async function renderGuide(container, logId) {
             icon: 'science',
             title: 'Aggiungi la fragranza',
             body: `
-                <p>${pourTemp ? `Lascia intiepidire la cera fino a circa <strong>${pourTemp} °C</strong>, poi aggiungi` : 'Quando la cera si è leggermente raffreddata, aggiungi'} <strong>${fragAmt} g</strong> di fragranza e mescola con cura per 1-2 minuti.</p>
-                ${ingredientLines.length > 0 ? `<p class="guide-sub">Dosi per essenza:</p>${li(ingredientLines)}` : ''}
+                <p>${pourTemp ? `Lascia intiepidire la cera fino a circa <strong>${pourTemp} °C</strong>, poi aggiungi` : 'Quando la cera si è leggermente raffreddata, aggiungi'} ${doseLines.length > 0 ? 'le essenze contando le gocce' : `<strong>${Math.round(fragG)} g</strong> di fragranza`} e mescola con cura per 1-2 minuti.</p>
+                ${doseLines.length > 0 ? `<p class="guide-sub">Gocce per essenza:</p>${doseListHtml(doseLines, 'guide-list dose-list')}` : ''}
+                ${doseLines.length > 0 ? `<p class="guide-note">Tieni la boccetta in verticale e lascia cadere le gocce una alla volta, così escono più regolari.</p>` : ''}
                 <p class="guide-note">Una miscelazione accurata garantisce una resa olfattiva uniforme.</p>
             `
         },

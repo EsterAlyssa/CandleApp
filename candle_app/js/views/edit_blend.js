@@ -2,7 +2,7 @@
 // EDIT_BLEND.JS - Vista per modificare un mix/blend esistente
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
-import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
+import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote } from '../blends.js';
 import * as Store from '../store.js';
 
 export async function renderEditBlend(container, blendId) {
@@ -99,10 +99,6 @@ export async function renderEditBlend(container, blendId) {
         return nt;
     };
 
-    const getUsedNotes = () => {
-        return new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
-    };
-
     const getCompatibleFamilies = () => {
         if (selectedEssences.length === 0) {
             return { all: true, harmony: new Set(), contrast: new Set() };
@@ -151,26 +147,7 @@ export async function renderEditBlend(container, blendId) {
     wrapper.appendChild(selectionSummary);
 
     const updateSelectionSummary = () => {
-        const headEss = selectedEssences.filter(e => e.note_type === 'head');
-        const heartEss = selectedEssences.find(e => e.note_type === 'heart');
-        const baseEss = selectedEssences.find(e => e.note_type === 'base');
-
-        const headNames = headEss.length > 0 ? headEss.map(e => e.name).join(', ') : '(non selezionata)';
-
-        selectionSummary.innerHTML = `
-            <div class="selection-row ${headEss.length > 0 ? 'filled' : 'empty'}">
-                <span class="note-label">Testa:</span> 
-                <span class="note-value">${headNames}</span>
-            </div>
-            <div class="selection-row ${heartEss ? 'filled' : 'empty'}">
-                <span class="note-label">Cuore:</span> 
-                <span class="note-value">${heartEss ? heartEss.name : '(non selezionata)'}</span>
-            </div>
-            <div class="selection-row ${baseEss ? 'filled' : 'empty'}">
-                <span class="note-label">Fondo:</span> 
-                <span class="note-value">${baseEss ? baseEss.name : '(non selezionata)'}</span>
-            </div>
-        `;
+        selectionSummary.innerHTML = selectionSummaryHtml(selectedEssences);
     };
     updateSelectionSummary();
 
@@ -223,7 +200,6 @@ export async function renderEditBlend(container, blendId) {
         essGrid.innerHTML = '';
         const familyVal = familyFilter.value;
         const noteVal = noteFilter.value;
-        const usedNotes = getUsedNotes();
         const compatibility = getCompatibleFamilies();
 
         essences.forEach(e => {
@@ -235,7 +211,6 @@ export async function renderEditBlend(container, blendId) {
             if (noteVal && noteType !== noteVal) return;
 
             const isSel = selectedEssences.some(se => se.id === e.id);
-            const isNoteUsed = noteType && noteType !== 'head' && usedNotes.has(noteType) && !isSel;
 
             let familyStatus = 'compatible';
             if (!compatibility.all && famId) {
@@ -248,7 +223,7 @@ export async function renderEditBlend(container, blendId) {
                 }
             }
 
-            const isDisabled = isNoteUsed || familyStatus === 'incompatible';
+            const isDisabled = familyStatus === 'incompatible';
 
             const card = document.createElement('div');
             let cardClass = 'lab-select-card';
@@ -266,10 +241,27 @@ export async function renderEditBlend(container, blendId) {
                 <div class="lab-card-name">${e.name}</div>
                 <div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}</div>
                 <div class="lab-card-badges">${noteBadge}${familyBadge}</div>
+                ${!noteType && !isDisabled ? notePickerHtml(e) : ''}
             `;
 
+            // Essenza senza nota: la si assegna dalla carta, poi viene selezionata
+            card.querySelectorAll('.note-pick-btn').forEach(b => {
+                b.onclick = async (ev) => {
+                    ev.stopPropagation();
+                    try {
+                        await assignScentNote(e, b.dataset.note);
+                    } catch (err) {
+                        alert(err.message);
+                        return;
+                    }
+                    selectedEssences = selectedEssences.filter(se => se.id !== e.id);
+                    selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: famId, note_type: b.dataset.note });
+                    updateUI();
+                };
+            });
+
             card.onclick = () => {
-                if (isDisabled) return;
+                if (isDisabled || !noteType) return;
                 if (isSel) {
                     selectedEssences = selectedEssences.filter(se => se.id !== e.id);
                 } else {
@@ -299,13 +291,9 @@ export async function renderEditBlend(container, blendId) {
     wrapper.appendChild(warningDiv);
 
     const updateWarning = () => {
-        const count = selectedEssences.length;
-        if (count > 0 && count < 3) {
-            warningDiv.innerHTML = `<p>⚠️ Hai selezionato solo ${count} essenz${count === 1 ? 'a' : 'e'}. Per una fragranza completa, seleziona 1 nota di testa, 1 di cuore e 1 di fondo.</p>`;
-            warningDiv.style.display = 'block';
-        } else {
-            warningDiv.style.display = 'none';
-        }
+        const msg = missingNotesWarning(selectedEssences);
+        warningDiv.innerHTML = msg ? `<p>${msg}</p>` : '';
+        warningDiv.style.display = msg ? 'block' : 'none';
     };
     updateWarning();
 
@@ -332,6 +320,11 @@ export async function renderEditBlend(container, blendId) {
     saveBtn.onclick = async () => {
         if (selectedEssences.length === 0) {
             alert('Seleziona almeno un\'essenza.');
+            return;
+        }
+        const noNote = essencesWithoutNote(selectedEssences);
+        if (noNote.length > 0) {
+            alert(`Assegna la nota olfattiva a: ${noNote.map(e => e.name).join(', ')}. Senza nota l'essenza non può entrare nel mix.`);
             return;
         }
 

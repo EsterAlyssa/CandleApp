@@ -3084,3 +3084,60 @@ select::-ms-expand {
     margin-bottom: 6px;
     color: var(--md-sys-color-on-surface);
 }
+
+/* ============================================
+   DOSI FRAGRANZA - gocce per essenza
+   ============================================ */
+.dose-list {
+    margin: 0 0 10px;
+    padding-left: 20px;
+}
+.dose-list li {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 6px;
+}
+.dose-note {
+    display: inline-block;
+    min-width: 48px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+.dose-ml {
+    font-size: 13px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Essenza senza nota: scelta della nota direttamente sulla carta */
+.note-picker {
+    margin-top: 8px;
+}
+.note-picker-label {
+    display: block;
+    font-size: 11px;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-bottom: 4px;
+}
+.note-picker-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.note-pick-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--md-sys-color-outline);
+    background: transparent;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+}
+.note-pick-btn.suggested {
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    font-weight: 600;
+}

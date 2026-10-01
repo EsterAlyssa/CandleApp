@@ -4,6 +4,7 @@
 
 import { createButton, createTitle, createCard } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
+import { waxGrams, fragranceGrams, splitFragrance, doseListHtml } from '../fragranza.js';
 
 export async function renderCandleDetail(container, logId) {
     console.log('[VIEW] Rendering Candle Detail...', logId);
@@ -67,13 +68,14 @@ export async function renderCandleDetail(container, logId) {
     // Load names for selected scents
     const scentIds = Array.from(new Set(scentRows.map(r => r.scent_id).filter(Boolean)));
     const scentMap = {};
+    const scentsById = {};
     if (scentIds.length > 0) {
         // PONTE 3: Fetch in batch per inventory
         try {
             const res = await fetch(`/api/inventory?ids=${scentIds.join(',')}`);
             if (res.ok) {
                 const scentsData = await res.json();
-                scentsData.forEach(s => { scentMap[s.id] = s.name; });
+                scentsData.forEach(s => { scentMap[s.id] = s.name; scentsById[s.id] = s; });
             }
         } catch(e) { console.warn("Impossibile caricare i nomi delle essenze", e); }
     }
@@ -85,6 +87,14 @@ export async function renderCandleDetail(container, logId) {
     const headNames = namesByNote('head');
     const heartNames = namesByNote('heart');
     const baseNames = namesByNote('base');
+
+    // Gocce per essenza (stessa ripartizione di wizard e guida)
+    const fragPct = typeof log.fragrance_load_percent === 'number' ? log.fragrance_load_percent : 8;
+    const doseLines = splitFragrance(
+        fragranceGrams(log.total_wax_used || waxGrams(mold, wax), fragPct),
+        scentRows.map(r => ({ id: r.scent_id, name: scentMap[r.scent_id] || r.scent_id, note_type: r.note_type })),
+        scentsById
+    );
 
     let displayNotes = log.notes || '';
     if (displayNotes.includes('Note: ')) {
@@ -149,6 +159,7 @@ export async function renderCandleDetail(container, logId) {
                 ${heartNames ? `   <li>Cuore: ${heartNames}</li>` : ''}
                 ${baseNames ? `   <li>Fondo: ${baseNames}</li>` : ''}
             </ul>
+            ${doseLines.length > 0 ? `<p><strong>Gocce per essenza:</strong></p>${doseListHtml(doseLines)}` : ''}
         ` : ''}
     `;
 

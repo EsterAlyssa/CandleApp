@@ -5,6 +5,7 @@
 import { createButton, createInput, createTitle } from '../components.js?v=3';
 import { buildImageRef, buildImageUrl, getImageUrlFromRecord, uploadImageToCloudinary, deleteImageFromCloudinary, deleteImageByPublicId } from '../image.js?v=5';
 import { WAX_PRESETS, SCENT_PRESETS, findWaxPreset, findScentPreset } from '../presets.js';
+import { DEFAULT_DENSITY, DEFAULT_DROPS_PER_ML, gramsToMl, mlToGrams } from '../fragranza.js';
 import * as Store from '../store.js';
 
 export async function renderAddEssence(container, categoryParam) {
@@ -128,15 +129,37 @@ export async function renderAddEssence(container, categoryParam) {
         // --- NUOVO CAMPO CAPACITÀ ORIGINALE (Solo Essenze) ---
         let initialQtyInput = null;
         if (isEssence) {
-            initialQtyInput = createInput('Capacità boccetta originale (g)', 'number', 'add-initial-qty', 'es. 100');
+            initialQtyInput = createInput('Capacità boccetta originale (ml)', 'number', 'add-initial-qty', 'es. 10');
             wrapper.appendChild(initialQtyInput);
         }
 
         // Campo quantità attuale (Etichetta dinamica)
-        const qtyLabel = isEssence ? 'Quantità attuale (g)' : 'Quantità (g)';
-        const qtyPlaceholder = category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi';
+        // Le essenze si inseriscono in ml (come sulle boccette); il sistema le salva in grammi tramite la densità
+        const qtyLabel = isEssence ? 'Quantità attuale (ml)' : 'Quantità (g)';
+        const qtyPlaceholder = isEssence ? 'Quantità in ml' : category === 'Stampi' ? 'Capacità in grammi' : 'Quantità in grammi';
         const qtyInput = createInput(qtyLabel, 'number', 'add-qty', qtyPlaceholder);
         wrapper.appendChild(qtyInput);
+
+        // --- DENSITÀ E CONTAGOCCE (Solo Essenze) ---
+        // Servono a convertire ml in grammi e a dire all'utente quante gocce usare.
+        let densityField = null;
+        let dropsField = null;
+        if (isEssence) {
+            const densityGrp = createInput('Densità (g/ml, opzionale)', 'number', 'add-density', `se vuoto: ${String(DEFAULT_DENSITY).replace('.', ',')}`);
+            densityField = densityGrp.querySelector('.input-field');
+            densityField.setAttribute('step', '0.01');
+            wrapper.appendChild(densityGrp);
+
+            const dropsGrp = createInput('Gocce per ml del contagocce (opzionale)', 'number', 'add-drops', `se vuoto: ${DEFAULT_DROPS_PER_ML}`);
+            dropsField = dropsGrp.querySelector('.input-field');
+            dropsField.setAttribute('step', '1');
+            wrapper.appendChild(dropsGrp);
+
+            const dropsNote = document.createElement('p');
+            dropsNote.className = 'form-note';
+            dropsNote.textContent = `Se non indicati si usano ${String(DEFAULT_DENSITY).replace('.', ',')} g/ml e ${DEFAULT_DROPS_PER_ML} gocce per ml, valori tipici di oli essenziali e fragranze. Per tarare il contagocce: contare le gocce che riempiono 1 ml.`;
+            wrapper.appendChild(dropsNote);
+        }
 
         // --- LOGICA DI AUTOCOMPILAZIONE ---
         if (isEssence && !isEdit) {
@@ -221,6 +244,7 @@ export async function renderAddEssence(container, categoryParam) {
                     const preset = findScentPreset(val);
                     if (!preset) return;
                     if (noteTypeSelect && preset.note) noteTypeSelect.value = preset.note;
+                    if (densityField && preset.density) densityField.value = preset.density;
                     if (familySelect && preset.family_id) {
                         const hasOption = Array.from(familySelect.options).some(o => o.value === preset.family_id);
                         if (hasOption) familySelect.value = preset.family_id;
@@ -247,7 +271,11 @@ export async function renderAddEssence(container, categoryParam) {
             if (!existingError && existing) {
                 if (existing.category === dbCategory) {
                     nameInput.querySelector('.input-field').value = existing.name || '';
-                    qtyInput.querySelector('.input-field').value = existing.quantity_g != null ? existing.quantity_g : '';
+                    // Per le essenze il dato salvato è in grammi: si mostra in ml
+                    const toShown = (g) => isEssence ? Math.round(gramsToMl(g, existing) * 10) / 10 : g;
+                    qtyInput.querySelector('.input-field').value = existing.quantity_g != null ? toShown(existing.quantity_g) : '';
+                    if (densityField && existing.tech_data?.density) densityField.value = existing.tech_data.density;
+                    if (dropsField && existing.tech_data?.drops_per_ml) dropsField.value = existing.tech_data.drops_per_ml;
                     supplierInput.querySelector('.input-field').value = existing.supplier || '';
                     
                     if (familySelect && existing.family_id) {
@@ -259,7 +287,7 @@ export async function renderAddEssence(container, categoryParam) {
                     
                     // --- CARICAMENTO CAPACITÀ ORIGINALE (Edit Mode) ---
                     if (isEssence && initialQtyInput && existing.tech_data?.initial_quantity) {
-                        initialQtyInput.querySelector('.input-field').value = existing.tech_data.initial_quantity;
+                        initialQtyInput.querySelector('.input-field').value = toShown(existing.tech_data.initial_quantity);
                     }
 
                     if (waxFields && existing.tech_data) {
@@ -292,6 +320,8 @@ export async function renderAddEssence(container, categoryParam) {
 
             const name = nameInput.querySelector('.input-field')?.value?.trim();
             if (!name) { alert('Inserisci un nome!'); return; }
+            // Senza nota l'essenza non si può dosare nella piramide olfattiva
+            if (noteTypeSelect && !noteTypeSelect.value) { alert('Scegli la nota olfattiva (testa, cuore o fondo)!'); return; }
             const quantity_g = parseFloat(qtyInput.querySelector('.input-field')?.value) || null;
             const supplier = supplierInput.querySelector('.input-field')?.value?.trim() || null;
             const family_id = familySelect?.value || null;
@@ -334,12 +364,25 @@ export async function renderAddEssence(container, categoryParam) {
                 else delete existingTechData.note_type;
             }
 
-            // --- SALVATAGGIO CAPACITÀ ORIGINALE ---
-            if (isEssence && initialQtyInput) {
-                const initVal = parseFloat(initialQtyInput.querySelector('.input-field')?.value);
+            // --- DENSITÀ, CONTAGOCCE E CONVERSIONE ml → g (Solo Essenze) ---
+            if (isEssence) {
                 existingTechData = existingTechData || {};
+                const setOptional = (key, field) => {
+                    const num = parseFloat(field?.value);
+                    if (num > 0) existingTechData[key] = num;
+                    else delete existingTechData[key];
+                };
+                setOptional('density', densityField);
+                setOptional('drops_per_ml', dropsField);
+
+                const toGrams = (ml) => Math.round(mlToGrams(ml, { tech_data: existingTechData }) * 100) / 100;
+                const qtyMl = parseFloat(qtyInput.querySelector('.input-field')?.value);
+                record.quantity_g = !isNaN(qtyMl) ? toGrams(qtyMl) : null;
+
+                // --- SALVATAGGIO CAPACITÀ ORIGINALE ---
+                const initVal = parseFloat(initialQtyInput?.querySelector('.input-field')?.value);
                 if (!isNaN(initVal) && initVal > 0) {
-                    existingTechData.initial_quantity = initVal;
+                    existingTechData.initial_quantity = toGrams(initVal);
                 } else {
                     delete existingTechData.initial_quantity;
                 }

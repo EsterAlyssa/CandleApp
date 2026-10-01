@@ -3,7 +3,8 @@
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
-import { saveBlendScents, loadBlendScents, mapScentRows } from '../blends.js';
+import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote } from '../blends.js';
+import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml, shortageWarningHtml, consumeScents } from '../fragranza.js';
 import * as Store from '../store.js';
 
 export async function renderLab(container, param) {
@@ -58,6 +59,9 @@ export async function renderLab(container, param) {
     const saveStateToStore = () => {
         Store.setWizardState({ currentStep, selectedMold, selectedWax, selectedEssences, fragrancePct, candleName, fragranceName, editingLogId });
     };
+
+    const fragranceText = (fragG) =>
+        fragranceTotalHtml(fragG, splitFragrance(fragG, selectedEssences, scentsById), fragrancePct);
 
     const formatNoteType = (noteType) => {
         if (!noteType) return '';
@@ -122,6 +126,16 @@ export async function renderLab(container, param) {
 
     const familiesMap = {};
     (familiesData || []).forEach(f => { familiesMap[f.id] = f.name_it || f.name || ''; });
+
+    // Record di inventario per id: servono densità e contagocce di ogni essenza
+    const scentsById = {};
+    (essences || []).forEach(e => { scentsById[e.id] = e; });
+
+    // La selezione salvata nello store può avere note vuote (essenza senza
+    // nota al momento della scelta): si completano con la nota in magazzino.
+    selectedEssences = selectedEssences.map(se => ({
+        ...se, note_type: se.note_type || scentsById[se.id]?.tech_data?.note_type || ''
+    }));
 
     if (navParams.mold) selectedMold = molds.find(m => m.id === navParams.mold) || null;
     if (navParams.wax) selectedWax = waxes.find(w => w.id === navParams.wax) || null;
@@ -281,11 +295,11 @@ export async function renderLab(container, param) {
 
         const instructionDiv = document.createElement('div');
         instructionDiv.className = 'lab-instruction';
-        instructionDiv.innerHTML = `<p>Seleziona le essenze per creare la tua fragranza. Puoi scegliere:</p>
+        instructionDiv.innerHTML = `<p>Seleziona le essenze per creare la tua fragranza. Per ogni nota puoi sceglierne una o più:</p>
             <ul>
-                <li><strong>Nota di testa</strong> - prima impressione, volatile</li>
-                <li><strong>Nota di cuore</strong> - corpo della fragranza</li>
-                <li><strong>Nota di fondo</strong> - persistenza, base</li>
+                <li><strong>Note di testa</strong> - prima impressione, volatili</li>
+                <li><strong>Note di cuore</strong> - corpo della fragranza</li>
+                <li><strong>Note di fondo</strong> - persistenza, base</li>
             </ul>
             <p>Le essenze compatibili saranno evidenziate in base agli abbinamenti.</p>`;
         step.appendChild(instructionDiv);
@@ -407,34 +421,12 @@ export async function renderLab(container, param) {
             return { all: false, harmony: harmonyFamilies, contrast: contrastFamilies };
         };
 
-        const getUsedNotes = () => new Set(selectedEssences.map(e => e.note_type).filter(Boolean));
-
         const selectionSummary = document.createElement('div');
         selectionSummary.className = 'lab-selection-summary';
         step.appendChild(selectionSummary);
 
         const updateSelectionSummary = () => {
-            const usedNotes = getUsedNotes();
-            const headEss = selectedEssences.filter(e => e.note_type === 'head');
-            const heartEss = selectedEssences.find(e => e.note_type === 'heart');
-            const baseEss = selectedEssences.find(e => e.note_type === 'base');
-            
-            const headNames = headEss.length > 0 ? headEss.map(e => e.name).join(', ') : '(non selezionata)';
-            
-            selectionSummary.innerHTML = `
-                <div class="selection-row ${headEss.length > 0 ? 'filled' : 'empty'}">
-                    <span class="note-label">Testa:</span> 
-                    <span class="note-value">${headNames}</span>
-                </div>
-                <div class="selection-row ${heartEss ? 'filled' : 'empty'}">
-                    <span class="note-label">Cuore:</span> 
-                    <span class="note-value">${heartEss ? heartEss.name : '(non selezionata)'}</span>
-                </div>
-                <div class="selection-row ${baseEss ? 'filled' : 'empty'}">
-                    <span class="note-label">Fondo:</span> 
-                    <span class="note-value">${baseEss ? baseEss.name : '(non selezionata)'}</span>
-                </div>
-            `;
+            selectionSummary.innerHTML = selectionSummaryHtml(selectedEssences);
         };
         updateSelectionSummary();
 
@@ -445,6 +437,7 @@ export async function renderLab(container, param) {
             updateSelectionSummary();
             buildEssenceCards();
             updateWarning();
+            updateInfo();
             updateNavigationButtons();
         }
 
@@ -452,7 +445,6 @@ export async function renderLab(container, param) {
             essGrid.innerHTML = '';
             const familyVal = familyFilter.value;
             const noteVal = noteFilter.value;
-            const usedNotes = getUsedNotes();
             const compatibility = getCompatibleFamilies();
 
             essences.forEach(e => {
@@ -464,8 +456,7 @@ export async function renderLab(container, param) {
                 if (noteVal && noteType !== noteVal) return;
 
                 const isSel = selectedEssences.some(se => se.id === e.id);
-                const isNoteUsed = noteType && noteType !== 'head' && usedNotes.has(noteType) && !isSel;
-                
+
                 let familyStatus = 'compatible'; 
                 if (!compatibility.all && famId) {
                     if (compatibility.harmony.has(famId)) familyStatus = 'harmony';
@@ -473,7 +464,7 @@ export async function renderLab(container, param) {
                     else if (selectedEssences.length > 0) familyStatus = 'incompatible';
                 }
 
-                const isDisabled = isNoteUsed || familyStatus === 'incompatible';
+                const isDisabled = familyStatus === 'incompatible';
 
                 const card = document.createElement('div');
                 let cardClass = 'lab-select-card';
@@ -491,10 +482,30 @@ export async function renderLab(container, param) {
                     <div class="lab-card-name">${e.name}</div>
                     <div class="lab-card-meta">${famName ? 'Famiglia: ' + famName : ''}</div>
                     <div class="lab-card-badges">${noteBadge}${familyBadge}</div>
+                    ${!noteType && !isDisabled ? notePickerHtml(e) : ''}
                 `;
-                
+
+                // Essenza senza nota: la si assegna dalla carta, poi viene selezionata
+                card.querySelectorAll('.note-pick-btn').forEach(b => {
+                    b.onclick = async (ev) => {
+                        ev.stopPropagation();
+                        try {
+                            await assignScentNote(e, b.dataset.note);
+                        } catch (err) {
+                            alert(err.message);
+                            return;
+                        }
+                        selectedEssences = selectedEssences.filter(se => se.id !== e.id);
+                        selectedEssences.push({ id: e.id, name: e.name, family_name: famName, family_id: famId, note_type: b.dataset.note });
+                        mixSelect.value = '';
+                        fragranceName = '';
+                        saveStateToStore();
+                        updateUIAfterSelection();
+                    };
+                });
+
                 card.onclick = () => {
-                    if (isDisabled) return;
+                    if (isDisabled || !noteType) return;
                     if (isSel) {
                         selectedEssences = selectedEssences.filter(se => se.id !== e.id);
                     } else {
@@ -529,18 +540,10 @@ export async function renderLab(container, param) {
         infoDiv.className = 'lab-calc-info';
         
         const updateInfo = () => {
-            if (selectedMold && selectedWax) {
-                const cap = selectedMold.quantity_g || 100;
-                const waxFactor = selectedWax.tech_data?.conversion_factor || 0.90;
-                const waxAmt = Math.round(cap * waxFactor);
-                const fragAmt = Math.round(waxAmt * fragrancePct / 100);
-                infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong> (fisso)</p><p>Fragranza da aggiungere: <strong>${fragAmt}g</strong> (${fragrancePct}% della cera)</p>`;
-            } else if (selectedMold) {
-                const cap = selectedMold.quantity_g || 100;
-                const waxAmt = Math.round(cap * 0.90);
-                const fragAmt = Math.round(waxAmt * fragrancePct / 100);
-                infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong> (fisso)</p><p>Fragranza da aggiungere: <strong>${fragAmt}g</strong> (${fragrancePct}% della cera)</p>`;
-            }
+            if (!selectedMold) return;
+            const waxAmt = waxGrams(selectedMold, selectedWax);
+            const fragG = fragranceGrams(waxAmt, fragrancePct);
+            infoDiv.innerHTML = `<p>Cera da sciogliere: <strong>${waxAmt}g</strong> (fisso)</p><p>Fragranza da aggiungere: ${fragranceText(fragG)}</p>`;
         };
         updateInfo();
         step.appendChild(infoDiv);
@@ -563,13 +566,9 @@ export async function renderLab(container, param) {
         step.appendChild(warningDiv);
 
         const updateWarning = () => {
-            const count = selectedEssences.length;
-            if (count > 0 && count < 3) {
-                warningDiv.innerHTML = `<p>⚠️ Hai selezionato solo ${count} essenz${count === 1 ? 'a' : 'e'}. Per una fragranza completa, seleziona 1 nota di testa, 1 di cuore e 1 di fondo.</p>`;
-                warningDiv.style.display = 'block';
-            } else {
-                warningDiv.style.display = 'none';
-            }
+            const msg = missingNotesWarning(selectedEssences);
+            warningDiv.innerHTML = msg ? `<p>${msg}</p>` : '';
+            warningDiv.style.display = msg ? 'block' : 'none';
         };
 
         const btns = document.createElement('div');
@@ -585,7 +584,14 @@ export async function renderLab(container, param) {
             if (selectedEssences.length > 0) {
                 const nextBtn = createButton('Avanti', 'arrow_forward', 'btn-primary');
                 nextBtn.setAttribute('data-btn', 'next');
-                nextBtn.onclick = () => { currentStep = 2; saveStateToStore(); renderStep(); };
+                nextBtn.onclick = () => {
+                    const noNote = essencesWithoutNote(selectedEssences);
+                    if (noNote.length > 0) {
+                        alert(`Assegna la nota olfattiva a: ${noNote.map(e => e.name).join(', ')}. Senza nota l'essenza non entra nelle dosi.`);
+                        return;
+                    }
+                    currentStep = 2; saveStateToStore(); renderStep();
+                };
                 btns.appendChild(nextBtn);
             }
         };
@@ -609,31 +615,9 @@ export async function renderLab(container, param) {
         step.appendChild(resH);
 
         const cap = selectedMold?.quantity_g || 100;
-        const waxFactor = selectedWax?.tech_data?.conversion_factor || 0.90;
-        const waxAmt = Math.round(cap * waxFactor);
-        const fragAmt = Math.round(waxAmt * fragrancePct / 100);
-
-        const noteRatios = { head: 0.25, heart: 0.5, base: 0.25 };
-        const selectedByNote = {
-            head: selectedEssences.filter(e => e.note_type === 'head'),
-            heart: selectedEssences.filter(e => e.note_type === 'heart'),
-            base: selectedEssences.filter(e => e.note_type === 'base')
-        };
-
-        const availableTypes = Object.entries(selectedByNote).filter(([, arr]) => arr.length > 0).map(([type]) => type);
-        let normalizedRatios = { ...noteRatios };
-        if (availableTypes.length > 0 && availableTypes.length < 3) {
-            const total = availableTypes.reduce((sum, type) => sum + noteRatios[type], 0);
-            normalizedRatios = availableTypes.reduce((acc, type) => { acc[type] = noteRatios[type] / total; return acc; }, {});
-        }
-
-        const ingredientsLines = [];
-        availableTypes.forEach(type => {
-            const essInType = selectedByNote[type];
-            const typeTotal = Math.round(fragAmt * (normalizedRatios[type] || 0));
-            const perEssType = essInType.length > 0 ? Math.round((typeTotal / essInType.length) * 10) / 10 : 0;
-            essInType.forEach(e => { ingredientsLines.push(`${e.name} ${perEssType}g`); });
-        });
+        const waxAmt = waxGrams(selectedMold, selectedWax);
+        const fragG = fragranceGrams(waxAmt, fragrancePct);
+        const doseLines = splitFragrance(fragG, selectedEssences, scentsById);
 
         const recipe = document.createElement('div');
         recipe.className = 'recipe-card';
@@ -642,11 +626,19 @@ export async function renderLab(container, param) {
             <div class="recipe-section"><h4>Stampo</h4><p>${selectedMold?.name || '—'}</p></div>
             <div class="recipe-section"><h4>Capacità stampo</h4><p class="recipe-amount">${cap}g</p></div>
             <div class="recipe-section"><h4>Cera da sciogliere</h4><p>${selectedWax?.name || '—'}: <strong>${waxAmt}g</strong> (fisso)</p></div>
-            <div class="recipe-section"><h4>Fragranza da aggiungere</h4><p><strong>${fragAmt}g</strong> (${fragrancePct}% della cera)</p></div>
-            <div class="recipe-section"><h4>Ingredienti</h4><p>${ingredientsLines.join(', ') || '—'}</p></div>
+            <div class="recipe-section"><h4>Fragranza da aggiungere</h4><p>${fragranceText(fragG)}</p></div>
+            <div class="recipe-section"><h4>Gocce per essenza</h4>${doseListHtml(doseLines) || '<p>—</p>'}</div>
             <div class="recipe-section"><h4>Famiglia</h4><p>${selectedEssences.map(e => e.family_name).filter(Boolean).join(', ') || '—'}</p></div>
         `;
         step.appendChild(recipe);
+
+        const stockWarning = shortageWarningHtml(doseLines, scentsById);
+        if (stockWarning) {
+            const sw = document.createElement('div');
+            sw.className = 'lab-warning';
+            sw.innerHTML = stockWarning;
+            step.appendChild(sw);
+        }
 
         const nameGrp = document.createElement('div');
         nameGrp.className = 'input-group';
@@ -809,6 +801,9 @@ export async function renderLab(container, param) {
                 } catch (e) {
                     console.warn('[LAB] Could not update wax stock', e);
                 }
+
+                // PONTE 7: Scala le essenze usate (stesse dosi mostrate nella ricetta)
+                await consumeScents(doseLines, scentsById);
             }
 
             Store.resetWizard();

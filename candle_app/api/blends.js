@@ -15,9 +15,10 @@ export default async function handler(req, res) {
             } else if (essence_id) {
                 result = await sql`
                     SELECT * FROM blends 
-                    WHERE head_scent_id = ${essence_id} 
-                       OR heart_scent_id = ${essence_id} 
+                    WHERE head_scent_id = ${essence_id}
+                       OR heart_scent_id = ${essence_id}
                        OR base_scent_id = ${essence_id}
+                       OR id IN (SELECT blend_id FROM blend_scents WHERE scent_id = ${essence_id})
                 `;
             } else if (user_id) {
                 result = await sql`SELECT * FROM blends WHERE user_id = ${user_id} ORDER BY name`;

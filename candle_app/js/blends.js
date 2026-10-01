@@ -4,7 +4,60 @@
 // (superando il limite delle colonne singole head/heart/base_scent_id).
 // ===================================================
 
-const VALID_NOTES = ['head', 'heart', 'base'];
+import { NOTE_ORDER, NOTE_LABELS } from './fragranza.js';
+import { findScentPreset } from './presets.js';
+
+// --- Essenze senza nota olfattiva ---
+// La nota dipende dalla volatilità della singola materia: non esiste un
+// valore di ripiego corretto, quindi si chiede all'utente. Se il nome è nel
+// catalogo dei preset, la nota del preset viene proposta come consigliata.
+export function notePickerHtml(scent) {
+    const suggested = findScentPreset(scent?.name)?.note || '';
+    const buttons = NOTE_ORDER.map(nt =>
+        `<button type="button" class="note-pick-btn${nt === suggested ? ' suggested' : ''}" data-note="${nt}">${NOTE_LABELS[nt]}${nt === suggested ? ' ✓' : ''}</button>`
+    ).join('');
+    return `<div class="note-picker"><span class="note-picker-label">Nota da assegnare${suggested ? ' (✓ consigliata)' : ''}:</span><div class="note-picker-btns">${buttons}</div></div>`;
+}
+
+// Salva la nota sull'essenza in magazzino (aggiorna anche l'oggetto passato).
+export async function assignScentNote(scent, noteType) {
+    const tech_data = { ...(scent.tech_data || {}), note_type: noteType };
+    const res = await fetch('/api/inventory', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...scent, tech_data })
+    });
+    if (!res.ok) throw new Error('Impossibile salvare la nota');
+    scent.tech_data = tech_data;
+}
+
+// Essenze selezionate ancora senza nota (non entrerebbero nelle dosi né nel mix).
+export const essencesWithoutNote = (selectedEssences) =>
+    (selectedEssences || []).filter(e => !NOTE_ORDER.includes(e.note_type));
+
+const VALID_NOTES = NOTE_ORDER;
+
+// Riepilogo della selezione: per ogni nota tutte le essenze scelte.
+export function selectionSummaryHtml(selectedEssences) {
+    return NOTE_ORDER.map(nt => {
+        const names = (selectedEssences || []).filter(e => e.note_type === nt).map(e => e.name);
+        return `
+            <div class="selection-row ${names.length > 0 ? 'filled' : 'empty'}">
+                <span class="note-label">${NOTE_LABELS[nt]}:</span>
+                <span class="note-value">${names.length > 0 ? names.join(', ') : '(non selezionata)'}</span>
+            </div>`;
+    }).join('');
+}
+
+// Avviso se manca almeno una delle tre note (null se la fragranza è completa).
+export function missingNotesWarning(selectedEssences) {
+    const list = selectedEssences || [];
+    if (list.length === 0) return null;
+    const missing = NOTE_ORDER.filter(nt => !list.some(e => e.note_type === nt));
+    if (missing.length === 0) return null;
+    const names = missing.map(nt => NOTE_LABELS[nt].toLowerCase()).join(' e di ');
+    const head = missing.length === 1 ? 'Manca la nota' : 'Mancano le note';
+    return `⚠️ ${head} di ${names}. Per una fragranza completa serve almeno un'essenza per ciascuna nota (testa, cuore e fondo); per ogni nota se ne possono scegliere più d'una.`;
+}
 
 // Sostituisce completamente le essenze associate a un blend.
 export async function saveBlendScents(blendId, essences) {

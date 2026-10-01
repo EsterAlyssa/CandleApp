@@ -3,6 +3,7 @@
 // ===================================================
 
 import { createTitle, createButton } from '../components.js?v=3';
+import { gramsToMl, formatNum } from '../fragranza.js';
 
 export async function renderStock(container, itemId) {
     console.log('[VIEW] Rendering Stock for', itemId);
@@ -102,7 +103,9 @@ export async function renderStock(container, itemId) {
     // Quantity detail
     const qtyDiv = document.createElement('div');
     qtyDiv.className = 'stock-section';
-    qtyDiv.innerHTML = `<h4>Quantità disponibile</h4><p class="stock-qty">${qty}g</p>`;
+    // Le essenze si leggono in ml, come sulle boccette
+    const qtyText = item.category === 'scent' ? `${formatNum(gramsToMl(qty, item))} ml` : `${qty}g`;
+    qtyDiv.innerHTML = `<h4>Quantità disponibile</h4><p class="stock-qty">${qtyText}</p>`;
     wrapper.appendChild(qtyDiv);
 
     // Back button
