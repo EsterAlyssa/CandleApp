@@ -43,16 +43,20 @@ export async function renderBatch(container) {
 
     // Righe di fabbisogno: cera + una per essenza. need = grammi per candela.
     const items = [
-        { name: wax.name, label: 'Cera', need: waxPer, stock: parseFloat(wax.quantity_g), perText: `${formatNum(waxPer)} g` },
+        { name: wax.name, label: 'Cera', need: waxPer, stock: parseFloat(wax.quantity_g) || 0, perText: `${formatNum(waxPer)} g` },
         ...lines.map(l => ({
             name: l.name, label: NOTE_LABELS[l.note_type], need: l.grams,
-            stock: scentsById[l.id] ? parseFloat(scentsById[l.id].quantity_g) : NaN,
+            stock: parseFloat(scentsById[l.id]?.quantity_g) || 0,
             perText: formatDrops(l.drops), mlPer: l.ml, dropsPer: l.drops,
             scent: scentsById[l.id]
         }))
     ];
     // Quante candele ci stanno: minimo fra le righe con scorta nota
-    const maxCandles = items.reduce((m, i) => Number.isNaN(i.stock) || i.need <= 0 ? m : Math.min(m, Math.floor(i.stock / i.need + 1e-9)), Infinity);
+    const capOf = (i) => Math.floor(i.stock / i.need + 1e-9);
+    const maxCandles = items.reduce((m, i) => i.need <= 0 ? m : Math.min(m, capOf(i)), Infinity);
+    // Ingrediente che limita (il primo a finire)
+    const limiting = items.filter(i => i.need > 0 && capOf(i) === maxCandles).map(i => i.name);
+    const limitText = limiting.length ? ` Ingrediente che limita: ${limiting.join(', ')}.` : '';
 
     const head = document.createElement('div');
     head.className = 'recipe-card';
@@ -72,13 +76,11 @@ export async function renderBatch(container) {
         const n = Math.max(1, parseInt(qtyInput.value, 10) || 1);
         const rows = items.map(i => {
             const totG = i.need * n;
-            const known = !Number.isNaN(i.stock);
-            const ok = !known || i.stock >= totG - 1e-9;
+            const ok = i.stock >= totG - 1e-9;
             const totText = i.dropsPer != null
                 ? `${formatDrops(Math.max(1, Math.round(i.dropsPer * n)))} (≈ ${formatNum(i.mlPer * n)} ml)`
                 : `${formatNum(totG)} g`;
-            const stockText = !known ? 'scorta non indicata'
-                : i.scent ? `in magazzino ≈ ${formatNum(gramsToMl(i.stock, i.scent))} ml` : `in magazzino ${formatNum(i.stock)} g`;
+            const stockText = i.scent ? `in magazzino ≈ ${formatNum(gramsToMl(i.stock, i.scent))} ml` : `in magazzino ${formatNum(i.stock)} g`;
             return `<li class="batch-item ${ok ? 'ok' : 'ko'}">
                 <div class="batch-info">
                     <div class="batch-name">${i.label}: ${i.name}</div>
@@ -91,8 +93,8 @@ export async function renderBatch(container) {
         }).join('');
         const enough = n <= maxCandles;
         const verdict = enough
-            ? `Le scorte bastano per ${n} ${n === 1 ? 'candela' : 'candele'}${maxCandles === Infinity ? '' : ` (al massimo ${maxCandles})`}.`
-            : `Le scorte bastano per creare solo <strong>${maxCandles}</strong> ${maxCandles === 1 ? 'candela' : 'candele'}, non ${n}.`;
+            ? `Le scorte bastano per ${n} ${n === 1 ? 'candela' : 'candele'}${maxCandles === Infinity ? '' : `. Se ne possono fare al massimo ${maxCandles}`}.${maxCandles === Infinity ? '' : limitText}`
+            : `Le scorte bastano per creare solo <strong>${maxCandles}</strong> ${maxCandles === 1 ? 'candela' : 'candele'}, non ${n}.${limitText}`;
         out.innerHTML = `
             <ul class="batch-list">${rows}</ul>
             <div class="batch-verdict ${enough ? 'ok' : 'ko'}"><span class="batch-mark">${enough ? '✓' : '✗'}</span><span>${verdict}</span></div>`;
