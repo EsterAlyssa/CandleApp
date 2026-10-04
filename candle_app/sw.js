@@ -1,7 +1,7 @@
 // ===================================================
 // SERVICE WORKER - CandleApp PWA
 // ===================================================
-const CACHE_NAME = 'candle-app-v5';
+const CACHE_NAME = 'candle-app-v7';
 const ASSETS = [
     './',
     './index.html',

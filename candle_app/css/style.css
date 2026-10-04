@@ -3116,6 +3116,19 @@ select::-ms-expand {
     color: var(--md-sys-color-on-surface);
 }
 
+/* Campi note: larghezza piena e colori del tema */
+textarea.input-field {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface);
+    font-family: inherit;
+    resize: vertical;
+}
+
 /* ============================================
    DOSI FRAGRANZA - gocce per essenza
    ============================================ */
