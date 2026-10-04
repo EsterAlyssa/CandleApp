@@ -684,6 +684,9 @@ export async function renderLab(container, param) {
         btns.appendChild(backBtn);
         
         const multiBtn = createButton('Più candele uguali', 'content_copy', 'btn-secondary');
+        multiBtn.style.flex = '1 1 100%';
+        multiBtn.style.order = '-1';
+        btns.style.flexWrap = 'wrap';
         multiBtn.onclick = () => { saveStateToStore(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'batch' })); };
         btns.appendChild(multiBtn);
 

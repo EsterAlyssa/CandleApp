@@ -75,31 +75,37 @@ export async function renderPairings(container, familyId) {
             essByFam[e.family_id].push(e.name);
         });
 
-        const harmony = pairings.filter(p => p.type === 'armonia');
-        const contrast = pairings.filter(p => p.type === 'contrasto');
+        const typeOf = (p) => String(p.type || '').toLowerCase();
+        const harmony = pairings.filter(p => typeOf(p) === 'armonia' || typeOf(p) === 'harmony');
+        const contrast = pairings.filter(p => typeOf(p) === 'contrasto' || typeOf(p) === 'contrast');
 
-        function renderSection(label, items) {
+        function renderSection(label, icon, kind, items) {
             const section = document.createElement('div');
-            section.className = 'pairing-section';
+            section.className = `pairing-section pairing-${kind}`;
             const h4 = document.createElement('h4');
-            h4.textContent = label;
+            h4.className = 'pairing-section-title';
+            h4.textContent = `${icon} ${label}`;
             section.appendChild(h4);
 
+            const seen = new Set();
             items.forEach(p => {
                 const targetId = p.source_family_id === resolvedFamilyId ? p.target_family_id : p.source_family_id;
+                if (seen.has(targetId)) return;
+                seen.add(targetId);
                 const famN = famMap[targetId] || targetId;
                 const essNames = essByFam[targetId] || [];
                 const row = document.createElement('div');
                 row.className = 'pairing-row';
-                row.innerHTML = `<strong>${famN}</strong>${essNames.length > 0 ? '<br><span class="pairing-essences">' + essNames.join(', ') + '</span>' : ''}`;
+                const chips = essNames.map(n => `<span class="pairing-chip">${n}</span>`).join('');
+                row.innerHTML = `<div class="pairing-family">${famN}</div>${chips ? `<div class="pairing-essences">${chips}</div>` : ''}`;
                 section.appendChild(row);
             });
 
             return section;
         }
 
-        if (harmony.length > 0) wrapper.appendChild(renderSection('Per armonia:', harmony));
-        if (contrast.length > 0) wrapper.appendChild(renderSection('Per contrasto:', contrast));
+        if (harmony.length > 0) wrapper.appendChild(renderSection('Per armonia', '♥', 'harmony', harmony));
+        if (contrast.length > 0) wrapper.appendChild(renderSection('Per contrasto', '⚡', 'contrast', contrast));
 
         if (harmony.length === 0 && contrast.length === 0 && pairings.length > 0) {
             const debugSection = document.createElement('div');
