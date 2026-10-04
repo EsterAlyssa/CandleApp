@@ -212,16 +212,8 @@ export async function renderLab(container, param) {
         stepContent.innerHTML = '';
         saveStateToStore();
         
-        window.onTopBackClicked = () => {
-            if (currentStep > 0) {
-                currentStep--;
-                saveStateToStore();
-                renderStep();
-            } else {
-                Store.resetWizard();
-                window.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }));
-            }
-        };
+        // Il tasto casetta in alto porta alla home; per tornare di step c'è "Indietro" in basso
+        window.onTopBackClicked = null;
         switch (currentStep) {
             case 0: renderStep1(); break;
             case 1: renderStep2(); break;
