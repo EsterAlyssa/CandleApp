@@ -3,7 +3,7 @@
 // Parte dalla candela composta nel laboratorio (stato del wizard).
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
-import { waxGrams, fragranceGrams, splitFragrance, formatNum, formatDrops, NOTE_LABELS, gramsToMl } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, consumeScents, formatNum, formatDrops, NOTE_LABELS, gramsToMl } from '../fragranza.js';
 import * as Store from '../store.js';
 
 const fetchJson = async (url) => {
@@ -107,5 +107,32 @@ export async function renderBatch(container) {
     const back = createButton('Indietro', 'arrow_back', 'btn-secondary');
     back.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
     btns.appendChild(back);
+
+    // Conferma: scala dal magazzino cera ed essenze per il numero di candele indicato
+    const confirm = createButton('Conferma e scala dal magazzino', 'check', 'btn-primary');
+    confirm.onclick = async () => {
+        const n = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        if (n > maxCandles) {
+            alert(`Le scorte bastano per ${maxCandles} ${maxCandles === 1 ? 'candela' : 'candele'}, non ${n}.`);
+            return;
+        }
+        if (!window.confirm(`Scalare dal magazzino il necessario per ${n} ${n === 1 ? 'candela' : 'candele'}?`)) return;
+        confirm.disabled = true;
+        try {
+            const newWax = Math.max(0, Math.round((parseFloat(wax.quantity_g) - waxPer * n) * 100) / 100);
+            const res = await fetch('/api/inventory', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...wax, quantity_g: newWax })
+            });
+            if (!res.ok) throw new Error('aggiornamento cera non riuscito');
+            await consumeScents(lines.map(l => ({ ...l, grams: l.grams * n })), scentsById);
+            alert('Magazzino aggiornato.');
+            renderBatch(container);
+        } catch (e) {
+            confirm.disabled = false;
+            alert(`Errore: ${e.message}`);
+        }
+    };
+    btns.appendChild(confirm);
     wrapper.appendChild(btns);
 }
