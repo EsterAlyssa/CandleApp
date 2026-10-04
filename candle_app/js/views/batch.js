@@ -72,26 +72,30 @@ export async function renderBatch(container) {
         const n = Math.max(1, parseInt(qtyInput.value, 10) || 1);
         const rows = items.map(i => {
             const totG = i.need * n;
-            const ok = Number.isNaN(i.stock) || i.stock >= totG - 1e-9;
+            const known = !Number.isNaN(i.stock);
+            const ok = !known || i.stock >= totG - 1e-9;
             const totText = i.dropsPer != null
                 ? `${formatDrops(Math.max(1, Math.round(i.dropsPer * n)))} (≈ ${formatNum(i.mlPer * n)} ml)`
                 : `${formatNum(totG)} g`;
-            const stockText = Number.isNaN(i.stock) ? '—'
-                : i.scent ? `≈ ${formatNum(gramsToMl(i.stock, i.scent))} ml` : `${formatNum(i.stock)} g`;
-            return `<tr class="${ok ? '' : 'stock-short'}"><td>${i.label}: ${i.name}</td><td>${i.perText}</td><td><strong>${totText}</strong></td><td>${stockText} ${ok ? '✓' : '⚠️'}</td></tr>`;
+            const stockText = !known ? 'scorta non indicata'
+                : i.scent ? `in magazzino ≈ ${formatNum(gramsToMl(i.stock, i.scent))} ml` : `in magazzino ${formatNum(i.stock)} g`;
+            return `<li class="batch-item ${ok ? 'ok' : 'ko'}">
+                <div class="batch-info">
+                    <div class="batch-name">${i.label}: ${i.name}</div>
+                    <div class="batch-qty">1 candela: ${i.perText}</div>
+                    <div class="batch-qty">${n} ${n === 1 ? 'candela' : 'candele'}: <strong>${totText}</strong></div>
+                    <div class="batch-stock">${stockText}</div>
+                </div>
+                <span class="batch-mark">${ok ? '✓' : '✗'}</span>
+            </li>`;
         }).join('');
         const enough = n <= maxCandles;
         const verdict = enough
-            ? `<p>✅ Le scorte bastano per ${n} ${n === 1 ? 'candela' : 'candele'}${maxCandles === Infinity ? '' : ` (al massimo ${maxCandles})`}.</p>`
-            : `<p>⚠️ Le scorte bastano per creare solo <strong>${maxCandles}</strong> ${maxCandles === 1 ? 'candela' : 'candele'}, non ${n}.</p>`;
+            ? `Le scorte bastano per ${n} ${n === 1 ? 'candela' : 'candele'}${maxCandles === Infinity ? '' : ` (al massimo ${maxCandles})`}.`
+            : `Le scorte bastano per creare solo <strong>${maxCandles}</strong> ${maxCandles === 1 ? 'candela' : 'candele'}, non ${n}.`;
         out.innerHTML = `
-            <div class="recipe-card">
-                <table style="width:100%;border-collapse:collapse;text-align:left">
-                    <thead><tr><th>Ingrediente</th><th>1 candela</th><th>${n} candele</th><th>In magazzino</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-            <div class="lab-warning" style="display:block">${verdict}</div>`;
+            <ul class="batch-list">${rows}</ul>
+            <div class="batch-verdict ${enough ? 'ok' : 'ko'}"><span class="batch-mark">${enough ? '✓' : '✗'}</span><span>${verdict}</span></div>`;
     };
     qtyInput.oninput = render;
     render();

@@ -684,13 +684,14 @@ export async function renderLab(container, param) {
         btns.appendChild(backBtn);
         
         const multiBtn = createButton('Più candele uguali', 'content_copy', 'btn-secondary');
-        multiBtn.style.flex = '1 1 100%';
-        multiBtn.style.order = '-1';
+        multiBtn.style.flex = '1 1 calc(50% - 6px)';
+        backBtn.style.flex = '1 1 calc(50% - 6px)';
         btns.style.flexWrap = 'wrap';
         multiBtn.onclick = () => { saveStateToStore(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'batch' })); };
         btns.appendChild(multiBtn);
 
         const saveBtn = createButton('Salva candela', 'save', 'btn-primary');
+        saveBtn.style.flex = '1 1 100%';
         saveBtn.onclick = async () => {
             const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
             const userId = user?.id;

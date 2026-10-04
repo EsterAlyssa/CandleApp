@@ -3172,3 +3172,27 @@ select::-ms-expand {
     color: var(--md-sys-color-on-primary-container);
     font-weight: 600;
 }
+
+/* ============================================
+   BATCH - Più candele uguali
+   ============================================ */
+.batch-list { list-style: none; margin: 16px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.batch-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 14px; border-radius: 14px;
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    border-left: 4px solid #4caf50;
+}
+.batch-item.ko { border-left-color: #e53935; }
+.batch-name { font-weight: 700; margin-bottom: 4px; }
+.batch-qty, .batch-stock { font-size: 14px; line-height: 1.45; }
+.batch-stock { opacity: 0.75; font-size: 13px; margin-top: 2px; }
+.batch-mark { font-size: 24px; font-weight: 700; flex-shrink: 0; }
+.batch-item.ok .batch-mark, .batch-verdict.ok .batch-mark { color: #4caf50; }
+.batch-item.ko .batch-mark, .batch-verdict.ko .batch-mark { color: #ef5350; }
+.batch-verdict {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px; border-radius: 14px; border: 1px solid #4caf50;
+}
+.batch-verdict.ko { border-color: #e53935; }
