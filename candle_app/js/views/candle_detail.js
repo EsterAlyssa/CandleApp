@@ -154,7 +154,7 @@ export async function renderCandleDetail(container, logId) {
         <div id="rating-stars" style="margin-top: 12px;"></div>
         ${blend ? `
             <p><strong>Note selezionate:</strong></p>
-            <ul>
+            <ul class="dose-list">
                 ${headNames ? `   <li>Testa: ${headNames}</li>` : ''}
                 ${heartNames ? `   <li>Cuore: ${heartNames}</li>` : ''}
                 ${baseNames ? `   <li>Fondo: ${baseNames}</li>` : ''}

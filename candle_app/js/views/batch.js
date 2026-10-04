@@ -4,6 +4,7 @@
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
 import { waxGrams, fragranceGrams, splitFragrance, consumeScents, formatNum, formatDrops, NOTE_LABELS, gramsToMl } from '../fragranza.js';
+import { findDuplicateBlend, saveBlendScents } from '../blends.js';
 import * as Store from '../store.js';
 
 const fetchJson = async (url) => {
@@ -108,17 +109,61 @@ export async function renderBatch(container) {
     back.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
     btns.appendChild(back);
 
-    // Conferma: scala dal magazzino cera ed essenze per il numero di candele indicato
-    const confirm = createButton('Conferma e scala dal magazzino', 'check', 'btn-primary');
+    // Conferma: registra una candela nello storico ("ne sono state fatte N")
+    // e scala dal magazzino cera ed essenze per tutte le N
+    const confirm = createButton('Conferma e registra', 'check', 'btn-primary');
     confirm.onclick = async () => {
+        const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
+        if (!user?.id) { alert('Devi essere loggato!'); return; }
         const n = Math.max(1, parseInt(qtyInput.value, 10) || 1);
         if (n > maxCandles) {
             alert(`Le scorte bastano per ${maxCandles} ${maxCandles === 1 ? 'candela' : 'candele'}, non ${n}.`);
             return;
         }
-        if (!window.confirm(`Scalare dal magazzino il necessario per ${n} ${n === 1 ? 'candela' : 'candele'}?`)) return;
+        if (!window.confirm(`Registrare ${n} ${n === 1 ? 'candela' : 'candele'} nello storico e scalarle dal magazzino?`)) return;
         confirm.disabled = true;
         try {
+            // Mix: riusa quello identico se esiste, altrimenti lo crea
+            const byNote = (t) => selectedEssences.find(e => e.note_type === t)?.id || null;
+            const famCounts = {};
+            selectedEssences.forEach(e => { if (e.family_id) famCounts[e.family_id] = (famCounts[e.family_id] || 0) + 1; });
+            const familyId = Object.entries(famCounts).sort((a, b) => b[1] - a[1]).map(([f]) => f)[0] || null;
+
+            const existingMix = await findDuplicateBlend(user.id, selectedEssences, null);
+            let blendId = existingMix?.id || null;
+            if (!blendId) {
+                const r = await fetch('/api/blends', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.id, name: (wiz.candleName || '').trim() || 'Candela',
+                        head_scent_id: byNote('head'), heart_scent_id: byNote('heart'),
+                        base_scent_id: byNote('base'), resulting_family_id: familyId
+                    })
+                });
+                if (!r.ok) throw new Error('creazione del mix non riuscita');
+                blendId = (await r.json()).id;
+                await saveBlendScents(blendId, selectedEssences);
+            }
+
+            // Numero di lotto: successivo all'ultimo registrato
+            let batchNumber = 1;
+            const last = await fetchJson(`/api/candles?user_id=${user.id}&limit=1`);
+            if (last.length) {
+                const parsed = parseInt(String(last[0].batch_number).replace(/[^0-9]/g, ''), 10);
+                if (!Number.isNaN(parsed)) batchNumber = parsed + 1;
+            }
+
+            const logRes = await fetch('/api/candles', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.id, mold_id: selectedMold.id, wax_id: wax.id, blend_id: blendId,
+                    total_wax_used: waxPer, fragrance_load_percent: fragrancePct,
+                    notes: `Di questa ne sono state fatte ${n}.`, batch_number: batchNumber
+                })
+            });
+            if (!logRes.ok) throw new Error('registrazione nello storico non riuscita');
+            const savedLogId = (await logRes.json()).id;
+
             const newWax = Math.max(0, Math.round((parseFloat(wax.quantity_g) - waxPer * n) * 100) / 100);
             const res = await fetch('/api/inventory', {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -126,8 +171,9 @@ export async function renderBatch(container) {
             });
             if (!res.ok) throw new Error('aggiornamento cera non riuscito');
             await consumeScents(lines.map(l => ({ ...l, grams: l.grams * n })), scentsById);
-            alert('Magazzino aggiornato.');
-            renderBatch(container);
+            Store.resetWizard();
+            alert(`Registrata nello storico: ne sono state fatte ${n}. Magazzino aggiornato.`);
+            window.dispatchEvent(new CustomEvent('navigate', { detail: `guide:${savedLogId}` }));
         } catch (e) {
             confirm.disabled = false;
             alert(`Errore: ${e.message}`);
