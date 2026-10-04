@@ -19,6 +19,7 @@ import { renderCandleDetail } from './views/candle_detail.js';
 import { renderGuide } from './views/guide.js';
 import { renderCandlesByEssence } from './views/candles_by_essence.js';
 import { renderEditBlend } from './views/edit_blend.js?v=4';
+import { renderBatch } from './views/batch.js';
 import * as Store from './store.js';
 
 await loadEnv();
@@ -208,6 +209,7 @@ async function navigateTo(rawInput, options = {}) {
             case 'guide': await renderGuide(frame, param); break;
             case 'candles-by-essence': await renderCandlesByEssence(frame, param); break;
             case 'edit-blend': await renderEditBlend(frame, param); break;
+            case 'batch': await renderBatch(frame); break;
             case 'profile': await renderProfile(frame); break;
             default: frame.innerHTML = '<h1>Pagina non trovata</h1>';
         }
@@ -238,7 +240,7 @@ function updateActiveIcon(pageIdRaw) {
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
     const mapping = {
         'inventory-detail': 'inventory', 'add-essence': 'inventory', 'pairings': 'inventory',
-        'stock': 'inventory', 'edit-blend': 'inventory', 'lab': 'lab', 'info': 'info',
+        'stock': 'inventory', 'edit-blend': 'inventory', 'lab': 'lab', 'batch': 'lab', 'info': 'info',
         'profile': 'profile', 'dashboard': null
     };
     const target = mapping[pageId] || pageId;

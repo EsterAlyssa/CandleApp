@@ -683,12 +683,15 @@ export async function renderLab(container, param) {
         backBtn.onclick = () => { currentStep = 1; saveStateToStore(); renderStep(); };
         btns.appendChild(backBtn);
         
+        const multiBtn = createButton('Più candele uguali', 'content_copy', 'btn-secondary');
+        multiBtn.onclick = () => { saveStateToStore(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'batch' })); };
+        btns.appendChild(multiBtn);
+
         const saveBtn = createButton('Salva candela', 'save', 'btn-primary');
         saveBtn.onclick = async () => {
             const user = JSON.parse(localStorage.getItem('candle_user') || 'null');
-             const userData = user?.data;
-            const userId = userData?.user?.id;
-            
+            const userId = user?.id;
+
             if (!userId) { alert('Devi essere loggato!'); return; }
 
             let batchNumber = editingLog?.batch_number || 1;
