@@ -3,7 +3,7 @@
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
-import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote } from '../blends.js';
+import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote, findDuplicateBlend } from '../blends.js';
 import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml, shortageWarningHtml, consumeScents } from '../fragranza.js';
 import * as Store from '../store.js';
 
@@ -725,6 +725,10 @@ export async function renderLab(container, param) {
                 .map(([fam]) => fam)[0] || null;
 
             let blendId = editingLog?.blend_id || null;
+            // Stesso mix già in magazzino: lo si riusa invece di crearne un doppione
+            const existingMix = await findDuplicateBlend(userId, selectedEssences, blendId);
+            const reuseMix = !!existingMix && !blendId;
+            if (reuseMix) blendId = existingMix.id;
             
             // PONTE 4: Save Blend
             const blendPayload = {
@@ -734,7 +738,9 @@ export async function renderLab(container, param) {
             };
 
             try {
-                if (blendId) {
+                if (reuseMix) {
+                    // mix già esistente: resta com'è, non va rinominato né ricreato
+                } else if (blendId) {
                     const res = await fetch('/api/blends', {
                         method: 'PUT', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: blendId, ...blendPayload })
@@ -754,7 +760,7 @@ export async function renderLab(container, param) {
                 return;
             }
 
-            await saveBlendScents(blendId, selectedEssences);
+            if (!reuseMix) await saveBlendScents(blendId, selectedEssences);
 
             const notes = candleNotesInput ? candleNotesInput.value.trim() : '';
 

@@ -134,3 +134,34 @@ export async function loadBlendEssences(blendId, essences, familiesMap, fallback
     }
     return fallback;
 }
+// Chiave di confronto di un mix: insieme (essenza, nota), indipendente dall'ordine.
+const mixKey = (rows) => Array.from(new Set(
+    (rows || []).filter(r => r && r.scent_id && VALID_NOTES.includes(r.note_type)).map(r => `${r.scent_id}:${r.note_type}`)
+)).sort().join('|');
+
+// Cerca fra i mix dell'utente uno con le stesse essenze sulle stesse note.
+// Ritorna il blend esistente (escluso excludeBlendId) oppure null.
+export async function findDuplicateBlend(userId, selectedEssences, excludeBlendId = null) {
+    const target = mixKey((selectedEssences || []).map(e => ({ scent_id: e.id, note_type: e.note_type })));
+    if (!userId || !target) return null;
+    try {
+        const res = await fetch(`/api/blends?user_id=${userId}`);
+        if (!res.ok) return null;
+        const blends = (await res.json()) || [];
+        for (const b of blends) {
+            if (excludeBlendId && String(b.id) === String(excludeBlendId)) continue;
+            let rows = await loadBlendScents(b.id);
+            if (rows.length === 0) {
+                rows = [
+                    b.head_scent_id ? { scent_id: b.head_scent_id, note_type: 'head' } : null,
+                    b.heart_scent_id ? { scent_id: b.heart_scent_id, note_type: 'heart' } : null,
+                    b.base_scent_id ? { scent_id: b.base_scent_id, note_type: 'base' } : null
+                ].filter(Boolean);
+            }
+            if (mixKey(rows) === target) return b;
+        }
+    } catch (e) {
+        console.warn('[BLENDS] Controllo duplicati fallito', e);
+    }
+    return null;
+}

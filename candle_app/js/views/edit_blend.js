@@ -2,7 +2,7 @@
 // EDIT_BLEND.JS - Vista per modificare un mix/blend esistente
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
-import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote } from '../blends.js';
+import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote, findDuplicateBlend } from '../blends.js';
 import * as Store from '../store.js';
 
 export async function renderEditBlend(container, blendId) {
@@ -325,6 +325,12 @@ export async function renderEditBlend(container, blendId) {
         const noNote = essencesWithoutNote(selectedEssences);
         if (noNote.length > 0) {
             alert(`Assegna la nota olfattiva a: ${noNote.map(e => e.name).join(', ')}. Senza nota l'essenza non può entrare nel mix.`);
+            return;
+        }
+
+        const duplicate = await findDuplicateBlend(userId, selectedEssences, isCreating ? null : blendId);
+        if (duplicate) {
+            alert(`Questo mix esiste già (${duplicate.name}). Creane un altro.`);
             return;
         }
 
