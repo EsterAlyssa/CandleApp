@@ -3196,3 +3196,18 @@ select::-ms-expand {
     padding: 14px; border-radius: 14px; border: 1px solid #4caf50;
 }
 .batch-verdict.ko { border-color: #e53935; }
+
+/* ====== FILTRI MAGAZZINO - rettangoli con angoli arrotondati ====== */
+.tabs-container {
+    border-radius: 0;
+    padding: 4px 0 8px;
+    overflow: visible;
+}
+.tab-btn {
+    border-radius: 12px;
+}
+@media (max-width: 600px) {
+    .tabs-container .tab-btn {
+        width: 100%;
+    }
+}
