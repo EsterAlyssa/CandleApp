@@ -154,7 +154,7 @@ export async function renderDashboard(container) {
     familyData.forEach(f => { familyMap[f.id] = f; });
 
     function buildCandleCard(log, mold, blend, family) {
-        const candleName = blend?.name || `Candela ${log.batch_number || '—'}`;
+        const candleName = blend?.name || `Candela del ${new Date(log.created_at).toLocaleDateString('it-IT')}`;
         const moldName = mold?.name || '—';
         const moldCapacity = mold?.quantity_g ? `${mold.quantity_g} g` : '—';
         const composition = blend?.name || '—';

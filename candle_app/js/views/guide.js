@@ -103,7 +103,7 @@ export async function renderGuide(container, logId) {
             icon: 'checklist',
             title: 'Occorrente',
             body: `
-                <p>Prepara tutto il necessario per <strong>${log.batch_number ? 'la Candela ' + log.batch_number : 'la candela'}</strong>${blend?.name ? ` — <em>${blend.name}</em>` : ''}.</p>
+                <p>Prepara tutto il necessario per <strong>la candela</strong>${blend?.name ? ` — <em>${blend.name}</em>` : ''}.</p>
                 ${li([
                     `Stampo: <strong>${mold?.name || '—'}</strong> (capacità ${cap} g)`,
                     `Cera: <strong>${wax?.name || '—'}</strong> — <strong>${effectiveWax} g</strong>`,

@@ -4,7 +4,7 @@
 
 import { createButton, createTitle, createCard } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
-import { waxGrams, fragranceGrams, splitFragrance, doseListHtml } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, doseListHtml, NOTE_LABELS } from '../fragranza.js';
 
 export async function renderCandleDetail(container, logId) {
     console.log('[VIEW] Rendering Candle Detail...', logId);
@@ -141,7 +141,6 @@ export async function renderCandleDetail(container, logId) {
     };
 
     const cardHtml = `
-        <p><strong>Batch:</strong> ${log.batch_number || '—'}</p>
         <p><strong>Data:</strong> ${new Date(log.created_at).toLocaleString('it-IT')}</p>
         <p><strong>Stampo:</strong> ${mold?.name || '—'}</p>
         <p><strong>Cera:</strong> ${wax?.name || '—'}</p>
@@ -155,9 +154,9 @@ export async function renderCandleDetail(container, logId) {
         ${blend ? `
             <p><strong>Note selezionate:</strong></p>
             <ul class="dose-list">
-                ${headNames ? `   <li>Testa: ${headNames}</li>` : ''}
-                ${heartNames ? `   <li>Cuore: ${heartNames}</li>` : ''}
-                ${baseNames ? `   <li>Fondo: ${baseNames}</li>` : ''}
+                ${headNames ? `<li><span class="dose-note">${NOTE_LABELS.head}</span> ${headNames}</li>` : ''}
+                ${heartNames ? `<li><span class="dose-note">${NOTE_LABELS.heart}</span> ${heartNames}</li>` : ''}
+                ${baseNames ? `<li><span class="dose-note">${NOTE_LABELS.base}</span> ${baseNames}</li>` : ''}
             </ul>
             ${doseLines.length > 0 ? `<p><strong>Gocce per essenza:</strong></p>${doseListHtml(doseLines)}` : ''}
         ` : ''}

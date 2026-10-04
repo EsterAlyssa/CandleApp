@@ -91,7 +91,7 @@ export async function renderCandlesByEssence(container, essenceId) {
         const card = document.createElement('div');
         card.className = 'dashboard-candle-card';
 
-        const titleText = `Batch ${log.batch_number || ''}`;
+        const titleText = `Candela del ${new Date(log.created_at).toLocaleDateString('it-IT')}`;
         const moldImageUrl = getImageUrlFromRecord(mold);
         const content = `
             <div class="card-row">

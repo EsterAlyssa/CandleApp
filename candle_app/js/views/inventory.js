@@ -676,7 +676,7 @@ export async function renderInventory(container) {
                         if (cRes.ok) {
                             const candles = await cRes.json();
                             if (candles && candles.length > 0) {
-                                const candleNames = candles.map((c, idx) => c.batch_number ? `Candela ${c.batch_number}` : `Candela ${idx + 1}`);
+                                const candleNames = candles.map((c, idx) => `Candela del ${new Date(c.created_at).toLocaleDateString('it-IT')}`);
                                 infoText += `\n\nCandele in cui è presente:\n${candleNames.join('\n')}`;
                             } else {
                                 infoText += '\n\nCandele in cui è presente: nessuna';
@@ -755,7 +755,7 @@ export async function renderInventory(container) {
 
                 const mold = moldMap[log.mold_id];
                 const blend = blendMap[log.blend_id];
-                const candleName = blend?.name || `Candela ${log.batch_number || '—'}`;
+                const candleName = blend?.name || `Candela del ${new Date(log.created_at).toLocaleDateString('it-IT')}`;
                 const familyName = blend?.resulting_family_id ? (familiesMap[blend.resulting_family_id] || '—') : '—';
 
                 const topSection = document.createElement('div');
