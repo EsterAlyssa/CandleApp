@@ -54,12 +54,9 @@ export function fragrancePctOf(log) {
     return Number.isFinite(n) && n > 0 ? n : DEFAULT_FRAGRANCE_PCT;
 }
 
-// Candele prodotte in una registrazione: la pagina "Più candele uguali"
-// lo scrive nelle note ("Di questa ne sono state fatte N."); altrimenti 1.
-export const BATCH_NOTE = (n) => `Di questa ne sono state fatte ${n}.`;
+// Candele prodotte in una registrazione (colonna candle_log.quantita).
 export function candleCountOf(log) {
-    const m = String(log?.notes || '').match(/ne sono state fatte (\d+)/);
-    const n = m ? parseInt(m[1], 10) : 1;
+    const n = parseInt(log?.quantita, 10);
     return n > 0 ? n : 1;
 }
 

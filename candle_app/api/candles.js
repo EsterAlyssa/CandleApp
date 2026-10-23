@@ -31,11 +31,11 @@ export default async function handler(req, res) {
 
         // NUOVA LOGICA POST
         if (req.method === 'POST') {
-            const { user_id, mold_id, wax_id, blend_id, total_wax_used, fragrance_load_percent, notes, batch_number, is_favorite, image_ref } = req.body;
+            const { user_id, mold_id, wax_id, blend_id, total_wax_used, fragrance_load_percent, notes, batch_number, is_favorite, image_ref, quantita } = req.body;
             
             const result = await sql`
-                INSERT INTO candle_log (user_id, mold_id, wax_id, blend_id, total_wax_used, fragrance_load_percent, notes, batch_number, is_favorite, image_ref)
-                VALUES (${user_id}, ${mold_id}, ${wax_id}, ${blend_id}, ${total_wax_used}, ${fragrance_load_percent}, ${notes}, ${batch_number}, ${is_favorite || false}, ${image_ref})
+                INSERT INTO candle_log (user_id, mold_id, wax_id, blend_id, total_wax_used, fragrance_load_percent, notes, batch_number, is_favorite, image_ref, quantita)
+                VALUES (${user_id}, ${mold_id}, ${wax_id}, ${blend_id}, ${total_wax_used}, ${fragrance_load_percent}, ${notes}, ${batch_number}, ${is_favorite || false}, ${image_ref}, ${parseInt(quantita, 10) > 0 ? parseInt(quantita, 10) : 1})
                 RETURNING id
             `;
             // CORREZIONE: usiamo result[0]

@@ -3,7 +3,7 @@
 // Parte dalla candela composta nel laboratorio (stato del wizard).
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
-import { waxGrams, fragranceGrams, splitFragrance, consumeScents, formatNum, formatDrops, NOTE_LABELS, gramsToMl, BATCH_NOTE } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, consumeScents, formatNum, formatDrops, NOTE_LABELS, gramsToMl } from '../fragranza.js';
 import { findDuplicateBlend, saveBlendScents } from '../blends.js';
 import * as Store from '../store.js';
 
@@ -109,7 +109,7 @@ export async function renderBatch(container) {
     back.onclick = () => window.dispatchEvent(new CustomEvent('navigate', { detail: 'lab' }));
     btns.appendChild(back);
 
-    // Conferma: registra una candela nello storico ("ne sono state fatte N")
+    // Conferma: registra una candela nello storico con la quantità N
     // e scala dal magazzino cera ed essenze per tutte le N
     const confirm = createButton('Conferma e registra', 'check', 'btn-primary');
     confirm.onclick = async () => {
@@ -158,7 +158,7 @@ export async function renderBatch(container) {
                 body: JSON.stringify({
                     user_id: user.id, mold_id: selectedMold.id, wax_id: wax.id, blend_id: blendId,
                     total_wax_used: waxPer, fragrance_load_percent: fragrancePct,
-                    notes: BATCH_NOTE(n), batch_number: batchNumber
+                    notes: '', batch_number: batchNumber, quantita: n
                 })
             });
             if (!logRes.ok) throw new Error('registrazione nello storico non riuscita');
