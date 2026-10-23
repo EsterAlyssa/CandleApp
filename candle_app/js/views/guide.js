@@ -6,7 +6,7 @@
 
 import { createButton, createTitle } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
-import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml, fragrancePctOf, candleCountOf, formatNum } from '../fragranza.js';
 
 export async function renderGuide(container, logId) {
     console.log('[VIEW] Rendering Guide...', logId);
@@ -81,9 +81,13 @@ export async function renderGuide(container, logId) {
 
     // --- Calcolo quantità (stessa formula del wizard, da fragranza.js) ---
     const cap = mold?.quantity_g || 100;
-    const fragPct = typeof log.fragrance_load_percent === 'number' ? log.fragrance_load_percent : 8;
-    const effectiveWax = log.total_wax_used || waxGrams(mold, wax);
-    const fragG = fragranceGrams(effectiveWax, fragPct);
+    // Quantità per tutte le candele prodotte (più candele uguali: N × una)
+    const fragPct = fragrancePctOf(log);
+    const nCandles = candleCountOf(log);
+    const waxPer = parseFloat(log.total_wax_used) || waxGrams(mold, wax);
+    const effectiveWax = formatNum(waxPer * nCandles);
+    const fragG = fragranceGrams(waxPer * nCandles, fragPct);
+    const many = nCandles > 1;
 
     const meltTemp = wax?.tech_data?.melt_temp;
     const pourTemp = wax?.tech_data?.pour_temp;
@@ -103,10 +107,10 @@ export async function renderGuide(container, logId) {
             icon: 'checklist',
             title: 'Occorrente',
             body: `
-                <p>Prepara tutto il necessario per <strong>la candela</strong>${blend?.name ? ` — <em>${blend.name}</em>` : ''}.</p>
+                <p>Prepara tutto il necessario per <strong>${many ? `${nCandles} candele` : 'la candela'}</strong>${blend?.name ? ` — <em>${blend.name}</em>` : ''}.</p>
                 ${li([
-                    `Stampo: <strong>${mold?.name || '—'}</strong> (capacità ${cap} g)`,
-                    `Cera: <strong>${wax?.name || '—'}</strong> — <strong>${effectiveWax} g</strong>`,
+                    `Stampo: <strong>${mold?.name || '—'}</strong> (capacità ${cap} g)${many ? ` × ${nCandles}` : ''}`,
+                    `Cera: <strong>${wax?.name || '—'}</strong> — <strong>${effectiveWax} g</strong>${many ? ` (${formatNum(waxPer)} g per candela)` : ''}`,
                     `Fragranza: ${fragText}`,
                     `Le boccette delle essenze con il loro contagocce`,
                     `Termometro, contenitore per bagnomaria, stoppino, spatola`
@@ -136,9 +140,9 @@ export async function renderGuide(container, logId) {
         },
         {
             icon: 'opacity',
-            title: 'Versa nello stampo',
+            title: many ? 'Versa negli stampi' : 'Versa nello stampo',
             body: `
-                <p>Posiziona lo stoppino al centro dello stampo e versa lentamente la cera profumata.</p>
+                <p>${many ? `Posiziona uno stoppino al centro di ciascuno dei ${nCandles} stampi e dividi la cera profumata in parti uguali, versando lentamente.` : 'Posiziona lo stoppino al centro dello stampo e versa lentamente la cera profumata.'}</p>
                 ${li([
                     pourTemp ? `Versa intorno a <strong>${pourTemp} °C</strong> per evitare crepe e cavità` : `Versa a temperatura moderata per evitare crepe`,
                     `Mantieni lo stoppino dritto e centrato (usa un supporto se serve)`
@@ -149,7 +153,7 @@ export async function renderGuide(container, logId) {
             icon: 'schedule',
             title: 'Raffreddamento e cura',
             body: `
-                <p>Lascia raffreddare la candela a temperatura ambiente, lontano da correnti d'aria.</p>
+                <p>Lascia raffreddare ${many ? 'le candele' : 'la candela'} a temperatura ambiente, lontano da correnti d'aria.</p>
                 ${li([
                     `Raffreddamento completo: alcune ore, senza spostarla`,
                     `Cura (curing): lascia riposare <strong>1-2 settimane</strong> prima di accenderla, per una fragranza al massimo`,

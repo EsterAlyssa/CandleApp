@@ -45,6 +45,24 @@ export const formatNum = (n, digits = 1) =>
 
 export const formatDrops = (drops) => `${drops} ${drops === 1 ? 'goccia' : 'gocce'}`;
 
+// --- Dati della candela registrata ---
+// Il database restituisce i numeric come stringhe: si convertono qui,
+// altrimenti si ricadrebbe sempre sull'8% predefinito.
+export const DEFAULT_FRAGRANCE_PCT = 8;
+export function fragrancePctOf(log) {
+    const n = parseFloat(log?.fragrance_load_percent);
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_FRAGRANCE_PCT;
+}
+
+// Candele prodotte in una registrazione: la pagina "Più candele uguali"
+// lo scrive nelle note ("Di questa ne sono state fatte N."); altrimenti 1.
+export const BATCH_NOTE = (n) => `Di questa ne sono state fatte ${n}.`;
+export function candleCountOf(log) {
+    const m = String(log?.notes || '').match(/ne sono state fatte (\d+)/);
+    const n = m ? parseInt(m[1], 10) : 1;
+    return n > 0 ? n : 1;
+}
+
 // --- Cera e fragranza totali ---
 // Cera = capacità stampo (g d'acqua) × fattore di conversione della cera.
 export function waxGrams(mold, wax) {

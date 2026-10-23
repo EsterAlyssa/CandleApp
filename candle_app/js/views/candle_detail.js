@@ -4,7 +4,7 @@
 
 import { createButton, createTitle, createCard } from '../components.js?v=3';
 import { loadBlendScents } from '../blends.js';
-import { waxGrams, fragranceGrams, splitFragrance, doseListHtml, NOTE_LABELS } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, doseListHtml, NOTE_LABELS, fragrancePctOf, candleCountOf, formatNum } from '../fragranza.js';
 
 export async function renderCandleDetail(container, logId) {
     console.log('[VIEW] Rendering Candle Detail...', logId);
@@ -89,9 +89,12 @@ export async function renderCandleDetail(container, logId) {
     const baseNames = namesByNote('base');
 
     // Gocce per essenza (stessa ripartizione di wizard e guida)
-    const fragPct = typeof log.fragrance_load_percent === 'number' ? log.fragrance_load_percent : 8;
+    // Le dosi sono per tutte le candele prodotte in questa registrazione
+    const fragPct = fragrancePctOf(log);
+    const nCandles = candleCountOf(log);
+    const waxPer = parseFloat(log.total_wax_used) || waxGrams(mold, wax);
     const doseLines = splitFragrance(
-        fragranceGrams(log.total_wax_used || waxGrams(mold, wax), fragPct),
+        fragranceGrams(waxPer * nCandles, fragPct),
         scentRows.map(r => ({ id: r.scent_id, name: scentMap[r.scent_id] || r.scent_id, note_type: r.note_type })),
         scentsById
     );
@@ -144,7 +147,9 @@ export async function renderCandleDetail(container, logId) {
         <p><strong>Data:</strong> ${new Date(log.created_at).toLocaleString('it-IT')}</p>
         <p><strong>Stampo:</strong> ${mold?.name || '—'}</p>
         <p><strong>Cera:</strong> ${wax?.name || '—'}</p>
-        <p><strong>Carico fragranza:</strong> ${log.fragrance_load_percent ?? '—'}%</p>
+        <p><strong>Candele prodotte:</strong> ${nCandles}</p>
+        <p><strong>Cera usata:</strong> ${formatNum(waxPer * nCandles)} g${nCandles > 1 ? ` (${formatNum(waxPer)} g per candela)` : ''}</p>
+        <p><strong>Carico fragranza:</strong> ${fragPct}%</p>
         <p><strong>Fragranza:</strong> ${blend?.name || '—'}</p>
         <div id="notes-container" style="margin-top: 8px;">
             <p style="margin-bottom: 4px;"><strong>Note:</strong></p>
@@ -158,7 +163,7 @@ export async function renderCandleDetail(container, logId) {
                 ${heartNames ? `<li><span class="dose-note">${NOTE_LABELS.heart}</span> ${heartNames}</li>` : ''}
                 ${baseNames ? `<li><span class="dose-note">${NOTE_LABELS.base}</span> ${baseNames}</li>` : ''}
             </ul>
-            ${doseLines.length > 0 ? `<p><strong>Gocce per essenza:</strong></p>${doseListHtml(doseLines)}` : ''}
+            ${doseLines.length > 0 ? `<p><strong>Gocce per essenza${nCandles > 1 ? ` (per ${nCandles} candele)` : ''}:</strong></p>${doseListHtml(doseLines)}` : ''}
         ` : ''}
     `;
 

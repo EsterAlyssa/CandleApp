@@ -3,7 +3,7 @@
 // Parte dalla candela composta nel laboratorio (stato del wizard).
 // ===================================================
 import { createButton, createTitle } from '../components.js?v=3';
-import { waxGrams, fragranceGrams, splitFragrance, consumeScents, formatNum, formatDrops, NOTE_LABELS, gramsToMl } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, consumeScents, formatNum, formatDrops, NOTE_LABELS, gramsToMl, BATCH_NOTE } from '../fragranza.js';
 import { findDuplicateBlend, saveBlendScents } from '../blends.js';
 import * as Store from '../store.js';
 
@@ -61,7 +61,7 @@ export async function renderBatch(container) {
 
     const head = document.createElement('div');
     head.className = 'recipe-card';
-    head.innerHTML = `<h3>${wiz.candleName || 'Candela'}</h3><p>${selectedMold.name} · ${wax.name} · ${fragrancePct}% fragranza</p>`;
+    head.innerHTML = `<h3>${wiz.fragranceName || selectedEssences.map(e => e.name).join(', ')}</h3><p>${selectedMold.name} · ${wax.name} · ${fragrancePct}% fragranza</p>`;
     wrapper.appendChild(head);
 
     const qtyGrp = document.createElement('div');
@@ -135,7 +135,7 @@ export async function renderBatch(container) {
                 const r = await fetch('/api/blends', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        user_id: user.id, name: (wiz.candleName || '').trim() || 'Candela',
+                        user_id: user.id, name: (wiz.fragranceName || '').trim() || selectedEssences.map(e => e.name).join(', '),
                         head_scent_id: byNote('head'), heart_scent_id: byNote('heart'),
                         base_scent_id: byNote('base'), resulting_family_id: familyId
                     })
@@ -158,7 +158,7 @@ export async function renderBatch(container) {
                 body: JSON.stringify({
                     user_id: user.id, mold_id: selectedMold.id, wax_id: wax.id, blend_id: blendId,
                     total_wax_used: waxPer, fragrance_load_percent: fragrancePct,
-                    notes: `Di questa ne sono state fatte ${n}.`, batch_number: batchNumber
+                    notes: BATCH_NOTE(n), batch_number: batchNumber
                 })
             });
             if (!logRes.ok) throw new Error('registrazione nello storico non riuscita');

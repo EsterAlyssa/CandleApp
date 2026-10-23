@@ -4,7 +4,7 @@
 import { createButton, createTitle } from '../components.js?v=3';
 import { getImageUrlFromRecord } from '../image.js';
 import { saveBlendScents, loadBlendScents, mapScentRows, selectionSummaryHtml, missingNotesWarning, notePickerHtml, assignScentNote, essencesWithoutNote, findDuplicateBlend } from '../blends.js';
-import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml, shortageWarningHtml, consumeScents } from '../fragranza.js';
+import { waxGrams, fragranceGrams, splitFragrance, fragranceTotalHtml, doseListHtml, shortageWarningHtml, consumeScents, fragrancePctOf } from '../fragranza.js';
 import * as Store from '../store.js';
 
 export async function renderLab(container, param) {
@@ -169,7 +169,7 @@ export async function renderLab(container, param) {
 
                 if (log.mold_id) selectedMold = molds.find(m => m.id === log.mold_id) || selectedMold;
                 if (log.wax_id) selectedWax = waxes.find(w => w.id === log.wax_id) || selectedWax;
-                if (typeof log.fragrance_load_percent === 'number') fragrancePct = log.fragrance_load_percent;
+                if (log.fragrance_load_percent != null) fragrancePct = fragrancePctOf(log);
 
                 if (log.blend_id) {
                     const blendDataList = await fetchApi(`/api/blends?id=${log.blend_id}`);
@@ -614,7 +614,7 @@ export async function renderLab(container, param) {
         const recipe = document.createElement('div');
         recipe.className = 'recipe-card';
         recipe.innerHTML = `
-            <h3>${candleName || defaultCandleName || 'Candela'}</h3>
+            <h3>${fragranceName || selectedEssences.map(e => e.name).join(', ') || 'Candela'}</h3>
             <div class="recipe-section"><h4>Stampo</h4><p>${selectedMold?.name || '—'}</p></div>
             <div class="recipe-section"><h4>Capacità stampo</h4><p class="recipe-amount">${cap}g</p></div>
             <div class="recipe-section"><h4>Cera da sciogliere</h4><p>${selectedWax?.name || '—'}: <strong>${waxAmt}g</strong> (fisso)</p></div>
@@ -631,14 +631,6 @@ export async function renderLab(container, param) {
             sw.innerHTML = stockWarning;
             step.appendChild(sw);
         }
-
-        const nameGrp = document.createElement('div');
-        nameGrp.className = 'input-group';
-        nameGrp.innerHTML = `<label class="input-label">Nome candela</label><input class="input-field" type="text" placeholder="Candela 1">`;
-        const nameInput = nameGrp.querySelector('input');
-        nameInput.value = candleName || defaultCandleName;
-        nameInput.oninput = (e) => { candleName = e.target.value; };
-        step.appendChild(nameGrp);
 
         const fragGrp = document.createElement('div');
         fragGrp.className = 'input-group';
@@ -706,7 +698,7 @@ export async function renderLab(container, param) {
                 } catch (e) { console.warn('[LAB] Unable to compute next batch number'); }
             }
 
-            const blendName = (candleName || '').trim() || `Candela ${batchNumber}`;
+            const blendName = (fragranceName || '').trim() || selectedEssences.map(e => e.name).join(', ') || `Candela ${batchNumber}`;
             
             const headEss = selectedEssences.find(e => e.note_type === 'head');
             const heartEss = selectedEssences.find(e => e.note_type === 'heart');
